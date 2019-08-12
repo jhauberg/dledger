@@ -76,6 +76,11 @@ def intervals(records: Iterable[Transaction]) \
     return timespans
 
 
+def tickers(records: Iterable[Transaction]) \
+        -> List[str]:
+    return list(set([record.ticker for record in records]))
+
+
 def schedule(records: Iterable[Transaction]) \
         -> List[int]:
     return sorted(set([record.date.month for record in records]))

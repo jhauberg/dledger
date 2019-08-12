@@ -6,7 +6,7 @@ from dividendreport.ledger import Transaction
 from dividendreport.projection import scheduled_transactions, estimate_schedule
 from dividendreport.record import (
     frequency, income, yearly, monthly, within_months,
-    by_ticker, previous, previous_comparable
+    tickers, by_ticker, previous, previous_comparable
 )
 
 from typing import List
@@ -163,15 +163,32 @@ def report_per_month(records: List[Transaction], year: int) \
     return reports
 
 
+def report_by_weight(records: List[Transaction]) \
+        -> dict:
+    report = dict()
+    total_income = income(records)
+    for ticker in tickers(records):
+        total_income_by_ticker = income(by_ticker(records, ticker))
+        report[ticker] = {
+            'income': total_income_by_ticker,
+            'weight_pct': total_income_by_ticker / total_income * 100
+        }
+    return report
+
+
 def generate(records: List[Transaction]) -> None:
     reports = report_per_record(records)
-
     import pprint
     print('=========== total accumulated income (all time)')
     print(sum([r.amount for r in records]))
     print('=========== annually')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     printer.pprint(report_per_year(records))
+    current_year = datetime.today().year
+    print(f'weighted ({current_year}): ')
+    weights = report_by_weight(list(yearly(records, year=current_year)))
+    weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
+    printer.pprint(weightings)
     print('=========== entries')
     printer = pprint.PrettyPrinter(indent=2, width=60)
     for record in records:
@@ -181,12 +198,17 @@ def generate(records: List[Transaction]) -> None:
     futures = scheduled_transactions(records, reports)
     printer.pprint(futures)
     print('=========== forward 12-month income')
-    padi = sum([r.amount for r in futures])
+    padi = income(futures)
     print(f'income:        {format_amount(padi)}')
     print(f'monthly (avg): {format_amount(padi / 12)}')
     print(f'weekly  (avg): {format_amount(padi / 52)}')
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
+    printer = pprint.PrettyPrinter(indent=2, width=100)
+    print(f'weighted: ')
+    weights = report_by_weight(futures)
+    weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
+    printer.pprint(weightings)
     print('=========== annually (projected)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     records.extend(futures)
