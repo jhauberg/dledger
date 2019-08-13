@@ -76,6 +76,10 @@ def read_native_transaction(record: List[str]) \
     position_value = str(record[2]).strip()
     amount_value = str(record[3]).strip()
 
+    # allow additional text on last column, separated by whitespace
+    # e.g. '2019-08-09  MA  0  0.0 closed'
+    amount_value = amount_value.split(' ', 1)[0]
+
     # parse date; expects format '2018-03-19'
     date = datetime.strptime(date_value, "%Y-%m-%d").date()
 
