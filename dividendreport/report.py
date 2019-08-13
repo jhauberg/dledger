@@ -1,7 +1,7 @@
 from datetime import datetime, date
 
 from dividendreport.dateutil import previous_month
-from dividendreport.formatutil import change, pct_change, format_amount
+from dividendreport.formatutil import change, pct_change, format_amount, format_change
 from dividendreport.ledger import Transaction
 from dividendreport.projection import scheduled_transactions, estimate_schedule
 from dividendreport.record import (
@@ -179,13 +179,15 @@ def report_by_weight(records: List[Transaction]) \
 def generate(records: List[Transaction]) -> None:
     reports = report_per_record(records)
     import pprint
-    print('=========== total accumulated income (all time)')
+    earliest_record = records[0]
+    latest_record = records[-1]
+    print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year})')
     print(sum([r.amount for r in records]))
-    print('=========== annually')
+    print(f'=========== annual income ({earliest_record.date.year}-{latest_record.date.year})')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     printer.pprint(report_per_year(records))
     current_year = datetime.today().year
-    print(f'weighted ({current_year}): ')
+    print(f'=========== annual income ({current_year}) (weighted)')
     weights = report_by_weight(list(yearly(records, year=current_year)))
     weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
     printer.pprint(weightings)
@@ -199,19 +201,30 @@ def generate(records: List[Transaction]) -> None:
     printer.pprint(futures)
     print('=========== forward 12-month income')
     padi = income(futures)
-    print(f'income:        {format_amount(padi)}')
+    print(f'annual income: {format_amount(padi)}')
     print(f'monthly (avg): {format_amount(padi / 12)}')
     print(f'weekly  (avg): {format_amount(padi / 52)}')
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
+    print('=========== impact of latest transaction')
+    records_except_latest = records[:-1]
+    reports_except_latest = report_per_record(records_except_latest)
+    futures_except_latest = scheduled_transactions(records_except_latest, reports_except_latest)
+    padi_except_latest = income(futures_except_latest)
+    printer.pprint(latest_record)
+    print(f'annual income: {format_change(change(padi, padi_except_latest))}')
+    print(f'monthly (avg): {format_change(change(padi / 12, padi_except_latest / 12))}')
+    print(f'weekly  (avg): {format_change(change(padi / 52, padi_except_latest / 52))}')
+    print(f'daily   (avg): {format_change(change(padi / 365, padi_except_latest / 365))}')
+    print(f'hourly  (avg): {format_change(change(padi / 8760, padi_except_latest / 8760))}')
+    print('=========== forward 12-month income (weighted)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
-    print(f'weighted: ')
     weights = report_by_weight(futures)
     weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
     printer.pprint(weightings)
-    print('=========== annually (projected)')
+    print('=========== annual income (projected)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
-    records.extend(futures)
-    annuals = report_per_year(records)
+    extended_records = records + futures
+    annuals = report_per_year(extended_records)
     annuals = {year: report for year, report in annuals.items() if year >= datetime.today().year}
     printer.pprint(annuals)
