@@ -42,10 +42,14 @@ def test_months_between_normalized():
                           date(year=2020, month=4, day=1), normalized=True) == 11
 
 
-def test_add_months():
+def test_in_months():
     d = in_months(date(year=2019, month=1, day=1), months=1)
 
     assert d.year == 2019 and d.month == 2 and d.day == 1
+
+    d = in_months(date(year=2019, month=1, day=15), months=1)
+
+    assert d.year == 2019 and d.month == 2 and d.day == 15
 
     d = in_months(date(year=2019, month=1, day=31), months=1)
 
