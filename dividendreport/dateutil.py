@@ -21,6 +21,10 @@ def months_between(a: datetime.date, b: datetime.date,
     return months
 
 
+def last_of_month(date: datetime.date) -> datetime.date:
+    return previous_month(next_month(date))
+
+
 def previous_month(date: datetime.date) -> datetime.date:
     """ Return the date of the last day of the previous month for a given date. """
 
