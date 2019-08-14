@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
 from dividendreport.dateutil import last_of_month, in_months
-from dividendreport.record import by_ticker, within_months, latest, schedule
+from dividendreport.record import by_ticker, within_months, trailing, latest, schedule
 
 from typing import Tuple, Optional, List
 
@@ -133,7 +133,7 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
                 continue
 
             fictive_record = Transaction(future_date, '', 0, 0)
-            reference_records = within_months(by_ticker(records, record.ticker), fictive_record)
+            reference_records = trailing(by_ticker(records, record.ticker), fictive_record, months=12)
             highest_amount_per_share = report['amount_per_share']
             lowest_amount_per_share = highest_amount_per_share
             for reference_record in reference_records:

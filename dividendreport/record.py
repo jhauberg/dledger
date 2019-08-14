@@ -1,6 +1,6 @@
 from statistics import mode, StatisticsError
 
-from dividendreport.dateutil import next_month, previous_month, months_between
+from dividendreport.dateutil import next_month, previous_month, months_between, in_months
 from dividendreport.ledger import Transaction
 
 from typing import Iterable, Optional, List
@@ -84,6 +84,15 @@ def tickers(records: Iterable[Transaction]) \
 def schedule(records: Iterable[Transaction]) \
         -> List[int]:
     return sorted(set([record.date.month for record in records]))
+
+
+def trailing(records: Iterable[Transaction], record: Transaction,
+             *, months: int) \
+        -> Iterable[Transaction]:
+    since = in_months(record.date, months=-months)
+
+    return filter(
+        lambda r: record.date >= r.date >= since, records)
 
 
 def within_months(records: Iterable[Transaction], record: Transaction,
