@@ -1,3 +1,5 @@
+import calendar
+
 from datetime import datetime, timedelta
 
 
@@ -19,6 +21,14 @@ def months_between(a: datetime.date, b: datetime.date,
             months = 12
 
     return months
+
+
+def in_months(date: datetime.date, months: int) -> datetime.date:
+    month = date.month - 1 + months
+    year = date.year + month // 12
+    month = month % 12 + 1
+    day = min(date.day, calendar.monthrange(year, month)[1])
+    return date.replace(year=year, month=month, day=day)
 
 
 def last_of_month(date: datetime.date) -> datetime.date:

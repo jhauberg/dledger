@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
-from dividendreport.dateutil import last_of_month
+from dividendreport.dateutil import last_of_month, in_months
 from dividendreport.record import by_ticker, within_months, latest, schedule
 
 from typing import Tuple, Optional, List
@@ -160,8 +160,7 @@ def future_transactions(records: List[Transaction], entries: dict) \
         -> List[FutureTransaction]:
     future_records = []
     for record in records:
-        future_date = record.date.replace(year=record.date.year + 1, day=1)
-        future_date = last_of_month(future_date)
+        future_date = last_of_month(in_months(record.date, months=12))
 
         if future_date < datetime.today().date():
             continue
