@@ -140,6 +140,16 @@ def test_intervals():
 
     assert intervals(records) == [9, 3, 9, 3]
 
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 8, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 9, 1), 'ABC', 1, 100)
+    ]
+
+    assert intervals(records) == [1, 2, 2, 1, 6]
+
 
 def test_schedule():
     records = [
