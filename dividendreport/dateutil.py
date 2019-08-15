@@ -4,10 +4,19 @@ from datetime import datetime, timedelta
 
 
 def months_between(a: datetime.date, b: datetime.date,
-                   *, normalized: bool = False) -> int:
+                   *, ignore_years: bool = False) -> int:
     """ Return the number of months between two dates, from earliest to latest.
 
-    If normalized is True, keep months within a 12-month range.
+    Does not take days into account.
+
+    For example,
+      2019-05-20 - 2019-06-20 is exactly 1 month apart, but so is
+      2019-05-20 - 2019-06-29 or 2019-06-01
+
+    If ignore_years is True, do not take years into account.
+
+    For example,
+      2019-05-20 - 2020-07-20 is exactly 14 months apart, but only 2 if ignore_years is True.
     """
 
     future = max([a, b])
@@ -15,7 +24,7 @@ def months_between(a: datetime.date, b: datetime.date,
 
     months = future.month - past.month + 12 * (future.year - past.year)
 
-    if normalized:
+    if ignore_years:
         months = months % 12
         if months == 0:
             months = 12
@@ -24,7 +33,7 @@ def months_between(a: datetime.date, b: datetime.date,
 
 
 def in_months(date: datetime.date, months: int) -> datetime.date:
-    """ Return the date at a number of months later or earlier. """
+    """ Return the date in a number of months. """
 
     month = date.month - 1 + months
     year = date.year + month // 12
@@ -35,14 +44,21 @@ def in_months(date: datetime.date, months: int) -> datetime.date:
 
 
 def last_of_month(date: datetime.date) -> datetime.date:
+    """ Return the date at the last day of the month. """
+
     return previous_month(next_month(date))
 
 
-def previous_month(date: datetime.date) -> datetime.date:
-    """ Return the date of the last day of the previous month for a given date. """
+def first_of_month(date: datetime.date) -> datetime.date:
+    """ Return the date at the first day of the month. """
 
-    # set to first day of given month
-    date = date.replace(day=1)
+    return date.replace(day=1)
+
+
+def previous_month(date: datetime.date) -> datetime.date:
+    """ Return the date at the last day of the previous month. """
+
+    date = first_of_month(date)
     # then backtrack by 1 day to find previous month
     date -= timedelta(days=1)
 
@@ -50,10 +66,9 @@ def previous_month(date: datetime.date) -> datetime.date:
 
 
 def next_month(date: datetime.date) -> datetime.date:
-    """ Return the date of the first day of the next month for a given date. """
+    """ Return the date at the first day of the following month. """
 
-    # set to first day of month
-    date = date.replace(day=1)
+    date = first_of_month(date)
 
     try:
         # try fast-forwarding 1 month

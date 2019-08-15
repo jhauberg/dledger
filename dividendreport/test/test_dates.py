@@ -27,19 +27,19 @@ def test_months_between():
 
 def test_months_between_normalized():
     assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2019, month=1, day=1), normalized=True) == 12
+                          date(year=2019, month=1, day=1), ignore_years=True) == 12
     assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2020, month=1, day=1), normalized=True) == 12
+                          date(year=2020, month=1, day=1), ignore_years=True) == 12
     assert months_between(date(year=2019, month=3, day=1),
-                          date(year=2019, month=12, day=1), normalized=True) == 9
+                          date(year=2019, month=12, day=1), ignore_years=True) == 9
     assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2019, month=2, day=1), normalized=True) == 1
+                          date(year=2019, month=2, day=1), ignore_years=True) == 1
     assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2019, month=12, day=1), normalized=True) == 11
+                          date(year=2019, month=12, day=1), ignore_years=True) == 11
     assert months_between(date(year=2018, month=1, day=1),
-                          date(year=2020, month=1, day=1), normalized=True) == 12
+                          date(year=2020, month=1, day=1), ignore_years=True) == 12
     assert months_between(date(year=2019, month=5, day=1),
-                          date(year=2020, month=4, day=1), normalized=True) == 11
+                          date(year=2020, month=4, day=1), ignore_years=True) == 11
 
 
 def test_in_months():

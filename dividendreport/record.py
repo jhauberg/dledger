@@ -63,7 +63,7 @@ def intervals(records: Iterable[Transaction]) \
         else:
             timespans.append(
                 months_between(record.date, previous_record_date,
-                               normalized=True))
+                               ignore_years=True))
 
         previous_record_date = record.date
 
@@ -72,7 +72,7 @@ def intervals(records: Iterable[Transaction]) \
 
     timespans.append(
         months_between(next_record_date, previous_record_date,
-                       normalized=True))
+                       ignore_years=True))
 
     return timespans
 
