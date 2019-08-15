@@ -31,10 +31,10 @@ class FutureTransaction(Transaction):
 def estimate_schedule(records: List[Transaction],
                       *, interval: int) \
         -> List[int]:
-    approx_schedule = schedule(records)
-
     if interval <= 0:
         raise ValueError('interval must be > 0')
+
+    approx_schedule = schedule(records)
 
     payouts_per_year = int(12 / interval)
 
