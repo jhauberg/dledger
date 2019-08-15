@@ -31,6 +31,17 @@ def test_trailing():
     assert len(recs) == 1
     assert recs[0] == records[2]
 
+    records = [
+        Transaction(date(2019, 1, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 2, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 3, 31), 'ABC', 1, 100),
+    ]
+
+    recs = list(trailing(records, records[2], months=1, normalized=True))
+
+    assert len(recs) == 2
+    assert recs[0] == records[1] and recs[1] == records[2]
+
 
 def test_normalize_timespan():
     assert normalize_timespan(1) == 1

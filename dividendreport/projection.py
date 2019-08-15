@@ -133,12 +133,14 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
                 continue
 
             fictive_record = Transaction(future_date, '', 0, 0)
-            reference_records = trailing(by_ticker(records, record.ticker), fictive_record, months=12)
+            reference_records = trailing(by_ticker(records, record.ticker), fictive_record, months=12, normalized=True)
             highest_amount_per_share = report['amount_per_share']
-            lowest_amount_per_share = highest_amount_per_share
+            lowest_amount_per_share = report['amount_per_share']
+            reference_points = 0
             for reference_record in reference_records:
                 reference_report = entries[reference_record]
                 reference_amount_per_share = reference_report['amount_per_share']
+                reference_points += 1
                 if reference_amount_per_share > highest_amount_per_share:
                     highest_amount_per_share = reference_amount_per_share
                 if reference_amount_per_share < lowest_amount_per_share:
@@ -149,7 +151,7 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
                 FutureTransaction(future_date, record.ticker, record.position,
                                   amount=mean_amount_per_share * record.position,
                                   amount_range=(lowest_amount_per_share * record.position,
-                                                highest_amount_per_share * record.position)))
+                                                highest_amount_per_share * record.position) if reference_points > 1 else None))
 
         approximate_records.extend(scheduled_records)
 

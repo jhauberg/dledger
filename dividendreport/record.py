@@ -87,8 +87,13 @@ def schedule(records: Iterable[Transaction]) \
 
 
 def trailing(records: Iterable[Transaction], record: Transaction,
-             *, months: int) \
+             *, months: int, normalized: bool = False) \
         -> Iterable[Transaction]:
+    if normalized:
+        return filter(
+            lambda r: (r.date <= record.date and
+                       months_between(record.date, r.date) <= months), records)
+
     since = in_months(record.date, months=-months)
 
     return filter(
