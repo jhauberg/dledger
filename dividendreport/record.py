@@ -1,6 +1,6 @@
 from statistics import mode, StatisticsError
 
-from dividendreport.dateutil import next_month, previous_month, months_between, in_months
+from dividendreport.dateutil import months_between, in_months
 from dividendreport.ledger import Transaction
 
 from typing import Iterable, Optional, List
@@ -91,35 +91,13 @@ def trailing(records: Iterable[Transaction], record: Transaction,
         -> Iterable[Transaction]:
     if normalized:
         return filter(
-            lambda r: (r.date <= record.date and
-                       months_between(record.date, r.date) <= months), records)
+            lambda r: (record.date >= r.date and
+                       months >= months_between(record.date, r.date)), records)
 
     since = in_months(record.date, months=-months)
 
     return filter(
-        lambda r: record.date >= r.date >= since, records)
-
-
-def within_months(records: Iterable[Transaction], record: Transaction,
-                  *, months: int = 12, trailing: bool = False, preceding: bool = True) \
-        -> Iterable[Transaction]:
-    """ Return an iterator for records dated within months of a given record (inclusive).
-
-    If trailing is True, offset to previous month of record date (e.g. exclusive of given record).
-    """
-
-    if preceding:
-        since = (previous_month(record.date)
-                 if trailing else
-                 next_month(record.date))
-    else:
-        since = (next_month(record.date)
-                 if trailing else
-                 previous_month(record.date))
-
-    return filter(
-        lambda r: (r.date <= since if preceding else
-                   r.date >= since) and months_between(since, r.date) <= months, records)
+        lambda r: record.date >= r.date > since, records)
 
 
 def monthly(records: Iterable[Transaction],
