@@ -3,9 +3,9 @@ from datetime import datetime, date
 from dividendreport.dateutil import previous_month
 from dividendreport.formatutil import change, pct_change, format_amount, format_change
 from dividendreport.ledger import Transaction
-from dividendreport.projection import scheduled_transactions, estimate_schedule
+from dividendreport.projection import frequency, scheduled_transactions, estimate_schedule
 from dividendreport.record import (
-    frequency, income, yearly, monthly, trailing,
+    income, yearly, monthly, trailing,
     tickers, by_ticker, previous, previous_comparable
 )
 
