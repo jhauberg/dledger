@@ -64,7 +64,9 @@ def frequency(records: Iterable[Transaction]) \
     except StatisticsError:
         # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
         records = list(trailing(records, latest(records), months=12))
-        return normalize_interval(int(12 / len(records)))
+        payouts_per_year = len(records)
+        average_interval = int(12 / payouts_per_year)
+        return normalize_interval(average_interval)
 
 
 def estimate_schedule(records: List[Transaction],
