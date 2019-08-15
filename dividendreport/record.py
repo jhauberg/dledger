@@ -6,22 +6,21 @@ from dividendreport.ledger import Transaction
 from typing import Iterable, Optional, List
 
 
-def normalize_timespan(timespan: int) \
+def normalize_interval(interval: int) \
         -> int:
-    if timespan < 1 or timespan > 12:
-        raise ValueError('timespan must be within a 1-12-month range')
+    if interval < 1 or interval > 12:
+        raise ValueError('interval must be within 1-12-month range')
 
-    normalized_timespans = {
+    normalized_intervals = {
         1: (0, 1),
         3: (1, 3),
         6: (3, 6),
         12: (6, 12)
     }
 
-    for normalized_timespan, (start, end) in normalized_timespans.items():
-        if start < timespan <= end:
-            return normalized_timespan
-
+    for normalized_interval, (start, end) in normalized_intervals.items():
+        if start < interval <= end:
+            return normalized_interval
 
 def frequency(records: Iterable[Transaction]) \
         -> int:
@@ -36,11 +35,11 @@ def frequency(records: Iterable[Transaction]) \
 
     try:
         # unambiguous; a clear pattern of common frequency (take a guess)
-        return normalize_timespan(mode(timespans))
+        return normalize_interval(mode(timespans))
     except StatisticsError:
         # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
         records = list(trailing(records, latest(records), months=12))
-        return normalize_timespan(int(12 / len(records)))
+        return normalize_interval(int(12 / len(records)))
 
 
 def intervals(records: Iterable[Transaction]) \

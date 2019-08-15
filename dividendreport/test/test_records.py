@@ -3,7 +3,7 @@ from datetime import date
 from dividendreport.ledger import Transaction
 from dividendreport.record import (
     schedule, frequency, intervals,
-    normalize_timespan,
+    normalize_interval,
     trailing
 )
 
@@ -12,7 +12,7 @@ def test_trailing():
     records = [
         Transaction(date(2019, 1, 1), 'ABC', 1, 100),
         Transaction(date(2019, 2, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
     ]
 
     recs = list(trailing(records, records[2], months=1))
@@ -23,7 +23,7 @@ def test_trailing():
     records = [
         Transaction(date(2019, 1, 1), 'ABC', 1, 100),
         Transaction(date(2019, 2, 2), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
     ]
 
     recs = list(trailing(records, records[2], months=1))
@@ -34,7 +34,7 @@ def test_trailing():
     records = [
         Transaction(date(2019, 1, 1), 'ABC', 1, 100),
         Transaction(date(2019, 2, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 31), 'ABC', 1, 100),
+        Transaction(date(2019, 3, 31), 'ABC', 1, 100)
     ]
 
     recs = list(trailing(records, records[2], months=1))
@@ -45,7 +45,7 @@ def test_trailing():
     records = [
         Transaction(date(2019, 1, 1), 'ABC', 1, 100),
         Transaction(date(2019, 2, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
     ]
 
     recs = list(trailing(records, records[2], months=1, normalized=True))
@@ -56,7 +56,7 @@ def test_trailing():
     records = [
         Transaction(date(2019, 1, 1), 'ABC', 1, 100),
         Transaction(date(2019, 2, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 31), 'ABC', 1, 100),
+        Transaction(date(2019, 3, 31), 'ABC', 1, 100)
     ]
 
     recs = list(trailing(records, records[2], months=1, normalized=True))
@@ -65,22 +65,22 @@ def test_trailing():
     assert recs[0] == records[1] and recs[1] == records[2]
 
 
-def test_normalize_timespan():
-    assert normalize_timespan(1) == 1
+def test_normalize_interval():
+    assert normalize_interval(1) == 1
 
-    assert normalize_timespan(2) == 3
-    assert normalize_timespan(3) == 3
+    assert normalize_interval(2) == 3
+    assert normalize_interval(3) == 3
 
-    assert normalize_timespan(4) == 6
-    assert normalize_timespan(5) == 6
-    assert normalize_timespan(6) == 6
+    assert normalize_interval(4) == 6
+    assert normalize_interval(5) == 6
+    assert normalize_interval(6) == 6
 
-    assert normalize_timespan(7) == 12
-    assert normalize_timespan(8) == 12
-    assert normalize_timespan(9) == 12
-    assert normalize_timespan(10) == 12
-    assert normalize_timespan(11) == 12
-    assert normalize_timespan(12) == 12
+    assert normalize_interval(7) == 12
+    assert normalize_interval(8) == 12
+    assert normalize_interval(9) == 12
+    assert normalize_interval(10) == 12
+    assert normalize_interval(11) == 12
+    assert normalize_interval(12) == 12
 
 
 def test_intervals():
@@ -107,7 +107,7 @@ def test_intervals():
     records = [
         Transaction(date(2019, 1, 1), 'ABC', 1, 100),
         Transaction(date(2020, 1, 1), 'ABC', 1, 100),
-        Transaction(date(2022, 1, 1), 'ABC', 1, 100),
+        Transaction(date(2022, 1, 1), 'ABC', 1, 100)
     ]
 
     assert intervals(records) == [12, 12, 12]
