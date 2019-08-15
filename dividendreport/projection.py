@@ -98,8 +98,11 @@ def estimate_schedule(records: List[Transaction],
 
 def next_scheduled_date(date: datetime.date, months: List[int]) \
         -> datetime.date:
-    next_year = date.year
+    if date.month not in months:
+        raise ValueError('schedule does not match')
+
     next_month_index = months.index(date.month) + 1
+    next_year = date.year
 
     if next_month_index == len(months):
         next_year = next_year + 1
