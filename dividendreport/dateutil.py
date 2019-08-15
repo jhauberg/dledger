@@ -24,10 +24,13 @@ def months_between(a: datetime.date, b: datetime.date,
 
 
 def in_months(date: datetime.date, months: int) -> datetime.date:
+    """ Return the date at a number of months later or earlier. """
+
     month = date.month - 1 + months
     year = date.year + month // 12
     month = month % 12 + 1
     day = min(date.day, calendar.monthrange(year, month)[1])
+
     return date.replace(year=year, month=month, day=day)
 
 
