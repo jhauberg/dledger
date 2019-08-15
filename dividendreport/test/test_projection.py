@@ -1,7 +1,10 @@
 from datetime import date
 
 from dividendreport.ledger import Transaction
-from dividendreport.projection import estimate_schedule, frequency, normalize_interval
+from dividendreport.projection import (
+    estimate_schedule, frequency, normalize_interval,
+    next_scheduled_date
+)
 
 
 def test_normalize_interval():
@@ -254,3 +257,13 @@ def test_estimate_schedule():
     # but it works out anyway; the schedule just isn't padded out, because
     # there's essentially no gaps if this was a quarterly distribution
     assert schedule == [3, 4, 6, 8, 9]
+
+
+def test_next_scheduled_date():
+    d = next_scheduled_date(date(2019, 3, 1), months=[3, 6, 9, 12])
+
+    assert d.year == 2019 and d.month == 6 and d.day == 30
+
+    d = next_scheduled_date(date(2019, 12, 1), months=[3, 6, 9, 12])
+
+    assert d.year == 2020 and d.month == 3 and d.day == 31
