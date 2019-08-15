@@ -32,15 +32,15 @@ def frequency(records: Iterable[Transaction]) \
     if len(records) == 0:
         return 0
 
-    timespans = [normalize_timespan(timespan) for timespan in sorted(intervals(records))]
+    timespans = sorted(intervals(records))
 
     try:
         # unambiguous; a clear pattern of common frequency (take a guess)
-        return mode(timespans)
+        return normalize_timespan(mode(timespans))
     except StatisticsError:
         # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
-        records = list(within_months(records, latest(records), months=12))
-        return int(12 / len(records))
+        records = list(trailing(records, latest(records), months=12))
+        return normalize_timespan(int(12 / len(records)))
 
 
 def intervals(records: Iterable[Transaction]) \
@@ -67,6 +67,7 @@ def intervals(records: Iterable[Transaction]) \
 
         previous_record_date = record.date
 
+    # todo: potential for hitting invalid date (depending on day)
     next_record_date = first_record_date.replace(year=previous_record_date.year + 1)
 
     timespans.append(
