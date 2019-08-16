@@ -1,4 +1,4 @@
-from dividendreport.dateutil import months_between, in_months
+from dividendreport.dateutil import months_between, in_months, first_of_month
 from dividendreport.ledger import Transaction
 
 from typing import Iterable, Optional, List
@@ -19,21 +19,20 @@ def intervals(records: Iterable[Transaction]) \
     previous_record_date = None
 
     for record in records:
+        date = first_of_month(record.date)
+
         if previous_record_date is None:
-            first_record_date = record.date
+            first_record_date = date
         else:
             timespans.append(
-                months_between(record.date, previous_record_date,
-                               ignore_years=True))
+                months_between(date, previous_record_date, ignore_years=True))
 
-        previous_record_date = record.date
+        previous_record_date = date
 
-    # todo: potential for hitting invalid date (depending on day)
     next_record_date = first_record_date.replace(year=previous_record_date.year + 1)
 
     timespans.append(
-        months_between(next_record_date, previous_record_date,
-                       ignore_years=True))
+        months_between(next_record_date, previous_record_date, ignore_years=True))
 
     return timespans
 
