@@ -1,6 +1,6 @@
 from datetime import datetime, date
 
-from dividendreport.dateutil import previous_month
+from dividendreport.dateutil import previous_month, last_of_month
 from dividendreport.formatutil import change, pct_change, format_amount, format_change
 from dividendreport.ledger import Transaction
 from dividendreport.projection import frequency, scheduled_transactions, estimate_schedule
@@ -19,7 +19,8 @@ def report_per_record(records: List[Transaction]) \
     for record in records:
         report = dict()
 
-        sample_records = list(trailing(by_ticker(records, record.ticker), record, months=24, normalized=True))
+        sample_records = list(trailing(by_ticker(records, record.ticker),
+                                       since=last_of_month(record.date), months=24))
 
         approx_frequency = frequency(sample_records)
         approx_schedule = estimate_schedule(sample_records, interval=approx_frequency)

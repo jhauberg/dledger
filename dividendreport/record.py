@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from dividendreport.dateutil import months_between, in_months, first_of_month
 from dividendreport.ledger import Transaction
 
@@ -47,18 +49,13 @@ def schedule(records: Iterable[Transaction]) \
     return sorted(set([record.date.month for record in records]))
 
 
-def trailing(records: Iterable[Transaction], record: Transaction,
-             *, months: int, normalized: bool = False) \
+def trailing(records: Iterable[Transaction], since: datetime.date, *, months: int) \
         -> Iterable[Transaction]:
-    if normalized:
-        return filter(
-            lambda r: (record.date >= r.date and
-                       months >= months_between(record.date, r.date)), records)
-
-    since = in_months(record.date, months=-months)
+    begin = in_months(since, months=-months)
+    end = since
 
     return filter(
-        lambda r: record.date >= r.date > since, records)
+        lambda r: end >= r.date > begin, records)
 
 
 def monthly(records: Iterable[Transaction],

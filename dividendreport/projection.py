@@ -63,8 +63,9 @@ def frequency(records: Iterable[Transaction]) \
         return normalize_interval(mode(timespans))
     except StatisticsError:
         # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
-        records = list(trailing(records, latest(records), months=12))
-        payouts_per_year = len(records)
+        latest_record = latest(records)
+        sample_records = trailing(records, since=last_of_month(latest_record.date), months=12)
+        payouts_per_year = len(list(sample_records))
         average_interval = int(12 / payouts_per_year)
         return normalize_interval(average_interval)
 
@@ -184,8 +185,9 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
             if future_date < datetime.today().date():
                 continue
 
-            fictive_record = Transaction(future_date, '', 0, 0)
-            reference_records = trailing(by_ticker(records, record.ticker), fictive_record, months=12, normalized=True)
+            reference_records = trailing(by_ticker(records, record.ticker),
+                                         since=future_date, months=12)
+
             highest_amount_per_share = report['amount_per_share']
             lowest_amount_per_share = report['amount_per_share']
             reference_points = 0
