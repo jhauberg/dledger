@@ -1,12 +1,14 @@
 from datetime import datetime
 from dataclasses import dataclass
 
+from statistics import mode, StatisticsError
+
 from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
-from dividendreport.dateutil import next_month, previous_month
-from dividendreport.record import by_ticker, within_months, latest, schedule
+from dividendreport.dateutil import last_of_month, in_months
+from dividendreport.record import by_ticker, trailing, latest, schedule, intervals
 
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Iterable
 
 
 @dataclass(frozen=True)
@@ -28,13 +30,52 @@ class FutureTransaction(Transaction):
                     f' {format_amount(self.amount_range[1])}]'))
 
 
+def normalize_interval(interval: int) \
+        -> int:
+    if interval < 1 or interval > 12:
+        raise ValueError('interval must be within 1-12-month range')
+
+    normalized_intervals = {
+        1: (0, 1),
+        3: (1, 3),
+        6: (3, 6),
+        12: (6, 12)
+    }
+
+    for normalized_interval, (start, end) in normalized_intervals.items():
+        if start < interval <= end:
+            return normalized_interval
+
+
+def frequency(records: Iterable[Transaction]) \
+        -> int:
+    """ Return the approximated frequency of occurrence (in months) for a set of records. """
+
+    records = list(records)
+
+    if len(records) == 0:
+        return 0
+
+    timespans = sorted(intervals(records))
+
+    try:
+        # unambiguous; a clear pattern of common frequency (take a guess)
+        return normalize_interval(mode(timespans))
+    except StatisticsError:
+        # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
+        records = list(trailing(records, latest(records), months=12))
+        payouts_per_year = len(records)
+        average_interval = int(12 / payouts_per_year)
+        return normalize_interval(average_interval)
+
+
 def estimate_schedule(records: List[Transaction],
                       *, interval: int) \
         -> List[int]:
-    approx_schedule = schedule(records)
-
     if interval <= 0:
         raise ValueError('interval must be > 0')
+
+    approx_schedule = schedule(records)
 
     payouts_per_year = int(12 / interval)
 
@@ -59,8 +100,11 @@ def estimate_schedule(records: List[Transaction],
 
 def next_scheduled_date(date: datetime.date, months: List[int]) \
         -> datetime.date:
-    next_year = date.year
+    if date.month not in months:
+        raise ValueError('schedule does not match')
+
     next_month_index = months.index(date.month) + 1
+    next_year = date.year
 
     if next_month_index == len(months):
         next_year = next_year + 1
@@ -69,16 +113,19 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
     future_date = date.replace(year=next_year,
                                month=months[next_month_index],
                                day=1)
-    future_date = previous_month(next_month(future_date))
+    future_date = last_of_month(future_date)
 
     return future_date
 
 
 def scheduled_transactions(records: List[Transaction], entries: dict) \
         -> List[FutureTransaction]:
+    # project current records by 1 year into the future
     futures = future_transactions(records, entries)
+    # project current records by 12-month schedule and frequency
     estimates = estimated_transactions(records, entries)
 
+    # bias toward futures, leaving estimates only to fill out gaps in schedule
     for record in estimates:
         duplicates = [r for r in futures if r.ticker == record.ticker and r.date == record.date]
 
@@ -87,6 +134,10 @@ def scheduled_transactions(records: List[Transaction], entries: dict) \
 
         futures.append(record)
 
+    # exclude projected transactions for tickers where latest projection was not realized
+    # (e.g. if transactions are projected for months [3, 6, 9, 12] but current month is now july
+    # and latest actual transaction happened back in march, then june was passed without
+    # having the projected transaction be realized)
     exclusion_date = datetime.today().date()
     exclude_tickers = []
 
@@ -114,6 +165,7 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
         -> List[FutureTransaction]:
     approximate_records = []
     seen_tickers = []
+
     for record in reversed(records):
         if record.ticker in seen_tickers:
             continue
@@ -133,23 +185,28 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
                 continue
 
             fictive_record = Transaction(future_date, '', 0, 0)
-            reference_records = within_months(by_ticker(records, record.ticker), fictive_record)
+            reference_records = trailing(by_ticker(records, record.ticker), fictive_record, months=12, normalized=True)
             highest_amount_per_share = report['amount_per_share']
-            lowest_amount_per_share = highest_amount_per_share
+            lowest_amount_per_share = report['amount_per_share']
+            reference_points = 0
             for reference_record in reference_records:
                 reference_report = entries[reference_record]
                 reference_amount_per_share = reference_report['amount_per_share']
+                reference_points += 1
                 if reference_amount_per_share > highest_amount_per_share:
                     highest_amount_per_share = reference_amount_per_share
                 if reference_amount_per_share < lowest_amount_per_share:
                     lowest_amount_per_share = reference_amount_per_share
+
             mean_amount_per_share = (lowest_amount_per_share + highest_amount_per_share) / 2
+
+            reference_range = (lowest_amount_per_share * record.position,
+                               highest_amount_per_share * record.position)
 
             scheduled_records.append(
                 FutureTransaction(future_date, record.ticker, record.position,
                                   amount=mean_amount_per_share * record.position,
-                                  amount_range=(lowest_amount_per_share * record.position,
-                                                highest_amount_per_share * record.position)))
+                                  amount_range=reference_range if reference_points > 1 else None))
 
         approximate_records.extend(scheduled_records)
 
@@ -160,33 +217,20 @@ def future_transactions(records: List[Transaction], entries: dict) \
         -> List[FutureTransaction]:
     future_records = []
     for record in records:
-        future_date = record.date.replace(year=record.date.year + 1, day=1)
-        future_date = previous_month(next_month(future_date))  # skip to last day of this month
+        future_date = last_of_month(in_months(record.date, months=12))
 
         if future_date < datetime.today().date():
             continue
 
-        reference_record = latest(within_months(by_ticker(records, record.ticker), record,
-                                                trailing=False,  # don't include this record
-                                                preceding=False))  # look ahead
+        latest_record = latest(by_ticker(records, record.ticker))
 
-        if reference_record is None:
-            continue
+        assert latest_record is not None
 
         report = entries[record]
-        reference_report = entries[reference_record]
 
-        if 'amount_per_share_yoy_change_pct' not in reference_report:
-            continue
+        future_position = latest_record.position
+        future_amount = future_position * report['amount_per_share']
 
-        comparable_amount_per_share = report['amount_per_share']
-
-        future_position = reference_record.position
-        future_amount = comparable_amount_per_share * future_position
-
-        growth_scalar = 1 + (reference_report['amount_per_share_yoy_change_pct'] / 100)
-
-        future_amount = future_amount * (1 + (growth_scalar / 100))
         future_record = FutureTransaction(future_date,
                                           record.ticker,
                                           future_position,

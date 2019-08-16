@@ -68,7 +68,7 @@ def read_native_transactions(path: str, encoding: str = 'utf-8') \
 
 def read_native_transaction(record: List[str]) \
         -> Transaction:
-    if len(record) != 4:
+    if len(record) < 4:
         raise ValueError('Unexpected number of columns')
 
     date_value = str(record[0]).strip()

@@ -1,46 +1,7 @@
-from statistics import mode, StatisticsError
-
-from dividendreport.dateutil import next_month, previous_month, months_between
+from dividendreport.dateutil import months_between, in_months
 from dividendreport.ledger import Transaction
 
 from typing import Iterable, Optional, List
-
-
-def normalize_timespan(timespan: int) \
-        -> int:
-    if timespan < 1 or timespan > 12:
-        raise ValueError('timespan must be within a 1-12-month range')
-
-    normalized_timespans = {
-        1: (0, 1),
-        3: (1, 3),
-        6: (3, 6),
-        12: (6, 12)
-    }
-
-    for normalized_timespan, (start, end) in normalized_timespans.items():
-        if start < timespan <= end:
-            return normalized_timespan
-
-
-def frequency(records: Iterable[Transaction]) \
-        -> int:
-    """ Return the approximated frequency of occurrence (in months) for a set of records. """
-
-    records = list(records)
-
-    if len(records) == 0:
-        return 0
-
-    timespans = [normalize_timespan(timespan) for timespan in sorted(intervals(records))]
-
-    try:
-        # unambiguous; a clear pattern of common frequency (take a guess)
-        return mode(timespans)
-    except StatisticsError:
-        # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
-        records = list(within_months(records, latest(records), months=12))
-        return int(12 / len(records))
 
 
 def intervals(records: Iterable[Transaction]) \
@@ -63,17 +24,23 @@ def intervals(records: Iterable[Transaction]) \
         else:
             timespans.append(
                 months_between(record.date, previous_record_date,
-                               normalized=True))
+                               ignore_years=True))
 
         previous_record_date = record.date
 
+    # todo: potential for hitting invalid date (depending on day)
     next_record_date = first_record_date.replace(year=previous_record_date.year + 1)
 
     timespans.append(
         months_between(next_record_date, previous_record_date,
-                       normalized=True))
+                       ignore_years=True))
 
     return timespans
+
+
+def tickers(records: Iterable[Transaction]) \
+        -> List[str]:
+    return list(set([record.ticker for record in records]))
 
 
 def schedule(records: Iterable[Transaction]) \
@@ -81,26 +48,18 @@ def schedule(records: Iterable[Transaction]) \
     return sorted(set([record.date.month for record in records]))
 
 
-def within_months(records: Iterable[Transaction], record: Transaction,
-                  *, months: int = 12, trailing: bool = False, preceding: bool = True) \
+def trailing(records: Iterable[Transaction], record: Transaction,
+             *, months: int, normalized: bool = False) \
         -> Iterable[Transaction]:
-    """ Return an iterator for records dated within months of a given record (inclusive).
+    if normalized:
+        return filter(
+            lambda r: (record.date >= r.date and
+                       months >= months_between(record.date, r.date)), records)
 
-    If trailing is True, offset to previous month of record date (e.g. exclusive of given record).
-    """
-
-    if preceding:
-        since = (previous_month(record.date)
-                 if trailing else
-                 next_month(record.date))
-    else:
-        since = (next_month(record.date)
-                 if trailing else
-                 previous_month(record.date))
+    since = in_months(record.date, months=-months)
 
     return filter(
-        lambda r: (r.date <= since if preceding else
-                   r.date >= since) and months_between(since, r.date) <= months, records)
+        lambda r: record.date >= r.date > since, records)
 
 
 def monthly(records: Iterable[Transaction],
