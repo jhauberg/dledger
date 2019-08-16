@@ -134,6 +134,10 @@ def scheduled_transactions(records: List[Transaction], entries: dict) \
 
         futures.append(record)
 
+    # exclude projected transactions for tickers where latest projection was not realized
+    # (e.g. if transactions are projected for months [3, 6, 9, 12] but current month is now july
+    # and latest actual transaction happened back in march, then june was passed without
+    # having the projected transaction be realized)
     exclusion_date = datetime.today().date()
     exclude_tickers = []
 
