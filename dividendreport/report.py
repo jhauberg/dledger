@@ -5,7 +5,7 @@ from dividendreport.formatutil import change, pct_change, format_amount, format_
 from dividendreport.ledger import Transaction
 from dividendreport.projection import frequency, scheduled_transactions, estimate_schedule
 from dividendreport.record import (
-    income, yearly, monthly, trailing,
+    income, yearly, monthly, trailing, latest,
     tickers, by_ticker, previous, previous_comparable
 )
 
@@ -47,6 +47,12 @@ def report_per_record(records: List[Transaction]) \
         if record.amount != previous_record.amount:
             report['amount_change'] = change(record.amount, previous_record.amount)
             report['amount_pct_change'] = pct_change(record.amount, previous_record.amount)
+
+        previous_report = reports[previous_record]
+
+        if report['amount_per_share'] != previous_report['amount_per_share']:
+            report['amount_per_share_change'] = change(report['amount_per_share'], previous_report['amount_per_share'])
+            report['amount_per_share_pct_change'] = pct_change(report['amount_per_share'], previous_report['amount_per_share'])
 
         comparable_record = previous_comparable(by_ticker(records, record.ticker), record)
 
@@ -182,7 +188,7 @@ def generate(records: List[Transaction]) -> None:
     earliest_record = records[0]
     latest_record = records[-1]
     print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year})')
-    print(sum([r.amount for r in records]))
+    print(f'{format_amount(income(records))} ({len(records)} transactions)')
     print(f'=========== annual income ({earliest_record.date.year}-{latest_record.date.year})')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     printer.pprint(report_per_year(records))
@@ -196,7 +202,16 @@ def generate(records: List[Transaction]) -> None:
     for record in records:
         printer.pprint(record)
         printer.pprint(reports[record])
+    print('=========== historical amount per share (ttm)')
+    printer = pprint.PrettyPrinter(indent=2, width=40)
+    timeline = dict()
+    for ticker in tickers(records):
+        asd = trailing(by_ticker(records, ticker), since=latest(by_ticker(records, ticker)).date, months=12)
+        timeline[ticker] = [(r.date.month, reports[r]['amount_per_share'])
+                            for r in asd]
+    printer.pprint(timeline)
     print('=========== projections')
+    printer = pprint.PrettyPrinter(indent=2, width=60)
     futures = scheduled_transactions(records, reports)
     printer.pprint(futures)
     print('=========== forward 12-month income')
