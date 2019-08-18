@@ -16,6 +16,8 @@ SUPPORTED_PROVIDERS = ['native', 'nordnet']
 
 @dataclass(frozen=True, unsafe_hash=True)
 class Transaction:
+    """ Represents a transaction that has been realized. """
+
     date: datetime.date
     ticker: str
     position: int
@@ -30,6 +32,8 @@ class Transaction:
 
 def transactions(path: str, provider: str) \
         -> List[Transaction]:
+    """ Return a list of records imported from a file. """
+
     encoding = fileencoding(path)
 
     if encoding is None or len(encoding) == 0:
@@ -155,6 +159,8 @@ def read_nordnet_transaction(record: List[str]) \
 
 def sanitize(records: List[Transaction], *, verbose: bool = False) \
         -> List[Transaction]:
+    """ Return a sanitized list of records. """
+
     negative_records = filter(
         lambda r: r.position < 0 or r.amount < 0, records)
 
@@ -177,6 +183,11 @@ def sanitize(records: List[Transaction], *, verbose: bool = False) \
 
 
 def export(records: List[Transaction], filename: str = 'export.tsv', *, pretty: bool = False):
+    """ Write records to file.
+
+    Optionally formatting for humans.
+    """
+
     with open(filename, 'w', newline='') as file:
         writer = csv.writer(file, delimiter='\t')
 

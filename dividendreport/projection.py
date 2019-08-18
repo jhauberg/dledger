@@ -13,6 +13,8 @@ from typing import Tuple, Optional, List, Iterable
 
 @dataclass(frozen=True)
 class FutureTransaction(Transaction):
+    """ Represents a transaction that is expected to be realized in the future; a projection. """
+
     amount_range: Optional[Tuple[float, float]] = None
 
     def __repr__(self):

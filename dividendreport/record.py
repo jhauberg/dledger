@@ -8,7 +8,10 @@ from typing import Iterable, Optional, List
 
 def intervals(records: Iterable[Transaction]) \
         -> List[int]:
-    """ Return a list of intervals (in normalized months) between a set of records. """
+    """ Return a list of month intervals between a set of records.
+
+    Does not take years and days into account.
+    """
 
     records = sorted(records, key=lambda r: r.date)
 
@@ -41,16 +44,25 @@ def intervals(records: Iterable[Transaction]) \
 
 def tickers(records: Iterable[Transaction]) \
         -> List[str]:
+    """ Return a list of unique ticker components in a set of records. """
+
     return list(set([record.ticker for record in records]))
 
 
 def schedule(records: Iterable[Transaction]) \
         -> List[int]:
+    """ Return a list of unique month components in a set of records. """
+
     return sorted(set([record.date.month for record in records]))
 
 
 def trailing(records: Iterable[Transaction], since: datetime.date, *, months: int) \
         -> Iterable[Transaction]:
+    """ Return an iterator for records dated within a number of months prior to a given date.
+
+    Does take days into account.
+    """
+
     begin = in_months(since, months=-months)
     end = since
 
@@ -61,7 +73,7 @@ def trailing(records: Iterable[Transaction], since: datetime.date, *, months: in
 def monthly(records: Iterable[Transaction],
             *, year: int, month: int) \
         -> Iterable[Transaction]:
-    """ Return an iterator for records dated within a given month, on a given year. """
+    """ Return an iterator for records dated on a given month and year. """
 
     return filter(
         lambda r: (r.date.year == year and
@@ -74,7 +86,7 @@ def yearly(records: Iterable[Transaction],
     """ Return an iterator for records dated within a given year.
 
     Optionally only include records up to (and including) a given month.
-    For example, if months = 5, only include records daten between January
+    For example, if months=5, only include records daten between January
     and May (inclusive).
     """
 
@@ -93,7 +105,7 @@ def by_ticker(records: Iterable[Transaction], symbol: str) \
 
 def income(records: Iterable[Transaction]) \
         -> float:
-    """ Return total income from a set of records. """
+    """ Return the sum of amount components in a set of records. """
 
     return sum([record.amount for record in records])
 
@@ -108,7 +120,7 @@ def before(records: Iterable[Transaction], record: Transaction) \
 
 def earliest(records: Iterable[Transaction]) \
         -> Optional[Transaction]:
-    """ Return the earliest dated record. """
+    """ Return the earliest dated record in a set of records. """
 
     records = sorted(records, key=lambda r: r.date)
 
@@ -117,7 +129,7 @@ def earliest(records: Iterable[Transaction]) \
 
 def latest(records: Iterable[Transaction]) \
         -> Optional[Transaction]:
-    """ Return the latest dated record. """
+    """ Return the latest dated record in a set of records. """
 
     records = sorted(records, key=lambda r: r.date)
 
@@ -126,14 +138,17 @@ def latest(records: Iterable[Transaction]) \
 
 def previous(records: Iterable[Transaction], record: Transaction) \
         -> Optional[Transaction]:
-    """ Return the first record dated prior to a given record. """
+    """ Return the latest record dated prior to a given record. """
 
     return latest(before(records, record))
 
 
 def previous_comparable(records: Iterable[Transaction], record: Transaction) \
         -> Optional[Transaction]:
-    """ Return the first comparable record dated prior to a given record. """
+    """ Return the latest comparable record dated prior to a given record.
+
+    A comparable record is a record dated within same month in an earlier year.
+    """
 
     comparables = filter(
         lambda r: (r.date.month == record.date.month and
