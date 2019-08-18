@@ -202,13 +202,12 @@ def generate(records: List[Transaction]) -> None:
     for record in records:
         printer.pprint(record)
         printer.pprint(reports[record])
-    print('=========== historical amount per share (ttm)')
-    printer = pprint.PrettyPrinter(indent=2, width=40)
+    print('=========== historical amount per share')
+    printer = pprint.PrettyPrinter(indent=2, width=70)
     timeline = dict()
     for ticker in tickers(records):
-        asd = trailing(by_ticker(records, ticker), since=latest(by_ticker(records, ticker)).date, months=12)
-        timeline[ticker] = [(r.date.month, reports[r]['amount_per_share'])
-                            for r in asd]
+        timeline[ticker] = [(r.date, reports[r]['amount_per_share'])
+                            for r in by_ticker(records, ticker)]
     printer.pprint(timeline)
     print('=========== projections')
     printer = pprint.PrettyPrinter(indent=2, width=60)
