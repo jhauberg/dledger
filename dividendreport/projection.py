@@ -6,7 +6,7 @@ from statistics import mode, StatisticsError
 from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
 from dividendreport.dateutil import last_of_month, in_months
-from dividendreport.record import by_ticker, trailing, latest, schedule, intervals
+from dividendreport.record import by_ticker, trailing, latest, schedule, intervals, amount_per_share
 
 from typing import Tuple, Optional, List, Iterable
 
@@ -124,7 +124,7 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
 def scheduled_transactions(records: List[Transaction], entries: dict) \
         -> List[FutureTransaction]:
     # project current records by 1 year into the future
-    futures = future_transactions(records, entries)
+    futures = future_transactions(records)
     # project current records by 12-month schedule and frequency
     estimates = estimated_transactions(records, entries)
 
@@ -174,8 +174,8 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
             continue
 
         seen_tickers.append(record.ticker)
-        report = entries[record]
-        scheduled_months = report['schedule']
+
+        scheduled_months = entries[record]['schedule']
         scheduled_records = []
 
         future_date = record.date
@@ -190,12 +190,11 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
             reference_records = trailing(by_ticker(records, record.ticker),
                                          since=future_date, months=12)
 
-            highest_amount_per_share = report['amount_per_share']
-            lowest_amount_per_share = report['amount_per_share']
+            highest_amount_per_share = amount_per_share(record)
+            lowest_amount_per_share = highest_amount_per_share
             reference_points = 0
             for reference_record in reference_records:
-                reference_report = entries[reference_record]
-                reference_amount_per_share = reference_report['amount_per_share']
+                reference_amount_per_share = amount_per_share(reference_record)
                 reference_points += 1
                 if reference_amount_per_share > highest_amount_per_share:
                     highest_amount_per_share = reference_amount_per_share
@@ -217,7 +216,7 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
     return sorted(approximate_records, key=lambda r: r.date)
 
 
-def future_transactions(records: List[Transaction], entries: dict) \
+def future_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
     future_records = []
     for record in records:
@@ -230,10 +229,8 @@ def future_transactions(records: List[Transaction], entries: dict) \
 
         assert latest_record is not None
 
-        report = entries[record]
-
         future_position = latest_record.position
-        future_amount = future_position * report['amount_per_share']
+        future_amount = future_position * amount_per_share(record)
 
         future_record = FutureTransaction(future_date,
                                           record.ticker,

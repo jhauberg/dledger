@@ -5,7 +5,7 @@ from dividendreport.formatutil import change, pct_change, format_amount, format_
 from dividendreport.ledger import Transaction
 from dividendreport.projection import frequency, scheduled_transactions, estimate_schedule
 from dividendreport.record import (
-    income, yearly, monthly, trailing, latest,
+    income, yearly, monthly, trailing, amount_per_share,
     tickers, by_ticker, previous, previous_comparable
 )
 
@@ -28,9 +28,7 @@ def report_per_record(records: List[Transaction]) \
         report['schedule'] = approx_schedule
         report['frequency'] = approx_frequency
 
-        report['amount_per_share'] = (record.amount / record.position
-                                      if record.amount > 0 and record.position > 0
-                                      else 0)
+        report['amount_per_share'] = amount_per_share(record)
 
         previous_record = previous(by_ticker(records, record.ticker), record)
 

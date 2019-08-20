@@ -6,6 +6,13 @@ from dividendreport.ledger import Transaction
 from typing import Iterable, Optional, List
 
 
+def amount_per_share(record: Transaction) \
+        -> float:
+    return (record.amount / record.position
+            if record.amount > 0 and record.position > 0
+            else 0)
+
+
 def intervals(records: Iterable[Transaction]) \
         -> List[int]:
     """ Return a list of month intervals between a set of records.
