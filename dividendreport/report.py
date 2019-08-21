@@ -6,7 +6,7 @@ from dividendreport.ledger import Transaction
 from dividendreport.projection import frequency, scheduled_transactions, estimate_schedule
 from dividendreport.record import (
     income, yearly, monthly, trailing, amount_per_share,
-    tickers, by_ticker, previous, previous_comparable
+    tickers, by_ticker, previous, previous_comparable, latest
 )
 
 from typing import List
@@ -229,6 +229,18 @@ def generate(records: List[Transaction]) -> None:
     print(f'weekly  (avg): {format_change(change(padi / 52, padi_except_latest / 52))}')
     print(f'daily   (avg): {format_change(change(padi / 365, padi_except_latest / 365))}')
     print(f'hourly  (avg): {format_change(change(padi / 8760, padi_except_latest / 8760))}')
+    previous_record = latest(by_ticker(records_except_latest, latest_record.ticker))
+    if previous_record is not None:
+        now_report = reports[latest_record]
+        then_report = reports_except_latest[previous_record]
+        then_frequency = then_report['frequency']
+        then_schedule = then_report['schedule']
+        now_frequency = now_report['frequency']
+        now_schedule = now_report['schedule']
+        if now_frequency != then_frequency:
+            print(f'frequency: {then_frequency} => {now_frequency}')
+        if now_schedule != then_schedule:
+            print(f'schedule: {then_schedule} => {now_schedule}')
     print('=========== forward 12-month income (weighted)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     weights = report_by_weight(futures)
