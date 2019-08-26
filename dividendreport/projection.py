@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 from statistics import mode, StatisticsError
@@ -137,12 +137,15 @@ def scheduled_transactions(records: List[Transaction], entries: dict) \
 
         futures.append(record)
 
-    # exclude projected transactions for tickers where latest projection was not realized
+    # determine tickers with unrealized projections
     # (e.g. if transactions are projected for months [3, 6, 9, 12] but current month is now july
     # and latest actual transaction happened back in march, then june was passed without
     # having the projected transaction be realized)
-    exclusion_date = datetime.today().date()
     exclude_tickers = []
+
+    exclusion_date = datetime.today().date()
+    # add grace period to account for bank transfer delays
+    exclusion_date += timedelta(days=2)
 
     for record in reversed(futures):
         if record.ticker in exclude_tickers:
@@ -158,7 +161,9 @@ def scheduled_transactions(records: List[Transaction], entries: dict) \
         if future_date < exclusion_date:
             exclude_tickers.append(record.ticker)
 
+    # exclude unrealized projections
     futures = filter(lambda r: r.ticker not in exclude_tickers, futures)
+    # exclude closed positions
     futures = filter(lambda r: r.amount > 0, futures)
 
     return sorted(futures, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
