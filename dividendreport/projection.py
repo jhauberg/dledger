@@ -126,19 +126,26 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
                            since: datetime.date = datetime.today().date(),
                            grace_period: int = 2) \
         -> List[FutureTransaction]:
+    # take a sample set of only latest 12 months
+    sample_records = list(trailing(records, since=since, months=12))
+
     # project current records by 1 year into the future
-    futures = future_transactions(records)
+    futures = future_transactions(sample_records)
     # project current records by 12-month schedule and frequency
-    estimates = estimated_transactions(records, entries)
+    estimates = estimated_transactions(sample_records, entries)
+
+    scheduled = futures
 
     # bias toward futures, leaving estimates only to fill out gaps in schedule
     for record in estimates:
-        duplicates = [r for r in futures if r.ticker == record.ticker and r.date == record.date]
+        duplicates = [r for r in scheduled
+                      if r.ticker == record.ticker
+                      and r.date == record.date]
 
         if len(duplicates) > 0:
             continue
 
-        futures.append(record)
+        scheduled.append(record)
 
     # determine tickers with unrealized projections
     # (e.g. if transactions are projected for months [3, 6, 9, 12] but current month is now july
@@ -150,7 +157,7 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
     # add grace period to account for bank transfer delays
     exclusion_date += timedelta(days=grace_period)
 
-    for record in reversed(futures):
+    for record in reversed(scheduled):
         if record.ticker in exclude_tickers:
             continue
 
@@ -165,11 +172,11 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
             exclude_tickers.append(record.ticker)
 
     # exclude unrealized projections
-    futures = filter(lambda r: r.ticker not in exclude_tickers, futures)
+    scheduled = filter(lambda r: r.ticker not in exclude_tickers, scheduled)
     # exclude closed positions
-    futures = filter(lambda r: r.amount > 0, futures)
+    scheduled = filter(lambda r: r.amount > 0, scheduled)
 
-    return sorted(futures, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
+    return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
 def estimated_transactions(records: List[Transaction], entries: dict) \
@@ -191,9 +198,6 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
             future_date = next_scheduled_date(future_date, scheduled_months)
-
-            if future_date < datetime.today().date():
-                continue
 
             reference_records = trailing(by_ticker(records, record.ticker),
                                          since=future_date, months=12)
@@ -224,20 +228,18 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
     return sorted(approximate_records, key=lambda r: r.date)
 
 
-def future_transactions(records: List[Transaction],
-                        *, since: datetime.date = datetime.today().date()) \
+def future_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
+    """ Return a list of records dated 12 months into the future.
+
+    Each record has its amount adjusted to match the position of the latest matching record.
+    """
     future_records = []
 
     for record in records:
         future_date = last_of_month(in_months(record.date, months=12))
 
-        if future_date < since:
-            continue
-
         latest_record = latest(by_ticker(records, record.ticker))
-
-        assert latest_record is not None
 
         future_position = latest_record.position
         future_amount = future_position * amount_per_share(record)

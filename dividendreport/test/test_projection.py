@@ -275,7 +275,7 @@ def test_future_transactons():
         Transaction(date(2019, 3, 1), 'ABC', 1, 100)
     ]
 
-    futures = future_transactions(records, since=date(2019, 5, 1))
+    futures = future_transactions(records)
 
     assert len(futures) == 1
     assert futures[0].date == date(2020, 3, 31)
@@ -285,7 +285,7 @@ def test_future_transactons():
         Transaction(date(2020, 12, 15), 'ABC', 1, 100)
     ]
 
-    futures = future_transactions(records, since=date(2019, 5, 1))
+    futures = future_transactions(records)
 
     assert len(futures) == 2
     assert futures[0].date == date(2020, 3, 31)
