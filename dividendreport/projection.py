@@ -121,7 +121,10 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
     return future_date
 
 
-def scheduled_transactions(records: List[Transaction], entries: dict) \
+def scheduled_transactions(records: List[Transaction], entries: dict,
+                           *,
+                           since: datetime.date = datetime.today().date(),
+                           grace_period: int = 2) \
         -> List[FutureTransaction]:
     # project current records by 1 year into the future
     futures = future_transactions(records)
@@ -143,9 +146,9 @@ def scheduled_transactions(records: List[Transaction], entries: dict) \
     # having the projected transaction be realized)
     exclude_tickers = []
 
-    exclusion_date = datetime.today().date()
+    exclusion_date = since
     # add grace period to account for bank transfer delays
-    exclusion_date += timedelta(days=2)
+    exclusion_date += timedelta(days=grace_period)
 
     for record in reversed(futures):
         if record.ticker in exclude_tickers:
@@ -221,13 +224,15 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
     return sorted(approximate_records, key=lambda r: r.date)
 
 
-def future_transactions(records: List[Transaction]) \
+def future_transactions(records: List[Transaction],
+                        *, since: datetime.date = datetime.today().date()) \
         -> List[FutureTransaction]:
     future_records = []
+
     for record in records:
         future_date = last_of_month(in_months(record.date, months=12))
 
-        if future_date < datetime.today().date():
+        if future_date < since:
             continue
 
         latest_record = latest(by_ticker(records, record.ticker))
