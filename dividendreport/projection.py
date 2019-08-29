@@ -6,7 +6,7 @@ from statistics import mode, StatisticsError
 from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
 from dividendreport.dateutil import last_of_month, in_months
-from dividendreport.record import by_ticker, trailing, latest, schedule, intervals, amount_per_share
+from dividendreport.record import by_ticker, tickers, trailing, latest, schedule, intervals, amount_per_share
 
 from typing import Tuple, Optional, List, Iterable
 
@@ -182,13 +182,9 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
 def estimated_transactions(records: List[Transaction], entries: dict) \
         -> List[FutureTransaction]:
     approximate_records = []
-    seen_tickers = []
 
-    for record in reversed(records):
-        if record.ticker in seen_tickers:
-            continue
-
-        seen_tickers.append(record.ticker)
+    for ticker in tickers(records):
+        record = latest(by_ticker(records, ticker))
 
         scheduled_months = entries[record]['schedule']
         scheduled_records = []
