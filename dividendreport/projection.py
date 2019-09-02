@@ -154,8 +154,6 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
     exclude_tickers = []
 
     exclusion_date = since
-    # add grace period to account for bank transfer delays
-    exclusion_date += timedelta(days=grace_period)
 
     for record in reversed(scheduled):
         if record.ticker in exclude_tickers:
@@ -167,6 +165,8 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
         scheduled_months = report['schedule']
 
         future_date = next_scheduled_date(latest_record.date, scheduled_months)
+        # add grace period to account for bank transfer delays
+        future_date += timedelta(days=grace_period)
 
         if future_date < exclusion_date:
             exclude_tickers.append(record.ticker)
