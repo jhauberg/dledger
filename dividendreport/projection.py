@@ -124,7 +124,7 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
 def scheduled_transactions(records: List[Transaction], entries: dict,
                            *,
                            since: datetime.date = datetime.today().date(),
-                           grace_period: int = 2) \
+                           grace_period: int = 3) \
         -> List[FutureTransaction]:
     # take a sample set of only latest 12 months
     sample_records = list(trailing(records, since=since, months=12))
