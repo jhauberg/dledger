@@ -186,7 +186,8 @@ def generate(records: List[Transaction]) -> None:
     earliest_record = records[0]
     latest_record = records[-1]
     print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year})')
-    print(f'{format_amount(income(records))} ({len(records)} transactions)')
+    transactions = list(filter(lambda r: r.amount > 0, records))
+    print(f'{format_amount(income(records))} ({len(transactions)} transactions)')
     print(f'=========== annual income ({earliest_record.date.year}-{latest_record.date.year})')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     printer.pprint(report_per_year(records))
