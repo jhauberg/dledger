@@ -4,7 +4,8 @@ from dividendreport.ledger import Transaction
 from dividendreport.projection import (
     estimate_schedule, frequency, normalize_interval,
     next_scheduled_date,
-    future_transactions
+    future_transactions,
+    closed_tickers
 )
 
 
@@ -290,3 +291,18 @@ def test_future_transactons():
     assert len(futures) == 2
     assert futures[0].date == date(2020, 3, 31)
     assert futures[1].date == date(2021, 12, 31)
+
+
+def test_closed_tickers():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+    ]
+
+    assert len(closed_tickers(records, since=date(2019, 3, 1), grace_period=3)) == 0
+    assert len(closed_tickers(records, since=date(2019, 3, 2), grace_period=3)) == 0
+    assert len(closed_tickers(records, since=date(2019, 3, 3), grace_period=3)) == 0
+    assert len(closed_tickers(records, since=date(2019, 3, 4), grace_period=3)) == 0
+    assert len(closed_tickers(records, since=date(2019, 3, 5), grace_period=3)) == 1
