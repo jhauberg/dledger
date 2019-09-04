@@ -3,7 +3,7 @@ from datetime import datetime, date
 from dividendreport.dateutil import previous_month, last_of_month
 from dividendreport.formatutil import change, pct_change, format_amount, format_change
 from dividendreport.ledger import Transaction
-from dividendreport.projection import frequency, scheduled_transactions, estimate_schedule
+from dividendreport.projection import frequency, scheduled_transactions, estimate_schedule, closed_tickers
 from dividendreport.record import (
     income, yearly, monthly, trailing, amount_per_share,
     tickers, by_ticker, previous, previous_comparable, latest
@@ -210,6 +210,9 @@ def generate(records: List[Transaction]) -> None:
     print('=========== projections')
     printer = pprint.PrettyPrinter(indent=2, width=60)
     futures = scheduled_transactions(records, reports)
+    # exclude unrealized projections
+    closed = closed_tickers(futures)
+    futures = list(filter(lambda r: r.ticker not in closed, futures))
     printer.pprint(futures)
     print('=========== forward 12-month income')
     padi = income(futures)
@@ -222,6 +225,10 @@ def generate(records: List[Transaction]) -> None:
     records_except_latest = records[:-1]
     reports_except_latest = report_per_record(records_except_latest)
     futures_except_latest = scheduled_transactions(records_except_latest, reports_except_latest)
+    # exclude unrealized projections (except the latest transaction)
+    closed_except_latest = closed_tickers(futures_except_latest)
+    futures_except_latest = list(filter(lambda r: r.ticker == records[-1].ticker or
+                                                  r.ticker not in closed_except_latest, futures_except_latest))
     padi_except_latest = income(futures_except_latest)
     printer.pprint(latest_record)
     print(f'annual income: {format_change(change(padi, padi_except_latest))}')

@@ -171,14 +171,6 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
 
         scheduled.append(record)
 
-    # determine tickers with unrealized projections
-    # (e.g. if transactions are projected for months [3, 6, 9, 12] but current month is now july
-    # and latest actual transaction happened back in march, then june was passed without
-    # having the projected transaction be realized)
-    exclude_tickers = closed_tickers(scheduled, since=since, grace_period=grace_period)
-
-    # exclude unrealized projections
-    scheduled = filter(lambda r: r.ticker not in exclude_tickers, scheduled)
     # exclude closed positions
     scheduled = filter(lambda r: r.amount > 0, scheduled)
 
