@@ -6,7 +6,9 @@ from statistics import mode, StatisticsError
 from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
 from dividendreport.dateutil import last_of_month, in_months
-from dividendreport.record import by_ticker, tickers, trailing, latest, schedule, intervals, amount_per_share
+from dividendreport.record import (
+    by_ticker, tickers, trailing, latest, earliest, schedule, intervals, amount_per_share
+)
 
 from typing import Tuple, Optional, List, Iterable
 
@@ -121,6 +123,28 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
     return future_date
 
 
+def closed_tickers(scheduled_records: List[Transaction],
+                   *,
+                   since: datetime.date = datetime.today().date(),
+                   grace_period: int = 3) \
+        -> List[str]:
+    exclude_tickers = []
+
+    exclusion_date = since
+
+    for ticker in tickers(scheduled_records):
+        earliest_record = earliest(by_ticker(scheduled_records, ticker))
+        future_date = earliest_record.date
+
+        # add grace period to account for bank transfer delays
+        future_date += timedelta(days=grace_period)
+
+        if future_date < exclusion_date:
+            exclude_tickers.append(ticker)
+
+    return exclude_tickers
+
+
 def scheduled_transactions(records: List[Transaction], entries: dict,
                            *,
                            since: datetime.date = datetime.today().date(),
@@ -151,25 +175,7 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
     # (e.g. if transactions are projected for months [3, 6, 9, 12] but current month is now july
     # and latest actual transaction happened back in march, then june was passed without
     # having the projected transaction be realized)
-    exclude_tickers = []
-
-    exclusion_date = since
-
-    for record in reversed(scheduled):
-        if record.ticker in exclude_tickers:
-            continue
-
-        latest_record = latest(by_ticker(records, record.ticker))
-
-        report = entries[latest_record]
-        scheduled_months = report['schedule']
-
-        future_date = next_scheduled_date(latest_record.date, scheduled_months)
-        # add grace period to account for bank transfer delays
-        future_date += timedelta(days=grace_period)
-
-        if future_date < exclusion_date:
-            exclude_tickers.append(record.ticker)
+    exclude_tickers = closed_tickers(scheduled, since=since, grace_period=grace_period)
 
     # exclude unrealized projections
     scheduled = filter(lambda r: r.ticker not in exclude_tickers, scheduled)
@@ -230,6 +236,7 @@ def future_transactions(records: List[Transaction]) \
 
     Each record has its amount adjusted to match the position of the latest matching record.
     """
+    
     future_records = []
 
     for record in records:
