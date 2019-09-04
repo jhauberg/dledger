@@ -205,7 +205,8 @@ def generate(records: List[Transaction]) -> None:
     timeline = dict()
     for ticker in tickers(records):
         timeline[ticker] = [(r.date, reports[r]['amount_per_share'])
-                            for r in by_ticker(records, ticker)]
+                            for r in by_ticker(records, ticker)
+                            if reports[r]['amount_per_share'] > 0]
     printer.pprint(timeline)
     print('=========== projections')
     printer = pprint.PrettyPrinter(indent=2, width=60)
