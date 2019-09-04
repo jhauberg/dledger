@@ -16,7 +16,7 @@ SUPPORTED_PROVIDERS = ['native', 'nordnet']
 
 @dataclass(frozen=True, unsafe_hash=True)
 class Transaction:
-    """ Represents a transaction that has been realized. """
+    """ Represents a transaction. """
 
     date: datetime.date
     ticker: str

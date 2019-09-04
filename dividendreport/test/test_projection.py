@@ -2,6 +2,7 @@ from datetime import date
 
 from dividendreport.ledger import Transaction
 from dividendreport.projection import (
+    FutureTransaction,
     estimate_schedule, frequency, normalize_interval,
     next_scheduled_date,
     future_transactions,
@@ -295,10 +296,10 @@ def test_future_transactons():
 
 def test_closed_tickers():
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        FutureTransaction(date(2019, 3, 1), 'ABC', 1, 100),
+        FutureTransaction(date(2019, 6, 1), 'ABC', 1, 100),
+        FutureTransaction(date(2019, 9, 1), 'ABC', 1, 100),
+        FutureTransaction(date(2019, 12, 1), 'ABC', 1, 100)
     ]
 
     assert len(closed_tickers(records, since=date(2019, 3, 1), grace_period=3)) == 0

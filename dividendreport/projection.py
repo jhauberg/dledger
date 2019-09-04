@@ -15,7 +15,7 @@ from typing import Tuple, Optional, List, Iterable
 
 @dataclass(frozen=True)
 class FutureTransaction(Transaction):
-    """ Represents a transaction that is expected to be realized in the future; a projection. """
+    """ Represents an unrealized transaction; a projection. """
 
     amount_range: Optional[Tuple[float, float]] = None
 
@@ -123,17 +123,19 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
     return future_date
 
 
-def closed_tickers(scheduled_records: List[Transaction],
+def closed_tickers(records: List[FutureTransaction],
                    *,
                    since: datetime.date = datetime.today().date(),
                    grace_period: int = 3) \
         -> List[str]:
+    """ Return a list of tickers where the earliest projection exceeds date. """
+
     exclude_tickers = []
 
     exclusion_date = since
 
-    for ticker in tickers(scheduled_records):
-        earliest_record = earliest(by_ticker(scheduled_records, ticker))
+    for ticker in tickers(records):
+        earliest_record = earliest(by_ticker(records, ticker))
         future_date = earliest_record.date
 
         # add grace period to account for bank transfer delays
