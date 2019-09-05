@@ -2,11 +2,10 @@ from datetime import date
 
 from dividendreport.ledger import Transaction
 from dividendreport.projection import (
-    FutureTransaction,
     estimate_schedule, frequency, normalize_interval,
     next_scheduled_date,
     future_transactions,
-    closed_tickers
+    expired_transactions
 )
 
 
@@ -294,16 +293,16 @@ def test_future_transactons():
     assert futures[1].date == date(2021, 12, 31)
 
 
-def test_closed_tickers():
+def test_expired_transactions():
     records = [
-        FutureTransaction(date(2019, 3, 1), 'ABC', 1, 100),
-        FutureTransaction(date(2019, 6, 1), 'ABC', 1, 100),
-        FutureTransaction(date(2019, 9, 1), 'ABC', 1, 100),
-        FutureTransaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
     ]
 
-    assert len(closed_tickers(records, since=date(2019, 3, 1), grace_period=3)) == 0
-    assert len(closed_tickers(records, since=date(2019, 3, 2), grace_period=3)) == 0
-    assert len(closed_tickers(records, since=date(2019, 3, 3), grace_period=3)) == 0
-    assert len(closed_tickers(records, since=date(2019, 3, 4), grace_period=3)) == 0
-    assert len(closed_tickers(records, since=date(2019, 3, 5), grace_period=3)) == 1
+    assert len(list(expired_transactions(records, since=date(2019, 3, 1), grace_period=3))) == 0
+    assert len(list(expired_transactions(records, since=date(2019, 3, 2), grace_period=3))) == 0
+    assert len(list(expired_transactions(records, since=date(2019, 3, 3), grace_period=3))) == 0
+    assert len(list(expired_transactions(records, since=date(2019, 3, 4), grace_period=3))) == 0
+    assert len(list(expired_transactions(records, since=date(2019, 3, 5), grace_period=3))) == 1

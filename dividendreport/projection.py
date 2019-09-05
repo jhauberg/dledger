@@ -7,7 +7,7 @@ from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
 from dividendreport.dateutil import last_of_month, in_months
 from dividendreport.record import (
-    by_ticker, tickers, trailing, latest, earliest, schedule, intervals, amount_per_share
+    by_ticker, tickers, trailing, latest, before, schedule, intervals, amount_per_share
 )
 
 from typing import Tuple, Optional, List, Iterable
@@ -123,28 +123,17 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
     return future_date
 
 
-def closed_tickers(records: List[FutureTransaction],
-                   *,
-                   since: datetime.date = datetime.today().date(),
-                   grace_period: int = 3) \
-        -> List[str]:
-    """ Return a list of tickers where the earliest projection exceeds date. """
+def expired_transactions(records: Iterable[Transaction],
+                         *,
+                         since: datetime.date = datetime.today().date(),
+                         grace_period: int = 3) \
+        -> Iterable[Transaction]:
+    """ Return an iterator for records dated prior to a date.
 
-    exclude_tickers = []
+    Optionally allowing for a grace period of a number of days.
+    """
 
-    exclusion_date = since
-
-    for ticker in tickers(records):
-        earliest_record = earliest(by_ticker(records, ticker))
-        future_date = earliest_record.date
-
-        # add grace period to account for bank transfer delays
-        future_date += timedelta(days=grace_period)
-
-        if future_date < exclusion_date:
-            exclude_tickers.append(ticker)
-
-    return exclude_tickers
+    return before(records, since - timedelta(days=grace_period))
 
 
 def scheduled_transactions(records: List[Transaction], entries: dict,
