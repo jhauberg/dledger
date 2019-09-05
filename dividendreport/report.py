@@ -21,14 +21,15 @@ def report_per_record(records: List[Transaction]) \
     for record in records:
         report = dict()
 
-        sample_records = list(trailing(by_ticker(records, record.ticker),
-                                       since=last_of_month(record.date), months=24))
+        sample_records = trailing(by_ticker(records, record.ticker),
+                                  since=last_of_month(record.date), months=24)
+
+        sample_records = list(filter(lambda r: r.position > 0, sample_records))
 
         approx_frequency = frequency(sample_records)
-        approx_schedule = estimate_schedule(sample_records, interval=approx_frequency)
 
-        report['schedule'] = approx_schedule
         report['frequency'] = approx_frequency
+        report['schedule'] = estimate_schedule(sample_records, interval=approx_frequency)
 
         report['amount_per_share'] = amount_per_share(record)
 
