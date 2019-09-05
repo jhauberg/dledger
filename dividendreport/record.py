@@ -1,12 +1,24 @@
-from dividendreport.dateutil import months_between, in_months
+from datetime import datetime
+
+from dividendreport.dateutil import months_between, in_months, first_of_month
 from dividendreport.ledger import Transaction
 
 from typing import Iterable, Optional, List
 
 
+def amount_per_share(record: Transaction) \
+        -> float:
+    return (record.amount / record.position
+            if record.amount > 0 and record.position > 0
+            else 0)
+
+
 def intervals(records: Iterable[Transaction]) \
         -> List[int]:
-    """ Return a list of intervals (in normalized months) between a set of records. """
+    """ Return a list of month intervals between a set of records.
+
+    Does not take years and days into account.
+    """
 
     records = sorted(records, key=lambda r: r.date)
 
@@ -19,53 +31,56 @@ def intervals(records: Iterable[Transaction]) \
     previous_record_date = None
 
     for record in records:
+        date = first_of_month(record.date)
+
         if previous_record_date is None:
-            first_record_date = record.date
+            first_record_date = date
         else:
             timespans.append(
-                months_between(record.date, previous_record_date,
-                               ignore_years=True))
+                months_between(date, previous_record_date, ignore_years=True))
 
-        previous_record_date = record.date
+        previous_record_date = date
 
-    # todo: potential for hitting invalid date (depending on day)
     next_record_date = first_record_date.replace(year=previous_record_date.year + 1)
 
     timespans.append(
-        months_between(next_record_date, previous_record_date,
-                       ignore_years=True))
+        months_between(next_record_date, previous_record_date, ignore_years=True))
 
     return timespans
 
 
 def tickers(records: Iterable[Transaction]) \
         -> List[str]:
+    """ Return a list of unique ticker components in a set of records. """
+
     return list(set([record.ticker for record in records]))
 
 
 def schedule(records: Iterable[Transaction]) \
         -> List[int]:
+    """ Return a list of unique month components in a set of records. """
+
     return sorted(set([record.date.month for record in records]))
 
 
-def trailing(records: Iterable[Transaction], record: Transaction,
-             *, months: int, normalized: bool = False) \
+def trailing(records: Iterable[Transaction], since: datetime.date, *, months: int) \
         -> Iterable[Transaction]:
-    if normalized:
-        return filter(
-            lambda r: (record.date >= r.date and
-                       months >= months_between(record.date, r.date)), records)
+    """ Return an iterator for records dated within a number of months prior to a given date.
 
-    since = in_months(record.date, months=-months)
+    Does take days into account.
+    """
+
+    begin = in_months(since, months=-months)
+    end = since
 
     return filter(
-        lambda r: record.date >= r.date > since, records)
+        lambda r: end >= r.date > begin, records)
 
 
 def monthly(records: Iterable[Transaction],
             *, year: int, month: int) \
         -> Iterable[Transaction]:
-    """ Return an iterator for records dated within a given month, on a given year. """
+    """ Return an iterator for records dated on a given month and year. """
 
     return filter(
         lambda r: (r.date.year == year and
@@ -78,7 +93,7 @@ def yearly(records: Iterable[Transaction],
     """ Return an iterator for records dated within a given year.
 
     Optionally only include records up to (and including) a given month.
-    For example, if months = 5, only include records daten between January
+    For example, if months=5, only include records daten between January
     and May (inclusive).
     """
 
@@ -97,22 +112,22 @@ def by_ticker(records: Iterable[Transaction], symbol: str) \
 
 def income(records: Iterable[Transaction]) \
         -> float:
-    """ Return total income from a set of records. """
+    """ Return the sum of amount components in a set of records. """
 
     return sum([record.amount for record in records])
 
 
-def before(records: Iterable[Transaction], record: Transaction) \
+def before(records: Iterable[Transaction], date: datetime.date) \
         -> Iterable[Transaction]:
-    """ Return an iterator for records dated prior to a given record. """
+    """ Return an iterator for records dated prior to a date. """
 
     return filter(
-        lambda r: r.date < record.date, records)
+        lambda r: r.date < date, records)
 
 
 def earliest(records: Iterable[Transaction]) \
         -> Optional[Transaction]:
-    """ Return the earliest dated record. """
+    """ Return the earliest dated record in a set of records. """
 
     records = sorted(records, key=lambda r: r.date)
 
@@ -121,7 +136,7 @@ def earliest(records: Iterable[Transaction]) \
 
 def latest(records: Iterable[Transaction]) \
         -> Optional[Transaction]:
-    """ Return the latest dated record. """
+    """ Return the latest dated record in a set of records. """
 
     records = sorted(records, key=lambda r: r.date)
 
@@ -130,14 +145,17 @@ def latest(records: Iterable[Transaction]) \
 
 def previous(records: Iterable[Transaction], record: Transaction) \
         -> Optional[Transaction]:
-    """ Return the first record dated prior to a given record. """
+    """ Return the latest record dated prior to a given record. """
 
-    return latest(before(records, record))
+    return latest(before(records, record.date))
 
 
 def previous_comparable(records: Iterable[Transaction], record: Transaction) \
         -> Optional[Transaction]:
-    """ Return the first comparable record dated prior to a given record. """
+    """ Return the latest comparable record dated prior to a given record.
+
+    A comparable record is a record dated within same month in an earlier year.
+    """
 
     comparables = filter(
         lambda r: (r.date.month == record.date.month and

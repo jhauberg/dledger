@@ -3,7 +3,9 @@ from datetime import date
 from dividendreport.ledger import Transaction
 from dividendreport.projection import (
     estimate_schedule, frequency, normalize_interval,
-    next_scheduled_date
+    next_scheduled_date,
+    future_transactions,
+    expired_transactions
 )
 
 
@@ -262,8 +264,49 @@ def test_estimate_schedule():
 def test_next_scheduled_date():
     d = next_scheduled_date(date(2019, 3, 1), months=[3, 6, 9, 12])
 
-    assert d.year == 2019 and d.month == 6 and d.day == 30
+    assert d.year == 2019 and d.month == 6 and d.day == 1
+
+    d = next_scheduled_date(date(2019, 3, 12), months=[3, 6, 9, 12])
+
+    assert d.year == 2019 and d.month == 6 and d.day == 1
 
     d = next_scheduled_date(date(2019, 12, 1), months=[3, 6, 9, 12])
 
-    assert d.year == 2020 and d.month == 3 and d.day == 31
+    assert d.year == 2020 and d.month == 3 and d.day == 1
+
+
+def test_future_transactons():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+    ]
+
+    futures = future_transactions(records)
+
+    assert len(futures) == 1
+    assert futures[0].date == date(2020, 3, 31)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2020, 12, 15), 'ABC', 1, 100)
+    ]
+
+    futures = future_transactions(records)
+
+    assert len(futures) == 2
+    assert futures[0].date == date(2020, 3, 31)
+    assert futures[1].date == date(2021, 12, 31)
+
+
+def test_expired_transactions():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+    ]
+
+    assert len(list(expired_transactions(records, since=date(2019, 3, 1), grace_period=3))) == 0
+    assert len(list(expired_transactions(records, since=date(2019, 3, 2), grace_period=3))) == 0
+    assert len(list(expired_transactions(records, since=date(2019, 3, 3), grace_period=3))) == 0
+    assert len(list(expired_transactions(records, since=date(2019, 3, 4), grace_period=3))) == 0
+    assert len(list(expired_transactions(records, since=date(2019, 3, 5), grace_period=3))) == 1
