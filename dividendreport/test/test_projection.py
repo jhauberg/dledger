@@ -264,11 +264,15 @@ def test_estimate_schedule():
 def test_next_scheduled_date():
     d = next_scheduled_date(date(2019, 3, 1), months=[3, 6, 9, 12])
 
-    assert d.year == 2019 and d.month == 6 and d.day == 30
+    assert d.year == 2019 and d.month == 6 and d.day == 1
+
+    d = next_scheduled_date(date(2019, 3, 12), months=[3, 6, 9, 12])
+
+    assert d.year == 2019 and d.month == 6 and d.day == 1
 
     d = next_scheduled_date(date(2019, 12, 1), months=[3, 6, 9, 12])
 
-    assert d.year == 2020 and d.month == 3 and d.day == 31
+    assert d.year == 2020 and d.month == 3 and d.day == 1
 
 
 def test_future_transactons():

@@ -118,7 +118,6 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
     future_date = date.replace(year=next_year,
                                month=months[next_month_index],
                                day=1)
-    future_date = last_of_month(future_date)
 
     return future_date
 
@@ -162,9 +161,6 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
 
         scheduled.append(record)
 
-    # exclude closed positions
-    scheduled = filter(lambda r: r.amount > 0, scheduled)
-
     return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
@@ -175,6 +171,10 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
     for ticker in tickers(records):
         record = latest(by_ticker(records, ticker))
 
+        if not record.position > 0:
+            # don't project closed positions
+            continue
+
         scheduled_months = entries[record]['schedule']
         scheduled_records = []
 
@@ -182,7 +182,7 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
-            future_date = next_scheduled_date(future_date, scheduled_months)
+            future_date = last_of_month(next_scheduled_date(future_date, scheduled_months))
 
             reference_records = trailing(by_ticker(records, record.ticker),
                                          since=future_date, months=12)
@@ -228,6 +228,11 @@ def future_transactions(records: List[Transaction]) \
         latest_record = latest(by_ticker(records, record.ticker))
 
         future_position = latest_record.position
+
+        if not future_position > 0:
+            # don't project closed positions
+            continue
+
         future_amount = future_position * amount_per_share(record)
 
         future_record = FutureTransaction(future_date,
