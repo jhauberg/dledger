@@ -117,12 +117,12 @@ def income(records: Iterable[Transaction]) \
     return sum([record.amount for record in records])
 
 
-def before(records: Iterable[Transaction], record: Transaction) \
+def before(records: Iterable[Transaction], date: datetime.date) \
         -> Iterable[Transaction]:
-    """ Return an iterator for records dated prior to a given record. """
+    """ Return an iterator for records dated prior to a date. """
 
     return filter(
-        lambda r: r.date < record.date, records)
+        lambda r: r.date < date, records)
 
 
 def earliest(records: Iterable[Transaction]) \
@@ -147,7 +147,7 @@ def previous(records: Iterable[Transaction], record: Transaction) \
         -> Optional[Transaction]:
     """ Return the latest record dated prior to a given record. """
 
-    return latest(before(records, record))
+    return latest(before(records, record.date))
 
 
 def previous_comparable(records: Iterable[Transaction], record: Transaction) \
