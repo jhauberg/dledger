@@ -162,3 +162,18 @@ def previous_comparable(records: Iterable[Transaction], record: Transaction) \
                    r.date.year < record.date.year), records)
 
     return latest(comparables)
+
+
+def pruned(records: Iterable[Transaction]) \
+        -> List[Transaction]:
+    """ Return a list of transactions with only the first occurence of a transaction per date. """
+    collected_records = []
+    for record in records:
+        collected = False
+        for collected_record in collected_records:
+            if record.date == collected_record.date:
+                collected = True
+                break
+        if not collected:
+            collected_records.append(record)
+    return collected_records

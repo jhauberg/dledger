@@ -2,7 +2,7 @@ from datetime import date
 
 from dividendreport.ledger import Transaction
 from dividendreport.record import (
-    schedule, intervals, trailing
+    schedule, intervals, trailing, pruned
 )
 
 
@@ -138,6 +138,33 @@ def test_intervals():
     # just enforces the pattern of an annual payout interval
     assert intervals(records) == [12, 12]
 
+    records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 200)
+    ]
+
+    assert intervals(records) == [5, 12, 7]
+
+    records = [
+        Transaction(date(2019, 8, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 8, 1), 'ABC', 1, 200),
+        Transaction(date(2020, 3, 1), 'ABC', 1, 100)
+    ]
+
+    assert intervals(records) == [12, 7, 5]
+
+    records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 200),
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+    ]
+
+    # note that while the results for this case are correct, in the actual scenario where it could
+    # occur, the same-date record would have been pruned beforehand, making intervals == [5, 7, 12]
+    assert intervals(records) == [5, 12, 7, 12]
+
 
 def test_schedule():
     records = [
@@ -148,3 +175,14 @@ def test_schedule():
     ]
 
     assert schedule(records) == [3, 6, 9, 12]
+
+
+def test_pruned():
+    records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 200),
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+    ]
+
+    assert len(pruned(records)) == 3

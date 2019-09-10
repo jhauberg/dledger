@@ -59,6 +59,22 @@ def test_annual_frequency():
 
     assert frequency(records) == 12
 
+    records = [
+        Transaction(date(2018, 5, 4), 'ABC', 1, 100),
+        Transaction(date(2018, 5, 4), 'ABC', 1, 100)
+    ]
+
+    assert frequency(records) == 12
+
+    records = [
+        Transaction(date(2018, 5, 4), 'ABC', 1, 100),
+        Transaction(date(2018, 5, 4), 'ABC', 1, 100),
+        Transaction(date(2019, 5, 4), 'ABC', 1, 100),
+        Transaction(date(2019, 5, 4), 'ABC', 1, 100)
+    ]
+
+    assert frequency(records) == 12
+
 
 def test_biannual_frequency():
     records = [
@@ -118,6 +134,34 @@ def test_biannual_frequency():
 
     # ambiguous; fallback as biannual
     assert frequency(records) == 6
+
+    records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 200)
+    ]
+
+    assert frequency(records) == 6
+
+    records = [
+        Transaction(date(2019, 8, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 8, 1), 'ABC', 1, 200),
+        Transaction(date(2020, 3, 1), 'ABC', 1, 100)
+    ]
+
+    assert frequency(records) == 6
+
+    records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
+        Transaction(date(2018, 8, 1), 'ABC', 1, 200),
+        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+    ]
+
+    # note that while this result is not a biannual frequency, it is actually correct for the
+    # records given- in an actual scenario where this could occur, the same-date record would
+    # would have been pruned beforehand, making frequency == 6
+    assert frequency(records) == 12
 
 
 def test_quarterly_frequency():

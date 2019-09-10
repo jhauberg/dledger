@@ -7,7 +7,7 @@ from dividendreport.projection import (
     frequency, scheduled_transactions, estimate_schedule, expired_transactions
 )
 from dividendreport.record import (
-    income, yearly, monthly, trailing, amount_per_share,
+    income, yearly, monthly, trailing, amount_per_share, pruned,
     tickers, by_ticker, previous, previous_comparable, latest
 )
 
@@ -24,8 +24,11 @@ def report_per_record(records: List[Transaction]) \
         sample_records = trailing(by_ticker(records, record.ticker),
                                   since=last_of_month(record.date), months=24)
 
-        sample_records = list(filter(lambda r: r.position > 0, sample_records))
-
+        # exclude closed positions
+        sample_records = filter(lambda r: r.position > 0, sample_records)
+        # exclude same-date records for more accurate frequency/schedule estimation
+        sample_records = pruned(sample_records)
+        # determine approximate frequency (annual, biannual, quarterly or monthly)
         approx_frequency = frequency(sample_records)
 
         report['frequency'] = approx_frequency
