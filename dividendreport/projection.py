@@ -154,7 +154,8 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
     for record in estimates:
         duplicates = [r for r in scheduled
                       if r.ticker == record.ticker
-                      and r.date == record.date]
+                      and r.date.year == record.date.year
+                      and r.date.month == record.date.month]
 
         if len(duplicates) > 0:
             continue
