@@ -5,7 +5,7 @@ from statistics import mode, StatisticsError
 
 from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
-from dividendreport.dateutil import last_of_month, in_months
+from dividendreport.dateutil import last_of_month
 from dividendreport.record import (
     by_ticker, tickers, trailing, latest, before, schedule, intervals, amount_per_share
 )
@@ -164,6 +164,10 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
     return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
+def projected_date(date: datetime.date) -> datetime.date:
+    return last_of_month(date)
+
+
 def estimated_transactions(records: List[Transaction], entries: dict) \
         -> List[FutureTransaction]:
     approximate_records = []
@@ -182,7 +186,7 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
-            future_date = last_of_month(next_scheduled_date(future_date, scheduled_months))
+            future_date = projected_date(next_scheduled_date(future_date, scheduled_months))
 
             reference_records = trailing(by_ticker(records, record.ticker),
                                          since=future_date, months=12)
@@ -223,7 +227,8 @@ def future_transactions(records: List[Transaction]) \
     future_records = []
 
     for record in records:
-        future_date = last_of_month(in_months(record.date, months=12))
+        # offset 12 months into the future by assuming an annual schedule
+        future_date = projected_date(next_scheduled_date(record.date, [record.date.month]))
 
         latest_record = latest(by_ticker(records, record.ticker))
 
