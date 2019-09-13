@@ -161,6 +161,20 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
 
         scheduled.append(record)
 
+    pending_records = list(filter(lambda r: r.date > since, records))
+
+    for record in pending_records:
+        duplicates = [r for r in scheduled
+                      if r.ticker == record.ticker
+                      and r.date.year == record.date.year
+                      and r.date.month == record.date.month]
+
+        if len(duplicates) == 0:
+            continue
+
+        for dupe in duplicates:
+            scheduled.remove(dupe)
+
     return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
