@@ -12,6 +12,9 @@ from dividendreport.record import (
 
 from typing import Tuple, Optional, List, Iterable
 
+EARLY = 0
+LATE = 1
+
 
 @dataclass(frozen=True)
 class FutureTransaction(Transaction):
@@ -122,6 +125,18 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
     return future_date
 
 
+def projected_timeframe(date: datetime.date) -> int:
+    return EARLY if date.day <= 15 else LATE
+
+
+def projected_date(date: datetime.date, *, timeframe: int) -> datetime.date:
+    if timeframe == EARLY:
+        return date.replace(day=15)
+    if timeframe == LATE:
+        return last_of_month(date)
+    return date
+
+
 def expired_transactions(records: Iterable[Transaction],
                          *,
                          since: datetime.date = datetime.today().date(),
@@ -178,10 +193,6 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
     return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
-def projected_date(date: datetime.date) -> datetime.date:
-    return last_of_month(date)
-
-
 def estimated_transactions(records: List[Transaction], entries: dict) \
         -> List[FutureTransaction]:
     approximate_records = []
@@ -197,10 +208,13 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
         scheduled_records = []
 
         future_date = record.date
+        # estimate timeframe by latest actual record
+        future_timeframe = projected_timeframe(record.date)
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
-            future_date = projected_date(next_scheduled_date(future_date, scheduled_months))
+            future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
+                                         timeframe=future_timeframe)
 
             reference_records = trailing(by_ticker(records, record.ticker),
                                          since=future_date, months=12)
@@ -242,7 +256,8 @@ def future_transactions(records: List[Transaction]) \
 
     for record in records:
         # offset 12 months into the future by assuming an annual schedule
-        future_date = projected_date(next_scheduled_date(record.date, [record.date.month]))
+        future_date = projected_date(next_scheduled_date(record.date, [record.date.month]),
+                                     timeframe=projected_timeframe(record.date))
 
         latest_record = latest(by_ticker(records, record.ticker))
 
