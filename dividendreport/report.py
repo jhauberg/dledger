@@ -230,23 +230,26 @@ def generate(records: List[Transaction]) -> None:
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
     print('=========== impact of latest transaction')
-    records_except_latest = records[:-1]
+    latest_record_not_in_future = latest(
+        filter(lambda r: r.date <= datetime.today().date(), records))
+    records_except_latest = records
+    records_except_latest.remove(latest_record_not_in_future)
     reports_except_latest = report_per_record(records_except_latest)
     futures_except_latest = scheduled_transactions(records_except_latest, reports_except_latest)
     # exclude unrealized projections (except the latest transaction)
     closed_except_latest = tickers(expired_transactions(futures_except_latest))
-    futures_except_latest = list(filter(lambda r: r.ticker == records[-1].ticker or
+    futures_except_latest = list(filter(lambda r: r.ticker == latest_record_not_in_future.ticker or
                                                   r.ticker not in closed_except_latest, futures_except_latest))
     padi_except_latest = income(futures_except_latest)
-    printer.pprint(latest_record)
+    printer.pprint(latest_record_not_in_future)
     print(f'annual income: {format_change(change(padi, padi_except_latest))}')
     print(f'monthly (avg): {format_change(change(padi / 12, padi_except_latest / 12))}')
     print(f'weekly  (avg): {format_change(change(padi / 52, padi_except_latest / 52))}')
     print(f'daily   (avg): {format_change(change(padi / 365, padi_except_latest / 365))}')
     print(f'hourly  (avg): {format_change(change(padi / 8760, padi_except_latest / 8760))}')
-    previous_record = latest(by_ticker(records_except_latest, latest_record.ticker))
+    previous_record = latest(by_ticker(records_except_latest, latest_record_not_in_future.ticker))
     if previous_record is not None:
-        now_report = reports[latest_record]
+        now_report = reports[latest_record_not_in_future]
         then_report = reports_except_latest[previous_record]
         then_frequency = then_report['frequency']
         then_schedule = then_report['schedule']

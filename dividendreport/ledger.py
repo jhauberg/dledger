@@ -170,15 +170,6 @@ def sanitize(records: List[Transaction], *, verbose: bool = False) \
 
         records.remove(record)
 
-    future_records = filter(
-        lambda r: r.date > datetime.today().date(), records)
-
-    for record in future_records:
-        if verbose:
-            print(f'Removing record; set in future: {record}', file=sys.stderr)
-
-        records.remove(record)
-
     return sorted(records, key=lambda r: r.date)
 
 
