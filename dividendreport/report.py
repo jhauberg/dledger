@@ -232,7 +232,7 @@ def generate(records: List[Transaction]) -> None:
     print('=========== impact of latest transaction')
     latest_record_not_in_future = latest(
         filter(lambda r: r.date <= datetime.today().date(), records))
-    records_except_latest = records
+    records_except_latest = list(records)
     records_except_latest.remove(latest_record_not_in_future)
     reports_except_latest = report_per_record(records_except_latest)
     futures_except_latest = scheduled_transactions(records_except_latest, reports_except_latest)
