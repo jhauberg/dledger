@@ -327,17 +327,26 @@ def test_future_transactons():
     futures = future_transactions(records)
 
     assert len(futures) == 1
+    assert futures[0].date == date(2020, 3, 15)
+
+    records = [
+        Transaction(date(2019, 3, 16), 'ABC', 1, 100)
+    ]
+
+    futures = future_transactions(records)
+
+    assert len(futures) == 1
     assert futures[0].date == date(2020, 3, 31)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 12, 15), 'ABC', 1, 100)
+        Transaction(date(2020, 12, 16), 'ABC', 1, 100)
     ]
 
     futures = future_transactions(records)
 
     assert len(futures) == 2
-    assert futures[0].date == date(2020, 3, 31)
+    assert futures[0].date == date(2020, 3, 15)
     assert futures[1].date == date(2021, 12, 31)
 
 
