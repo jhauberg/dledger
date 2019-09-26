@@ -15,6 +15,8 @@ from typing import Tuple, Optional, List, Iterable
 EARLY = 0
 LATE = 1
 
+EARLY_LATE_THRESHOLD = 15  # early before or at this day of month, late after
+
 
 @dataclass(frozen=True)
 class FutureTransaction(Transaction):
@@ -126,12 +128,12 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
 
 
 def projected_timeframe(date: datetime.date) -> int:
-    return EARLY if date.day <= 15 else LATE
+    return EARLY if date.day <= EARLY_LATE_THRESHOLD else LATE
 
 
 def projected_date(date: datetime.date, *, timeframe: int) -> datetime.date:
     if timeframe == EARLY:
-        return date.replace(day=15)
+        return date.replace(day=EARLY_LATE_THRESHOLD)
     if timeframe == LATE:
         return last_of_month(date)
     return date
@@ -247,7 +249,7 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
 
 def future_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
-    """ Return a list of records dated 12 months into the future.
+    """ Return a matching list of records dated 12 months into the future.
 
     Each record has its amount adjusted to match the position of the latest matching record.
     """
