@@ -107,6 +107,8 @@ def report_per_year(records: List[Transaction]) \
         report['per_month'] = report_per_month(records, year)
         report['income'] = yearly_income
 
+        report['transaction_count'] = len(list(yearly(records, year=year)))
+
         yearly_income_last_year = income(yearly(records, year=year - 1))
 
         if yearly_income_last_year > 0:
