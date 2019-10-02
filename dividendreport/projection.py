@@ -41,6 +41,15 @@ class FutureTransaction(Transaction):
 
 def normalize_interval(interval: int) \
         -> int:
+    """ Return a normalized interval.
+
+    Normalized intervals:
+       1: Monthly   (every month)
+       3: Quarterly (every three months)
+       6: Biannual  (two times a year)
+      12: Annual    (once a year)
+    """
+    
     if interval < 1 or interval > 12:
         raise ValueError('interval must be within 1-12-month range')
 
@@ -79,16 +88,25 @@ def frequency(records: Iterable[Transaction]) \
         return normalize_interval(average_interval)
 
 
-def estimate_schedule(records: List[Transaction],
-                      *, interval: int) \
+def estimated_schedule(records: List[Transaction],
+                       *, interval: int) \
         -> List[int]:
+    """ Return an estimated monthly schedule for a list of records.
+
+    For example, provided with records dated for months (3, 6) at an interval of 3 months,
+    the returned schedule would be (3, 6, 9, 12).
+    """
+
     if interval <= 0:
         raise ValueError('interval must be > 0')
 
+    # first determine months that we know for sure is to be scheduled
+    # e.g. those months where that actually has a recorded payout
     approx_schedule = schedule(records)
-
+    # determine approximate number of payouts per year, given approximate interval between payouts
     payouts_per_year = int(12 / interval)
-
+    # then, going by the last recorded month, increment by interval until scheduled months
+    # and number of payouts match- looping back as needed
     if len(approx_schedule) < payouts_per_year:
         starting_month = approx_schedule[-1]
 
@@ -110,8 +128,20 @@ def estimate_schedule(records: List[Transaction],
 
 def next_scheduled_date(date: datetime.date, months: List[int]) \
         -> datetime.date:
+    """ Return the date that would follow a given date, going by a monthly schedule.
+
+    For example, given a date (2019, 6, 18) and a schedule of (3, 6, 9, 12),
+    the next scheduled month would be 9, resulting in date (2019, 9, 1).
+
+    Day is always set to first of month.
+    """
+
+    if len(months) > 12:
+        raise ValueError('schedule exceeds 12-month range')
+    if len(months) != len(set(months)):
+        raise ValueError('schedule must not contain duplicate months')
     if date.month not in months:
-        raise ValueError('schedule does not match')
+        raise ValueError('schedule does not match to given date')
 
     next_month_index = months.index(date.month) + 1
     next_year = date.year
@@ -128,10 +158,14 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
 
 
 def projected_timeframe(date: datetime.date) -> int:
+    """ Return the timeframe of a given date. """
+
     return EARLY if date.day <= EARLY_LATE_THRESHOLD else LATE
 
 
 def projected_date(date: datetime.date, *, timeframe: int) -> datetime.date:
+    """ Return a date where day of month is set according to given timeframe. """
+
     if timeframe == EARLY:
         return date.replace(day=EARLY_LATE_THRESHOLD)
     if timeframe == LATE:
