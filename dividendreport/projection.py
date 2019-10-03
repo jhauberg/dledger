@@ -7,7 +7,8 @@ from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
 from dividendreport.dateutil import last_of_month
 from dividendreport.record import (
-    by_ticker, tickers, trailing, latest, before, schedule, intervals, amount_per_share
+    by_ticker, tickers, trailing, latest, amount_per_share,
+    before, after, schedule, intervals
 )
 
 from typing import Tuple, Optional, List, Iterable
@@ -49,7 +50,7 @@ def normalize_interval(interval: int) \
        6: Biannual  (two times a year)
       12: Annual    (once a year)
     """
-    
+
     if interval < 1 or interval > 12:
         raise ValueError('interval must be within 1-12-month range')
 
@@ -186,6 +187,15 @@ def expired_transactions(records: Iterable[Transaction],
     return before(records, since - timedelta(days=grace_period))
 
 
+def pending_transactions(records: List[Transaction],
+                         *,
+                         since: datetime.date = datetime.today().date()) \
+        -> Iterable[Transaction]:
+    """ Return an iterator for records dated later than a date. """
+
+    return after(records, since)
+
+
 def scheduled_transactions(records: List[Transaction], entries: dict,
                            *,
                            since: datetime.date = datetime.today().date()) \
@@ -212,9 +222,9 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
 
         scheduled.append(record)
 
-    pending_records = list(filter(lambda r: r.date > since, records))
+    pending = list(pending_transactions(records, since=since))
 
-    for record in pending_records:
+    for record in pending:
         duplicates = [r for r in scheduled
                       if r.ticker == record.ticker
                       and r.date.year == record.date.year
