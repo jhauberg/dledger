@@ -2,13 +2,13 @@ from decimal import Decimal
 
 
 def change(a: float, b: float) -> float:
-    """ Return the difference (or change) from A, to B. """
+    """ Return the difference from A, to B. """
 
     return a - b
 
 
 def pct_change(a: float, b: float) -> float:
-    """ Return the %-change (increase or decrease) from A, to B. """
+    """ Return the %-change from A, to B. """
 
     if not (b > 0 or b < 0):
         raise TypeError('\'b\' must be a negative or positive value')
@@ -20,11 +20,13 @@ def pct_change(a: float, b: float) -> float:
 
 
 def format_pct(pct: float) -> str:
+    """ Return a human-readable string for a percentage value. """
+
     return f'{format_amount(pct, trailing_zero=False)}%'
 
 
 def format_pct_change(pct: float) -> str:
-    """ Return a human-readable string for a percentage value.
+    """ Return a human-readable string for a percentage value (change).
 
     Format according to current locale, for example,
 
@@ -54,7 +56,7 @@ def format_change(amount: float) -> str:
 
 
 def format_amount(amount: float, trailing_zero: bool = True) -> str:
-    """ Return a human-readable string for an accumulated/total value.
+    """ Return a human-readable string for a number.
 
     Format according to current locale, for example,
 

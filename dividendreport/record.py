@@ -8,6 +8,8 @@ from typing import Iterable, Optional, List
 
 def amount_per_share(record: Transaction) \
         -> float:
+    """ Return the fractional amount per share. """
+
     return (record.amount / record.position
             if record.amount > 0 and record.position > 0
             else 0)
@@ -117,6 +119,14 @@ def income(records: Iterable[Transaction]) \
     return sum([record.amount for record in records])
 
 
+def after(records: Iterable[Transaction], date: datetime.date) \
+        -> Iterable[Transaction]:
+    """ Return an iterator for records dated later than a date. """
+
+    return filter(
+        lambda r: r.date > date, records)
+
+
 def before(records: Iterable[Transaction], date: datetime.date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated prior to a date. """
@@ -167,6 +177,7 @@ def previous_comparable(records: Iterable[Transaction], record: Transaction) \
 def pruned(records: Iterable[Transaction]) \
         -> List[Transaction]:
     """ Return a list of transactions with only the first occurence of a transaction per date. """
+
     collected_records = []
     for record in records:
         collected = False
