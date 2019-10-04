@@ -1,13 +1,13 @@
 from datetime import datetime, date
 
-from dividendreport.dateutil import previous_month, last_of_month
+from dividendreport.dateutil import previous_month
 from dividendreport.formatutil import change, pct_change, format_amount, format_change
 from dividendreport.ledger import Transaction
 from dividendreport.projection import (
-    frequency, scheduled_transactions, estimated_schedule, expired_transactions
+    scheduled_transactions, expired_transactions, estimated_schedule
 )
 from dividendreport.record import (
-    income, yearly, monthly, trailing, amount_per_share, pruned,
+    income, yearly, monthly, amount_per_share,
     tickers, by_ticker, previous, previous_comparable, latest
 )
 
@@ -21,18 +21,10 @@ def report_per_record(records: List[Transaction]) \
     for record in records:
         report = dict()
 
-        sample_records = trailing(by_ticker(records, record.ticker),
-                                  since=last_of_month(record.date), months=24)
+        schedule = estimated_schedule(records, record)
 
-        # exclude closed positions
-        sample_records = filter(lambda r: r.position > 0, sample_records)
-        # exclude same-date records for more accurate frequency/schedule estimation
-        sample_records = pruned(sample_records)
-        # determine approximate frequency (annual, biannual, quarterly or monthly)
-        approx_frequency = frequency(sample_records)
-
-        report['frequency'] = approx_frequency
-        report['schedule'] = estimated_schedule(sample_records, interval=approx_frequency)
+        report['frequency'] = schedule.frequency
+        report['schedule'] = schedule.months
 
         report['amount_per_share'] = amount_per_share(record)
 
@@ -219,7 +211,7 @@ def generate(records: List[Transaction]) -> None:
     printer.pprint(timeline)
     print('=========== projections')
     printer = pprint.PrettyPrinter(indent=2, width=60)
-    futures = scheduled_transactions(records, reports)
+    futures = scheduled_transactions(records)
     # exclude unrealized projections
     closed = tickers(expired_transactions(futures))
     futures = list(filter(lambda r: r.ticker not in closed, futures))
@@ -237,7 +229,7 @@ def generate(records: List[Transaction]) -> None:
     records_except_latest = list(records)
     records_except_latest.remove(latest_record_not_in_future)
     reports_except_latest = report_per_record(records_except_latest)
-    futures_except_latest = scheduled_transactions(records_except_latest, reports_except_latest)
+    futures_except_latest = scheduled_transactions(records_except_latest)
     # exclude unrealized projections (except the latest transaction)
     closed_except_latest = tickers(expired_transactions(futures_except_latest))
     futures_except_latest = list(filter(lambda r: r.ticker == latest_record_not_in_future.ticker or

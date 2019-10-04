@@ -2,7 +2,8 @@ from datetime import date
 
 from dividendreport.ledger import Transaction
 from dividendreport.projection import (
-    estimated_schedule, frequency, normalize_interval,
+    estimated_monthly_schedule,
+    frequency, normalize_interval,
     next_scheduled_date,
     future_transactions,
     expired_transactions
@@ -251,14 +252,14 @@ def test_irregular_frequency():
     assert frequency(records) == 3
 
 
-def test_estimate_schedule():
+def test_estimate_monthly_schedule():
     records = [
         Transaction(date(2019, 1, 1), 'ABC', 1, 100),
         Transaction(date(2019, 2, 1), 'ABC', 1, 100),
         Transaction(date(2019, 3, 1), 'ABC', 1, 100)
     ]
 
-    schedule = estimated_schedule(records, interval=1)
+    schedule = estimated_monthly_schedule(records, interval=1)
 
     assert schedule == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
@@ -269,7 +270,7 @@ def test_estimate_schedule():
         Transaction(date(2019, 12, 1), 'ABC', 1, 100)
     ]
 
-    schedule = estimated_schedule(records, interval=3)
+    schedule = estimated_monthly_schedule(records, interval=3)
 
     assert schedule == [3, 6, 9, 12]
 
@@ -277,7 +278,7 @@ def test_estimate_schedule():
         Transaction(date(2019, 3, 1), 'ABC', 1, 100)
     ]
 
-    schedule = estimated_schedule(records, interval=3)
+    schedule = estimated_monthly_schedule(records, interval=3)
 
     assert schedule == [3, 6, 9, 12]
 
@@ -286,7 +287,7 @@ def test_estimate_schedule():
         Transaction(date(2019, 9, 1), 'ABC', 1, 100)
     ]
 
-    schedule = estimated_schedule(records, interval=3)
+    schedule = estimated_monthly_schedule(records, interval=3)
 
     assert schedule == [3, 6, 9, 12]
 
@@ -296,7 +297,7 @@ def test_estimate_schedule():
         Transaction(date(2019, 9, 1), 'ABCD', 1, 100)
     ]
 
-    schedule = estimated_schedule(records, interval=3)
+    schedule = estimated_monthly_schedule(records, interval=3)
 
     assert schedule == [3, 6, 9, 12]
 
@@ -309,7 +310,7 @@ def test_estimate_schedule():
     ]
 
     # note that this is an incorrect interval; it is irregular
-    schedule = estimated_schedule(records, interval=3)
+    schedule = estimated_monthly_schedule(records, interval=3)
     # but it works out anyway; the schedule just isn't padded out, because
     # there's essentially no gaps if this was a quarterly distribution
     assert schedule == [3, 4, 6, 8, 9]
@@ -329,7 +330,7 @@ def test_next_scheduled_date():
     assert d.year == 2020 and d.month == 3 and d.day == 1
 
 
-def test_future_transactons():
+def test_future_transactions():
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, 100)
     ]

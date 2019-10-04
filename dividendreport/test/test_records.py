@@ -2,7 +2,7 @@ from datetime import date
 
 from dividendreport.ledger import Transaction
 from dividendreport.record import (
-    schedule, intervals, trailing, pruned
+    monthly_schedule, intervals, trailing, pruned
 )
 
 
@@ -174,7 +174,7 @@ def test_schedule():
         Transaction(date(2019, 12, 1), 'ABC', 1, 100)
     ]
 
-    assert schedule(records) == [3, 6, 9, 12]
+    assert monthly_schedule(records) == [3, 6, 9, 12]
 
 
 def test_pruned():

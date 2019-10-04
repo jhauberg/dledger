@@ -7,9 +7,9 @@ from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
 from dividendreport.dateutil import last_of_month
 from dividendreport.record import (
-    by_ticker, tickers, trailing, latest,
+    by_ticker, tickers, trailing, latest, monthly_schedule,
     amount_per_share, amount_per_share_low, amount_per_share_high,
-    before, after, schedule, intervals
+    before, after, intervals, pruned
 )
 
 from typing import Tuple, Optional, List, Iterable
@@ -39,6 +39,14 @@ class FutureTransaction(Transaction):
                     format_amount(self.amount),
                     f'[{format_amount(self.amount_range[0])} -'
                     f' {format_amount(self.amount_range[1])}]'))
+
+
+@dataclass(frozen=True)
+class Schedule:
+    """ Represents a dividend payout schedule. """
+
+    frequency: int  # interval between payouts (in months)
+    months: List[int]
 
 
 def normalize_interval(interval: int) \
@@ -90,8 +98,8 @@ def frequency(records: Iterable[Transaction]) \
         return normalize_interval(average_interval)
 
 
-def estimated_schedule(records: List[Transaction],
-                       *, interval: int) \
+def estimated_monthly_schedule(records: List[Transaction],
+                               *, interval: int) \
         -> List[int]:
     """ Return an estimated monthly schedule for a list of records.
 
@@ -104,7 +112,7 @@ def estimated_schedule(records: List[Transaction],
 
     # first determine months that we know for sure is to be scheduled
     # e.g. those months where that actually has a recorded payout
-    approx_schedule = schedule(records)
+    approx_schedule = monthly_schedule(records)
     # determine approximate number of payouts per year, given approximate interval between payouts
     payouts_per_year = int(12 / interval)
     # then, going by the last recorded month, increment by interval until scheduled months
@@ -197,7 +205,7 @@ def pending_transactions(records: List[Transaction],
     return after(records, since)
 
 
-def scheduled_transactions(records: List[Transaction], entries: dict,
+def scheduled_transactions(records: List[Transaction],
                            *,
                            since: datetime.date = datetime.today().date()) \
         -> List[FutureTransaction]:
@@ -207,7 +215,7 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
     # project current records by 1 year into the future
     futures = future_transactions(sample_records)
     # project current records by 12-month schedule and frequency
-    estimates = estimated_transactions(sample_records, entries)
+    estimates = estimated_transactions(sample_records)
 
     scheduled = futures
 
@@ -240,7 +248,24 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
     return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
-def estimated_transactions(records: List[Transaction], entries: dict) \
+def estimated_schedule(records: List[Transaction], record: Transaction) \
+        -> Schedule:
+    sample_records = trailing(by_ticker(records, record.ticker),
+                              since=last_of_month(record.date), months=24)
+
+    # exclude closed positions
+    sample_records = filter(lambda r: r.position > 0, sample_records)
+    # exclude same-date records for more accurate frequency/schedule estimation
+    sample_records = pruned(sample_records)
+    # determine approximate frequency (annual, biannual, quarterly or monthly)
+    approx_frequency = frequency(sample_records)
+
+    months = estimated_monthly_schedule(sample_records, interval=approx_frequency)
+
+    return Schedule(approx_frequency, months)
+
+
+def estimated_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
     approximate_records = []
 
@@ -253,7 +278,9 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
             # don't project closed positions
             continue
 
-        scheduled_months = entries[latest_record]['schedule']
+        sched = estimated_schedule(records, latest_record)
+
+        scheduled_months = sched.months
         scheduled_records = []
 
         future_date = latest_record.date

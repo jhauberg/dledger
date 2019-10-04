@@ -92,7 +92,7 @@ def tickers(records: Iterable[Transaction]) \
     return list(set([record.ticker for record in records]))
 
 
-def schedule(records: Iterable[Transaction]) \
+def monthly_schedule(records: Iterable[Transaction]) \
         -> List[int]:
     """ Return a list of unique month components in a set of records. """
 
