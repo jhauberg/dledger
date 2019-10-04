@@ -15,6 +15,40 @@ def amount_per_share(record: Transaction) \
             else 0)
 
 
+def amount_per_share_high(records: Iterable[Transaction]) \
+        -> float:
+    """ Return the highest amount per share over any period. """
+
+    highest_amount_per_share = -1
+
+    for record in records:
+        reference_amount_per_share = amount_per_share(record)
+        if highest_amount_per_share == -1 or reference_amount_per_share > highest_amount_per_share:
+            highest_amount_per_share = reference_amount_per_share
+
+    if highest_amount_per_share == -1:
+        raise TypeError('\'records\' must contain at least one transaction')
+
+    return highest_amount_per_share
+
+
+def amount_per_share_low(records: Iterable[Transaction]) \
+        -> float:
+    """ Return the lowest amount per share over any period. """
+
+    lowest_amount_per_share = -1
+
+    for record in records:
+        reference_amount_per_share = amount_per_share(record)
+        if lowest_amount_per_share == -1 or reference_amount_per_share < lowest_amount_per_share:
+            lowest_amount_per_share = reference_amount_per_share
+
+    if lowest_amount_per_share == -1:
+        raise TypeError('\'records\' must contain at least one transaction')
+
+    return lowest_amount_per_share
+
+
 def intervals(records: Iterable[Transaction]) \
         -> List[int]:
     """ Return a list of month intervals between a set of records.

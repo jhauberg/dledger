@@ -7,7 +7,8 @@ from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
 from dividendreport.dateutil import last_of_month
 from dividendreport.record import (
-    by_ticker, tickers, trailing, latest, amount_per_share,
+    by_ticker, tickers, trailing, latest,
+    amount_per_share, amount_per_share_low, amount_per_share_high,
     before, after, schedule, intervals
 )
 
@@ -244,47 +245,47 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
     approximate_records = []
 
     for ticker in tickers(records):
-        record = latest(by_ticker(records, ticker))
+        latest_record = latest(by_ticker(records, ticker))
 
-        if not record.position > 0:
+        future_position = latest_record.position
+
+        if not future_position > 0:
             # don't project closed positions
             continue
 
-        scheduled_months = entries[record]['schedule']
+        scheduled_months = entries[latest_record]['schedule']
         scheduled_records = []
 
-        future_date = record.date
+        future_date = latest_record.date
         # estimate timeframe by latest actual record
-        future_timeframe = projected_timeframe(record.date)
+        future_timeframe = projected_timeframe(future_date)
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
             future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
                                          timeframe=future_timeframe)
 
-            reference_records = trailing(by_ticker(records, record.ticker),
-                                         since=future_date, months=12)
+            future_amount = amount_per_share(latest_record) * future_position
+            future_amount_range = None
 
-            highest_amount_per_share = amount_per_share(record)
-            lowest_amount_per_share = highest_amount_per_share
-            reference_points = 0
-            for reference_record in reference_records:
-                reference_amount_per_share = amount_per_share(reference_record)
-                reference_points += 1
-                if reference_amount_per_share > highest_amount_per_share:
-                    highest_amount_per_share = reference_amount_per_share
-                if reference_amount_per_share < lowest_amount_per_share:
-                    lowest_amount_per_share = reference_amount_per_share
+            reference_records = list(trailing(by_ticker(records, ticker),
+                                              since=future_date, months=12))
 
-            mean_amount_per_share = (lowest_amount_per_share + highest_amount_per_share) / 2
+            if len(reference_records) > 0:
+                highest_amount_per_share = amount_per_share_high(reference_records)
+                lowest_amount_per_share = amount_per_share_low(reference_records)
 
-            reference_range = (lowest_amount_per_share * record.position,
-                               highest_amount_per_share * record.position)
+                mean_amount_per_share = (lowest_amount_per_share + highest_amount_per_share) / 2
 
-            scheduled_records.append(
-                FutureTransaction(future_date, record.ticker, record.position,
-                                  amount=mean_amount_per_share * record.position,
-                                  amount_range=reference_range if reference_points > 1 else None))
+                future_amount = mean_amount_per_share * future_position
+                future_amount_range = (lowest_amount_per_share * future_position,
+                                       highest_amount_per_share * future_position)
+
+            future_record = FutureTransaction(future_date, ticker, future_position,
+                                              amount=future_amount,
+                                              amount_range=future_amount_range)
+
+            scheduled_records.append(future_record)
 
         approximate_records.extend(scheduled_records)
 
@@ -314,11 +315,8 @@ def future_transactions(records: List[Transaction]) \
             continue
 
         future_amount = future_position * amount_per_share(record)
-
-        future_record = FutureTransaction(future_date,
-                                          record.ticker,
-                                          future_position,
-                                          future_amount)
+        future_record = FutureTransaction(future_date, record.ticker, future_position,
+                                          amount=future_amount)
 
         future_records.append(future_record)
 
