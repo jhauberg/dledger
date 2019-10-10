@@ -139,6 +139,13 @@ def test_intervals():
     assert intervals(records) == [12, 12]
 
     records = [
+        Transaction(date(2018, 5, 4), 'ABC', 1, 10),
+        Transaction(date(2018, 5, 14), 'ABC', 1, 10)
+    ]
+
+    assert intervals(records) == [12, 12]
+
+    records = [
         Transaction(date(2018, 3, 1), 'ABC', 1, 100),
         Transaction(date(2018, 8, 1), 'ABC', 1, 100),
         Transaction(date(2018, 8, 1), 'ABC', 1, 200)
