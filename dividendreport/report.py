@@ -21,14 +21,22 @@ def report_per_record(records: List[Transaction]) \
     for record in records:
         report = dict()
 
-        schedule = estimated_schedule(records, record)
+        report['amount_per_share'] = amount_per_share(record)
+
+        if record.is_special:
+            reports[record] = report
+
+            continue
+
+        comparable_records = list(
+            filter(lambda r: not r.is_special, by_ticker(records, record.ticker)))
+
+        schedule = estimated_schedule(comparable_records, record)
 
         report['frequency'] = schedule.frequency
         report['schedule'] = schedule.months
 
-        report['amount_per_share'] = amount_per_share(record)
-
-        previous_record = previous(by_ticker(records, record.ticker), record)
+        previous_record = previous(comparable_records, record)
 
         if previous_record is None:
             reports[record] = report
@@ -50,7 +58,7 @@ def report_per_record(records: List[Transaction]) \
             report['amount_per_share_change'] = change(report['amount_per_share'], previous_report['amount_per_share'])
             report['amount_per_share_pct_change'] = pct_change(report['amount_per_share'], previous_report['amount_per_share'])
 
-        comparable_record = previous_comparable(by_ticker(records, record.ticker), record)
+        comparable_record = previous_comparable(comparable_records, record)
 
         if comparable_record is None:
             reports[record] = report
