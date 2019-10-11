@@ -196,7 +196,7 @@ def expired_transactions(records: Iterable[Transaction],
     return before(records, since - timedelta(days=grace_period))
 
 
-def pending_transactions(records: List[Transaction],
+def pending_transactions(records: Iterable[Transaction],
                          *,
                          since: datetime.date = datetime.today().date()) \
         -> Iterable[Transaction]:
@@ -233,7 +233,7 @@ def scheduled_transactions(records: List[Transaction],
 
         scheduled.append(record)
 
-    pending = list(pending_transactions(records, since=since))
+    pending = list(pending_transactions(filter(lambda r: not r.is_special, records), since=since))
 
     for record in pending:
         duplicates = [r for r in scheduled

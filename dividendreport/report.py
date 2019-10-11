@@ -238,7 +238,7 @@ def generate(records: List[Transaction]) -> None:
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
     print('=========== impact of latest transaction')
     latest_record_not_in_future = latest(
-        filter(lambda r: r.date <= datetime.today().date(), records))
+        filter(lambda r: not r.is_special and r.date <= datetime.today().date(), records))
     records_except_latest = list(records)
     records_except_latest.remove(latest_record_not_in_future)
     reports_except_latest = report_per_record(records_except_latest)
@@ -254,7 +254,8 @@ def generate(records: List[Transaction]) -> None:
     print(f'weekly  (avg): {format_change(change(padi / 52, padi_except_latest / 52))}')
     print(f'daily   (avg): {format_change(change(padi / 365, padi_except_latest / 365))}')
     print(f'hourly  (avg): {format_change(change(padi / 8760, padi_except_latest / 8760))}')
-    previous_record = latest(by_ticker(records_except_latest, latest_record_not_in_future.ticker))
+    previous_record = latest(
+        filter(lambda r: not r.is_special, by_ticker(records_except_latest, latest_record_not_in_future.ticker)))
     if previous_record is not None:
         now_report = reports[latest_record_not_in_future]
         then_report = reports_except_latest[previous_record]
