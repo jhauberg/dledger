@@ -1,13 +1,13 @@
 from datetime import datetime, date
 
-from dividendreport.dateutil import previous_month, last_of_month
+from dividendreport.dateutil import previous_month
 from dividendreport.formatutil import change, pct_change, format_amount, format_change
 from dividendreport.ledger import Transaction
 from dividendreport.projection import (
-    frequency, scheduled_transactions, estimate_schedule, expired_transactions
+    scheduled_transactions, expired_transactions, estimated_schedule
 )
 from dividendreport.record import (
-    income, yearly, monthly, trailing, amount_per_share,
+    income, yearly, monthly, amount_per_share,
     tickers, by_ticker, previous, previous_comparable, latest
 )
 
@@ -21,19 +21,22 @@ def report_per_record(records: List[Transaction]) \
     for record in records:
         report = dict()
 
-        sample_records = trailing(by_ticker(records, record.ticker),
-                                  since=last_of_month(record.date), months=24)
-
-        sample_records = list(filter(lambda r: r.position > 0, sample_records))
-
-        approx_frequency = frequency(sample_records)
-
-        report['frequency'] = approx_frequency
-        report['schedule'] = estimate_schedule(sample_records, interval=approx_frequency)
-
         report['amount_per_share'] = amount_per_share(record)
 
-        previous_record = previous(by_ticker(records, record.ticker), record)
+        if record.is_special:
+            reports[record] = report
+
+            continue
+
+        comparable_records = list(
+            filter(lambda r: not r.is_special, by_ticker(records, record.ticker)))
+
+        schedule = estimated_schedule(comparable_records, record)
+
+        report['frequency'] = schedule.frequency
+        report['schedule'] = schedule.months
+
+        previous_record = previous(comparable_records, record)
 
         if previous_record is None:
             reports[record] = report
@@ -55,7 +58,7 @@ def report_per_record(records: List[Transaction]) \
             report['amount_per_share_change'] = change(report['amount_per_share'], previous_report['amount_per_share'])
             report['amount_per_share_pct_change'] = pct_change(report['amount_per_share'], previous_report['amount_per_share'])
 
-        comparable_record = previous_comparable(by_ticker(records, record.ticker), record)
+        comparable_record = previous_comparable(comparable_records, record)
 
         if comparable_record is None:
             reports[record] = report
@@ -103,6 +106,8 @@ def report_per_year(records: List[Transaction]) \
 
         report['per_month'] = report_per_month(records, year)
         report['income'] = yearly_income
+
+        report['transaction_count'] = len(list(yearly(records, year=year)))
 
         yearly_income_last_year = income(yearly(records, year=year - 1))
 
@@ -191,6 +196,11 @@ def generate(records: List[Transaction]) -> None:
     print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year})')
     transactions = list(filter(lambda r: r.amount > 0, records))
     print(f'{format_amount(income(records))} ({len(transactions)} transactions)')
+    print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year}, weighted)')
+    weights = report_by_weight(records)
+    weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
+    printer = pprint.PrettyPrinter(indent=2, width=100)
+    printer.pprint(weightings)
     print(f'=========== annual income ({earliest_record.date.year}-{latest_record.date.year})')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     printer.pprint(report_per_year(records))
@@ -214,7 +224,7 @@ def generate(records: List[Transaction]) -> None:
     printer.pprint(timeline)
     print('=========== projections')
     printer = pprint.PrettyPrinter(indent=2, width=60)
-    futures = scheduled_transactions(records, reports)
+    futures = scheduled_transactions(records)
     # exclude unrealized projections
     closed = tickers(expired_transactions(futures))
     futures = list(filter(lambda r: r.ticker not in closed, futures))
@@ -227,23 +237,27 @@ def generate(records: List[Transaction]) -> None:
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
     print('=========== impact of latest transaction')
-    records_except_latest = records[:-1]
+    latest_record_not_in_future = latest(
+        filter(lambda r: not r.is_special and r.date <= datetime.today().date(), records))
+    records_except_latest = list(records)
+    records_except_latest.remove(latest_record_not_in_future)
     reports_except_latest = report_per_record(records_except_latest)
-    futures_except_latest = scheduled_transactions(records_except_latest, reports_except_latest)
+    futures_except_latest = scheduled_transactions(records_except_latest)
     # exclude unrealized projections (except the latest transaction)
     closed_except_latest = tickers(expired_transactions(futures_except_latest))
-    futures_except_latest = list(filter(lambda r: r.ticker == records[-1].ticker or
+    futures_except_latest = list(filter(lambda r: r.ticker == latest_record_not_in_future.ticker or
                                                   r.ticker not in closed_except_latest, futures_except_latest))
     padi_except_latest = income(futures_except_latest)
-    printer.pprint(latest_record)
+    printer.pprint(latest_record_not_in_future)
     print(f'annual income: {format_change(change(padi, padi_except_latest))}')
     print(f'monthly (avg): {format_change(change(padi / 12, padi_except_latest / 12))}')
     print(f'weekly  (avg): {format_change(change(padi / 52, padi_except_latest / 52))}')
     print(f'daily   (avg): {format_change(change(padi / 365, padi_except_latest / 365))}')
     print(f'hourly  (avg): {format_change(change(padi / 8760, padi_except_latest / 8760))}')
-    previous_record = latest(by_ticker(records_except_latest, latest_record.ticker))
+    previous_record = latest(
+        filter(lambda r: not r.is_special, by_ticker(records_except_latest, latest_record_not_in_future.ticker)))
     if previous_record is not None:
-        now_report = reports[latest_record]
+        now_report = reports[latest_record_not_in_future]
         then_report = reports_except_latest[previous_record]
         then_frequency = then_report['frequency']
         then_schedule = then_report['schedule']

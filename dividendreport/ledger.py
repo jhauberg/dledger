@@ -22,12 +22,15 @@ class Transaction:
     ticker: str
     position: int
     amount: float
+    is_special: bool = False
 
     def __repr__(self):
+        suffix = '*' if self.is_special else ''
+
         return str((str(self.date),
                     self.ticker,
                     self.position,
-                    format_amount(self.amount)))
+                    f'{format_amount(self.amount)}{suffix}'))
 
 
 def transactions(path: str, provider: str) \
@@ -80,6 +83,11 @@ def read_native_transaction(record: List[str]) \
     position_value = str(record[2]).strip()
     amount_value = str(record[3]).strip()
 
+    special = amount_value.endswith('*')
+
+    if special:
+        amount_value = amount_value[:-1].strip()
+
     # parse date; expects format '2018-03-19'
     date = datetime.strptime(date_value, "%Y-%m-%d").date()
 
@@ -92,7 +100,7 @@ def read_native_transaction(record: List[str]) \
 
     locale.setlocale(locale.LC_NUMERIC, prev_locale)
 
-    return Transaction(date, ticker, position, amount)
+    return Transaction(date, ticker, position, amount, is_special=special)
 
 
 def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
@@ -167,15 +175,6 @@ def sanitize(records: List[Transaction], *, verbose: bool = False) \
     for record in negative_records:
         if verbose:
             print(f'Removing record; negative position or amount: {record}', file=sys.stderr)
-
-        records.remove(record)
-
-    future_records = filter(
-        lambda r: r.date > datetime.today().date(), records)
-
-    for record in future_records:
-        if verbose:
-            print(f'Removing record; set in future: {record}', file=sys.stderr)
 
         records.remove(record)
 

@@ -5,12 +5,19 @@ from statistics import mode, StatisticsError
 
 from dividendreport.ledger import Transaction
 from dividendreport.formatutil import format_amount
-from dividendreport.dateutil import last_of_month, in_months
+from dividendreport.dateutil import last_of_month
 from dividendreport.record import (
-    by_ticker, tickers, trailing, latest, before, schedule, intervals, amount_per_share
+    by_ticker, tickers, trailing, latest, monthly_schedule,
+    amount_per_share, amount_per_share_low, amount_per_share_high,
+    before, after, intervals, pruned
 )
 
 from typing import Tuple, Optional, List, Iterable
+
+EARLY = 0
+LATE = 1
+
+EARLY_LATE_THRESHOLD = 15  # early before or at this day of month, late after
 
 
 @dataclass(frozen=True)
@@ -34,8 +41,25 @@ class FutureTransaction(Transaction):
                     f' {format_amount(self.amount_range[1])}]'))
 
 
+@dataclass(frozen=True)
+class Schedule:
+    """ Represents a dividend payout schedule. """
+
+    frequency: int  # interval between payouts (in months)
+    months: List[int]
+
+
 def normalize_interval(interval: int) \
         -> int:
+    """ Return a normalized interval.
+
+    Normalized intervals:
+       1: Monthly   (every month)
+       3: Quarterly (every three months)
+       6: Biannual  (two times a year)
+      12: Annual    (once a year)
+    """
+
     if interval < 1 or interval > 12:
         raise ValueError('interval must be within 1-12-month range')
 
@@ -74,16 +98,25 @@ def frequency(records: Iterable[Transaction]) \
         return normalize_interval(average_interval)
 
 
-def estimate_schedule(records: List[Transaction],
-                      *, interval: int) \
+def estimated_monthly_schedule(records: List[Transaction],
+                               *, interval: int) \
         -> List[int]:
+    """ Return an estimated monthly schedule for a list of records.
+
+    For example, provided with records dated for months (3, 6) at an interval of 3 months,
+    the returned schedule would be (3, 6, 9, 12).
+    """
+
     if interval <= 0:
         raise ValueError('interval must be > 0')
 
-    approx_schedule = schedule(records)
-
+    # first determine months that we know for sure is to be scheduled
+    # e.g. those months where that actually has a recorded payout
+    approx_schedule = monthly_schedule(records)
+    # determine approximate number of payouts per year, given approximate interval between payouts
     payouts_per_year = int(12 / interval)
-
+    # then, going by the last recorded month, increment by interval until scheduled months
+    # and number of payouts match- looping back as needed
     if len(approx_schedule) < payouts_per_year:
         starting_month = approx_schedule[-1]
 
@@ -105,8 +138,20 @@ def estimate_schedule(records: List[Transaction],
 
 def next_scheduled_date(date: datetime.date, months: List[int]) \
         -> datetime.date:
+    """ Return the date that would follow a given date, going by a monthly schedule.
+
+    For example, given a date (2019, 6, 18) and a schedule of (3, 6, 9, 12),
+    the next scheduled month would be 9, resulting in date (2019, 9, 1).
+
+    Day is always set to first of month.
+    """
+
+    if len(months) > 12:
+        raise ValueError('schedule exceeds 12-month range')
+    if len(months) != len(set(months)):
+        raise ValueError('schedule must not contain duplicate months')
     if date.month not in months:
-        raise ValueError('schedule does not match')
+        raise ValueError('schedule does not match to given date')
 
     next_month_index = months.index(date.month) + 1
     next_year = date.year
@@ -122,6 +167,22 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
     return future_date
 
 
+def projected_timeframe(date: datetime.date) -> int:
+    """ Return the timeframe of a given date. """
+
+    return EARLY if date.day <= EARLY_LATE_THRESHOLD else LATE
+
+
+def projected_date(date: datetime.date, *, timeframe: int) -> datetime.date:
+    """ Return a date where day of month is set according to given timeframe. """
+
+    if timeframe == EARLY:
+        return date.replace(day=EARLY_LATE_THRESHOLD)
+    if timeframe == LATE:
+        return last_of_month(date)
+    return date
+
+
 def expired_transactions(records: Iterable[Transaction],
                          *,
                          since: datetime.date = datetime.today().date(),
@@ -135,18 +196,28 @@ def expired_transactions(records: Iterable[Transaction],
     return before(records, since - timedelta(days=grace_period))
 
 
-def scheduled_transactions(records: List[Transaction], entries: dict,
+def pending_transactions(records: Iterable[Transaction],
+                         *,
+                         since: datetime.date = datetime.today().date()) \
+        -> Iterable[Transaction]:
+    """ Return an iterator for records dated later than a date. """
+
+    return after(records, since)
+
+
+def scheduled_transactions(records: List[Transaction],
                            *,
-                           since: datetime.date = datetime.today().date(),
-                           grace_period: int = 3) \
+                           since: datetime.date = datetime.today().date()) \
         -> List[FutureTransaction]:
     # take a sample set of only latest 12 months
-    sample_records = list(trailing(records, since=since, months=12))
+    sample_records = trailing(records, since=since, months=12)
+    # don't include special dividends
+    sample_records = list(filter(lambda r: not r.is_special, sample_records))
 
     # project current records by 1 year into the future
     futures = future_transactions(sample_records)
     # project current records by 12-month schedule and frequency
-    estimates = estimated_transactions(sample_records, entries)
+    estimates = estimated_transactions(sample_records)
 
     scheduled = futures
 
@@ -154,59 +225,96 @@ def scheduled_transactions(records: List[Transaction], entries: dict,
     for record in estimates:
         duplicates = [r for r in scheduled
                       if r.ticker == record.ticker
-                      and r.date == record.date]
+                      and r.date.year == record.date.year
+                      and r.date.month == record.date.month]
 
         if len(duplicates) > 0:
             continue
 
         scheduled.append(record)
 
+    pending = list(pending_transactions(filter(lambda r: not r.is_special, records), since=since))
+
+    for record in pending:
+        duplicates = [r for r in scheduled
+                      if r.ticker == record.ticker
+                      and r.date.year == record.date.year
+                      and r.date.month == record.date.month]
+
+        if len(duplicates) == 0:
+            continue
+
+        for dupe in duplicates:
+            scheduled.remove(dupe)
+
     return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
-def estimated_transactions(records: List[Transaction], entries: dict) \
+def estimated_schedule(records: List[Transaction], record: Transaction) \
+        -> Schedule:
+    sample_records = trailing(by_ticker(records, record.ticker),
+                              since=last_of_month(record.date), months=24)
+
+    # exclude closed positions
+    sample_records = filter(lambda r: r.position > 0, sample_records)
+    # exclude same-date records for more accurate frequency/schedule estimation
+    sample_records = pruned(sample_records)
+    # determine approximate frequency (annual, biannual, quarterly or monthly)
+    approx_frequency = frequency(sample_records)
+
+    months = estimated_monthly_schedule(sample_records, interval=approx_frequency)
+
+    return Schedule(approx_frequency, months)
+
+
+def estimated_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
     approximate_records = []
 
     for ticker in tickers(records):
-        record = latest(by_ticker(records, ticker))
+        latest_record = latest(by_ticker(records, ticker))
 
-        if not record.position > 0:
+        future_position = latest_record.position
+
+        if not future_position > 0:
             # don't project closed positions
             continue
 
-        scheduled_months = entries[record]['schedule']
+        sched = estimated_schedule(records, latest_record)
+
+        scheduled_months = sched.months
         scheduled_records = []
 
-        future_date = record.date
+        future_date = latest_record.date
+        # estimate timeframe by latest actual record
+        future_timeframe = projected_timeframe(future_date)
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
-            future_date = last_of_month(next_scheduled_date(future_date, scheduled_months))
+            future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
+                                         timeframe=future_timeframe)
 
-            reference_records = trailing(by_ticker(records, record.ticker),
-                                         since=future_date, months=12)
+            future_amount = amount_per_share(latest_record) * future_position
+            future_amount_range = None
 
-            highest_amount_per_share = amount_per_share(record)
-            lowest_amount_per_share = highest_amount_per_share
-            reference_points = 0
-            for reference_record in reference_records:
-                reference_amount_per_share = amount_per_share(reference_record)
-                reference_points += 1
-                if reference_amount_per_share > highest_amount_per_share:
-                    highest_amount_per_share = reference_amount_per_share
-                if reference_amount_per_share < lowest_amount_per_share:
-                    lowest_amount_per_share = reference_amount_per_share
+            reference_records = list(trailing(by_ticker(records, ticker),
+                                              since=future_date, months=12))
 
-            mean_amount_per_share = (lowest_amount_per_share + highest_amount_per_share) / 2
+            if len(reference_records) > 0:
+                highest_amount_per_share = amount_per_share_high(reference_records)
+                lowest_amount_per_share = amount_per_share_low(reference_records)
 
-            reference_range = (lowest_amount_per_share * record.position,
-                               highest_amount_per_share * record.position)
+                mean_amount_per_share = (lowest_amount_per_share + highest_amount_per_share) / 2
 
-            scheduled_records.append(
-                FutureTransaction(future_date, record.ticker, record.position,
-                                  amount=mean_amount_per_share * record.position,
-                                  amount_range=reference_range if reference_points > 1 else None))
+                future_amount = mean_amount_per_share * future_position
+                future_amount_range = (lowest_amount_per_share * future_position,
+                                       highest_amount_per_share * future_position)
+
+            future_record = FutureTransaction(future_date, ticker, future_position,
+                                              amount=future_amount,
+                                              amount_range=future_amount_range)
+
+            scheduled_records.append(future_record)
 
         approximate_records.extend(scheduled_records)
 
@@ -215,7 +323,7 @@ def estimated_transactions(records: List[Transaction], entries: dict) \
 
 def future_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
-    """ Return a list of records dated 12 months into the future.
+    """ Return a matching list of records dated 12 months into the future.
 
     Each record has its amount adjusted to match the position of the latest matching record.
     """
@@ -223,7 +331,9 @@ def future_transactions(records: List[Transaction]) \
     future_records = []
 
     for record in records:
-        future_date = last_of_month(in_months(record.date, months=12))
+        # offset 12 months into the future by assuming an annual schedule
+        future_date = projected_date(next_scheduled_date(record.date, [record.date.month]),
+                                     timeframe=projected_timeframe(record.date))
 
         latest_record = latest(by_ticker(records, record.ticker))
 
@@ -234,11 +344,8 @@ def future_transactions(records: List[Transaction]) \
             continue
 
         future_amount = future_position * amount_per_share(record)
-
-        future_record = FutureTransaction(future_date,
-                                          record.ticker,
-                                          future_position,
-                                          future_amount)
+        future_record = FutureTransaction(future_date, record.ticker, future_position,
+                                          amount=future_amount)
 
         future_records.append(future_record)
 

@@ -8,9 +8,45 @@ from typing import Iterable, Optional, List
 
 def amount_per_share(record: Transaction) \
         -> float:
+    """ Return the fractional amount per share. """
+
     return (record.amount / record.position
             if record.amount > 0 and record.position > 0
             else 0)
+
+
+def amount_per_share_high(records: Iterable[Transaction]) \
+        -> float:
+    """ Return the highest amount per share over any period. """
+
+    highest_amount_per_share = -1
+
+    for record in records:
+        reference_amount_per_share = amount_per_share(record)
+        if highest_amount_per_share == -1 or reference_amount_per_share > highest_amount_per_share:
+            highest_amount_per_share = reference_amount_per_share
+
+    if highest_amount_per_share == -1:
+        raise TypeError('\'records\' must contain at least one transaction')
+
+    return highest_amount_per_share
+
+
+def amount_per_share_low(records: Iterable[Transaction]) \
+        -> float:
+    """ Return the lowest amount per share over any period. """
+
+    lowest_amount_per_share = -1
+
+    for record in records:
+        reference_amount_per_share = amount_per_share(record)
+        if lowest_amount_per_share == -1 or reference_amount_per_share < lowest_amount_per_share:
+            lowest_amount_per_share = reference_amount_per_share
+
+    if lowest_amount_per_share == -1:
+        raise TypeError('\'records\' must contain at least one transaction')
+
+    return lowest_amount_per_share
 
 
 def intervals(records: Iterable[Transaction]) \
@@ -56,7 +92,7 @@ def tickers(records: Iterable[Transaction]) \
     return list(set([record.ticker for record in records]))
 
 
-def schedule(records: Iterable[Transaction]) \
+def monthly_schedule(records: Iterable[Transaction]) \
         -> List[int]:
     """ Return a list of unique month components in a set of records. """
 
@@ -117,6 +153,14 @@ def income(records: Iterable[Transaction]) \
     return sum([record.amount for record in records])
 
 
+def after(records: Iterable[Transaction], date: datetime.date) \
+        -> Iterable[Transaction]:
+    """ Return an iterator for records dated later than a date. """
+
+    return filter(
+        lambda r: r.date > date, records)
+
+
 def before(records: Iterable[Transaction], date: datetime.date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated prior to a date. """
@@ -162,3 +206,19 @@ def previous_comparable(records: Iterable[Transaction], record: Transaction) \
                    r.date.year < record.date.year), records)
 
     return latest(comparables)
+
+
+def pruned(records: Iterable[Transaction]) \
+        -> List[Transaction]:
+    """ Return a list of transactions with only the first occurence of a transaction per date. """
+
+    collected_records = []
+    for record in records:
+        collected = False
+        for collected_record in collected_records:
+            if record.date == collected_record.date:
+                collected = True
+                break
+        if not collected:
+            collected_records.append(record)
+    return collected_records
