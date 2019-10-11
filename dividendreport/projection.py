@@ -210,7 +210,9 @@ def scheduled_transactions(records: List[Transaction],
                            since: datetime.date = datetime.today().date()) \
         -> List[FutureTransaction]:
     # take a sample set of only latest 12 months
-    sample_records = list(trailing(records, since=since, months=12))
+    sample_records = trailing(records, since=since, months=12)
+    # don't include special dividends
+    sample_records = list(filter(lambda r: not r.is_special, sample_records))
 
     # project current records by 1 year into the future
     futures = future_transactions(sample_records)
