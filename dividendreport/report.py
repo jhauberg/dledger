@@ -108,6 +108,7 @@ def report_per_year(records: List[Transaction]) \
         report['income'] = yearly_income
 
         report['transaction_count'] = len(list(yearly(records, year=year)))
+        report['ticker_count'] = len(list(tickers(yearly(records, year=year))))
 
         yearly_income_last_year = income(yearly(records, year=year - 1))
 
