@@ -191,6 +191,7 @@ def report_by_weight(records: List[Transaction]) \
 import sys
 import textwrap
 import locale
+import re
 
 from dividendreport.localeutil import trysetlocale
 
@@ -266,38 +267,19 @@ def print_annual_report(year: int, report: dict):
         income_yoy_pct_change = monthly_report.get('income_yoy_pct_change', 0)
 
         if income_change != 0:
-            # todo: note that the color stuff adds to the length of the string
-            #       so when determining column widths, these have an effect
-            #       - at the moement, it doesn't matter for these particular values
-            #         but might be a problem later; consider other ways to apply color
-            income_change_fmt = format_change(income_change)
-            income_change_fmt = colored(income_change_fmt,
-                                        COLOR_POSITIVE if income_change > 0 else
-                                        COLOR_NEGATIVE)
-
             columns.append((f' income (change)',
                             f'{format_change(income_pct_change)}',
-                            f'% [{income_change_fmt}]'))
+                            f'% [{format_change(income_change)}]'))
 
         if income_mom_change != 0:
-            income_mom_change_fmt = format_change(income_mom_change)
-            income_mom_change_fmt = colored(income_mom_change_fmt,
-                                            COLOR_POSITIVE if income_mom_change > 0 else
-                                            COLOR_NEGATIVE)
-
             columns.append((f' income (change/MoM)',
                             f'{format_change(income_mom_pct_change)}',
-                            f'% [{income_mom_change_fmt}]'))
+                            f'% [{format_change(income_mom_change)}]'))
 
         if income_yoy_change != 0:
-            income_yoy_change_fmt = format_change(income_yoy_change)
-            income_yoy_change_fmt = colored(income_yoy_change_fmt,
-                                            COLOR_POSITIVE if income_yoy_change > 0 else
-                                            COLOR_NEGATIVE)
-
             columns.append((f' income (change/YoY)',
                             f'{format_change(income_yoy_pct_change)}',
-                            f'% [{income_yoy_change_fmt}]'))
+                            f'% [{format_change(income_yoy_change)}]'))
 
     income = report['income']
     income_result = f'({format_amount(income)}'
@@ -328,6 +310,17 @@ def print_annual_report(year: int, report: dict):
 
         if additional is not None:
             line += f' {additional}'
+
+        pattern = r'[+-]\s[0-9.,]+'
+
+        def color_repl(m):
+            result = m.group(0)
+            if result.startswith('+'):
+                return COLOR_POSITIVE + result + COLOR_RESET
+            if result.startswith('-'):
+                return COLOR_NEGATIVE + result + COLOR_RESET
+
+        line = re.sub(pattern, color_repl, line)
 
         print(line)
 
