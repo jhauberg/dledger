@@ -11,7 +11,7 @@ from dividendreport.record import (
     tickers, by_ticker, previous, previous_comparable, latest
 )
 
-from typing import List
+from typing import List, Tuple, Optional
 
 
 def report_per_record(records: List[Transaction]) \
@@ -189,9 +189,15 @@ def report_by_weight(records: List[Transaction]) \
 
 
 import textwrap
+import locale
+
+from dividendreport.localeutil import trysetlocale
 
 
 def print_annual_report(year: int, report: dict):
+    prev_locale = locale.getlocale(locale.LC_NUMERIC)
+    trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
+
     print(f'ANNUAL INCOME REPORT ({year})')
     print()
 
@@ -207,10 +213,12 @@ def print_annual_report(year: int, report: dict):
 
     months = report['per_month']
 
+    columns: List[Tuple[str, Optional[str], Optional[str]]] = list()
+
     for month in months:
         datestamp = date(year=year, month=month, day=1).strftime('%Y-%m')
 
-        print(f'{datestamp}')
+        columns.append((f'{datestamp}', None, None))
 
         monthly_report = months[month]
 
@@ -220,14 +228,14 @@ def print_annual_report(year: int, report: dict):
             datestamp = transaction.date.strftime('%Y-%m-%d')
             ticker = transaction.ticker[:6].strip()
 
-            print(f'{datestamp} {ticker}')
+            columns.append((f'{datestamp} {ticker}', f'{format_amount(transaction.amount)}', None))
 
         income = monthly_report.get('income', 0)
         income_cumulative = monthly_report.get('income_cumulative', 0)
 
         if income > 0:
-            print(f' income')
-        print(f' income (cumulative)')
+            columns.append((f' income', format_amount(income), None))
+        columns.append((f' income (cumulative)', f'({format_amount(income_cumulative)}', None))
 
         income_change = monthly_report.get('income_change', 0)
         income_mom_change = monthly_report.get('income_mom_change', 0)
@@ -237,15 +245,47 @@ def print_annual_report(year: int, report: dict):
         income_yoy_pct_change = monthly_report.get('income_yoy_pct_change', 0)
 
         if income_change > 0:
-            print(f' income (change)')
+            columns.append((f' income (change)', f'{format_change(income_pct_change)}', f'% [{format_change(income_change)}]'))
         if income_mom_change > 0:
-            print(f' income (change/MoM)')
+            columns.append((f' income (change/MoM)', f'{format_change(income_mom_pct_change)}', f'% [{format_change(income_mom_change)}]'))
         if income_yoy_change > 0:
-            print(f' income (change/YoY)')
+            columns.append((f' income (change/YoY)', f'{format_change(income_yoy_pct_change)}', f'% [{format_change(income_yoy_change)}]'))
+
+    income = report['income']
+    income_result = f'({format_amount(income)}'
+    columns.append((f'', ''.ljust(len(income_result), '='), None))
+    columns.append((f'', income_result, None))
+
+    left_column_width = 0
+    right_column_width = 0
+    for left, right, additional in columns:
+        left_width = len(left)
+        if left_column_width < left_width:
+            left_column_width = left_width
+        if right is not None:
+            right_width = len(right)
+            if right_column_width < right_width:
+                right_column_width = right_width
+
+    for left, right, additional in columns:
+        line = left
+
+        if right is not None:
+            should_end_brace = right.startswith('(')
+
+            left = left.ljust(left_column_width + 4)
+            right = right.rjust(right_column_width) + (')' if should_end_brace else '')
+
+            line = left + right
+
+        if additional is not None:
+            line += f' {additional}'
+
+        print(line)
 
     print()
-    print(f' income (YTD)')
-    print()
+
+    locale.setlocale(locale.LC_NUMERIC, prev_locale)
 
 
 def generate(records: List[Transaction]) -> None:
@@ -253,7 +293,7 @@ def generate(records: List[Transaction]) -> None:
     for year in annual_reports.keys():
         annual_report = annual_reports[year]
         print_annual_report(year, annual_report)
-
+    return
     reports = report_per_record(records)
 
     import pprint
