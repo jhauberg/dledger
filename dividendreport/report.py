@@ -188,10 +188,31 @@ def report_by_weight(records: List[Transaction]) \
     return report
 
 
+import sys
 import textwrap
 import locale
 
 from dividendreport.localeutil import trysetlocale
+
+COLOR_POSITIVE = '\x1b[0;32m'
+COLOR_NEGATIVE = '\x1b[0;33m'  # red is 31m
+COLOR_RESET = '\x1b[0m'
+
+
+def supports_color(stream) -> bool:
+    """ Determine whether an output stream (e.g. stdout/stderr) supports displaying colored text.
+
+    A stream that is redirected to a file does not support color.
+    """
+
+    return stream.isatty() and hasattr(stream, 'isatty')
+
+
+def colored(text: str, color: str) -> str:
+    if not supports_color(sys.stdout):
+        return text
+
+    return f'{color}{text}{COLOR_RESET}'
 
 
 def print_annual_report(year: int, report: dict):
@@ -216,7 +237,7 @@ def print_annual_report(year: int, report: dict):
     columns: List[Tuple[str, Optional[str], Optional[str]]] = list()
 
     for month in months:
-        datestamp = date(year=year, month=month, day=1).strftime('%Y-%m')
+        datestamp = date(year=year, month=month, day=1).strftime('%Y-%m %B')
 
         columns.append((f'{datestamp}', None, None))
 
@@ -244,12 +265,39 @@ def print_annual_report(year: int, report: dict):
         income_mom_pct_change = monthly_report.get('income_mom_pct_change', 0)
         income_yoy_pct_change = monthly_report.get('income_yoy_pct_change', 0)
 
-        if income_change > 0:
-            columns.append((f' income (change)', f'{format_change(income_pct_change)}', f'% [{format_change(income_change)}]'))
-        if income_mom_change > 0:
-            columns.append((f' income (change/MoM)', f'{format_change(income_mom_pct_change)}', f'% [{format_change(income_mom_change)}]'))
-        if income_yoy_change > 0:
-            columns.append((f' income (change/YoY)', f'{format_change(income_yoy_pct_change)}', f'% [{format_change(income_yoy_change)}]'))
+        if income_change != 0:
+            # todo: note that the color stuff adds to the length of the string
+            #       so when determining column widths, these have an effect
+            #       - at the moement, it doesn't matter for these particular values
+            #         but might be a problem later; consider other ways to apply color
+            income_change_fmt = format_change(income_change)
+            income_change_fmt = colored(income_change_fmt,
+                                        COLOR_POSITIVE if income_change > 0 else
+                                        COLOR_NEGATIVE)
+
+            columns.append((f' income (change)',
+                            f'{format_change(income_pct_change)}',
+                            f'% [{income_change_fmt}]'))
+
+        if income_mom_change != 0:
+            income_mom_change_fmt = format_change(income_mom_change)
+            income_mom_change_fmt = colored(income_mom_change_fmt,
+                                            COLOR_POSITIVE if income_mom_change > 0 else
+                                            COLOR_NEGATIVE)
+
+            columns.append((f' income (change/MoM)',
+                            f'{format_change(income_mom_pct_change)}',
+                            f'% [{income_mom_change_fmt}]'))
+
+        if income_yoy_change != 0:
+            income_yoy_change_fmt = format_change(income_yoy_change)
+            income_yoy_change_fmt = colored(income_yoy_change_fmt,
+                                            COLOR_POSITIVE if income_yoy_change > 0 else
+                                            COLOR_NEGATIVE)
+
+            columns.append((f' income (change/YoY)',
+                            f'{format_change(income_yoy_pct_change)}',
+                            f'% [{income_yoy_change_fmt}]'))
 
     income = report['income']
     income_result = f'({format_amount(income)}'
