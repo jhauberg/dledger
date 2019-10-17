@@ -140,11 +140,8 @@ def report_per_month(records: List[Transaction], year: int) \
         monthly_income = income(transactions)
         cumulative_income += monthly_income
 
-        if monthly_income > 0:
-            report['income'] = monthly_income
-
-        if cumulative_income > 0:
-            report['income_cumulative'] = cumulative_income
+        report['income'] = monthly_income
+        report['income_cumulative'] = cumulative_income
 
         current_date = date(year=year, month=month, day=1)
         previous_date = previous_month(current_date)
