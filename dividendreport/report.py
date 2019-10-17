@@ -188,8 +188,74 @@ def report_by_weight(records: List[Transaction]) \
     return report
 
 
+import textwrap
+
+
+def print_annual_report(year: int, report: dict):
+    print(f'ANNUAL INCOME REPORT ({year})')
+    print()
+
+    transactions = report['transaction_count']
+    companies = report['ticker_count']
+
+    header = f'This report details income received through {transactions} dividend ' \
+             f'transactions by {companies} individual companies.'
+    header = textwrap.fill(header, width=80)
+
+    print(header)
+    print()
+
+    months = report['per_month']
+
+    for month in months:
+        datestamp = date(year=year, month=month, day=1).strftime('%Y-%m')
+
+        print(f'{datestamp}')
+
+        monthly_report = months[month]
+
+        transactions = monthly_report.get('transactions', list())
+
+        for transaction in transactions:
+            datestamp = transaction.date.strftime('%Y-%m-%d')
+            ticker = transaction.ticker[:6].strip()
+
+            print(f'{datestamp} {ticker}')
+
+        income = monthly_report.get('income', 0)
+        income_cumulative = monthly_report.get('income_cumulative', 0)
+
+        if income > 0:
+            print(f' income')
+        print(f' income (cumulative)')
+
+        income_change = monthly_report.get('income_change', 0)
+        income_mom_change = monthly_report.get('income_mom_change', 0)
+        income_yoy_change = monthly_report.get('income_yoy_change', 0)
+        income_pct_change = monthly_report.get('income_pct_change', 0)
+        income_mom_pct_change = monthly_report.get('income_mom_pct_change', 0)
+        income_yoy_pct_change = monthly_report.get('income_yoy_pct_change', 0)
+
+        if income_change > 0:
+            print(f' income (change)')
+        if income_mom_change > 0:
+            print(f' income (change/MoM)')
+        if income_yoy_change > 0:
+            print(f' income (change/YoY)')
+
+    print()
+    print(f' income (YTD)')
+    print()
+
+
 def generate(records: List[Transaction]) -> None:
+    annual_reports = report_per_year(records)
+    for year in annual_reports.keys():
+        annual_report = annual_reports[year]
+        print_annual_report(year, annual_report)
+
     reports = report_per_record(records)
+
     import pprint
     earliest_record = records[0]
     latest_record = records[-1]
