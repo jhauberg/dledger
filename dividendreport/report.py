@@ -219,7 +219,7 @@ def colored(text: str, color: str) -> str:
     return f'{color}{text}{COLOR_RESET}'
 
 
-def print_annual_report(year: int, report: dict):
+def print_annual_report(year: int, report: dict, transaction_reports: dict):
     prev_locale = locale.getlocale(locale.LC_NUMERIC)
     trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
 
@@ -254,9 +254,13 @@ def print_annual_report(year: int, report: dict):
             datestamp = transaction.date.strftime('%Y-%m-%d')
             ticker = transaction.ticker[:MAX_TICKER_LENGTH].strip()
 
+            transaction_report = transaction_reports[transaction]
+
+            transaction_amount_change = transaction_report.get('amount_change', 0)
+
             columns.append((f'{datestamp} {ticker}',
                             f'{format_amount(transaction.amount)}',
-                            f'@ {colored(format_amount(amount_per_share(transaction)), COLOR_ALTERNATIVE)}'))
+                            f'  [{format_change(transaction_amount_change)}]' if transaction_amount_change != 0 else None))
 
         income = monthly_report.get('income', 0)
         income_cumulative = monthly_report.get('income_cumulative', 0)
@@ -334,8 +338,6 @@ def print_annual_report(year: int, report: dict):
         if additional is not None:
             line += f' {additional}'
 
-        pattern = r'[+-]\s[0-9.,]+'
-
         def color_repl(m):
             result = m.group(0)
             if result.startswith('+'):
@@ -343,7 +345,7 @@ def print_annual_report(year: int, report: dict):
             if result.startswith('-'):
                 return colored(result, COLOR_NEGATIVE)
 
-        line = re.sub(pattern, color_repl, line)
+        line = re.sub(r'[+-]\s[0-9.,]+', color_repl, line)
 
         print(line)
 
@@ -353,12 +355,12 @@ def print_annual_report(year: int, report: dict):
 
 
 def generate(records: List[Transaction]) -> None:
+    reports = report_per_record(records)
     annual_reports = report_per_year(records)
     for year in annual_reports.keys():
         annual_report = annual_reports[year]
-        print_annual_report(year, annual_report)
+        print_annual_report(year, annual_report, transaction_reports=reports)
     return
-    reports = report_per_record(records)
 
     import pprint
     earliest_record = records[0]
