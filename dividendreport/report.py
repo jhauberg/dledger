@@ -316,9 +316,9 @@ def print_annual_report(year: int, report: dict):
         def color_repl(m):
             result = m.group(0)
             if result.startswith('+'):
-                return COLOR_POSITIVE + result + COLOR_RESET
+                return colored(result, COLOR_POSITIVE)
             if result.startswith('-'):
-                return COLOR_NEGATIVE + result + COLOR_RESET
+                return colored(result, COLOR_NEGATIVE)
 
         line = re.sub(pattern, color_repl, line)
 
