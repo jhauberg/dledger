@@ -114,8 +114,7 @@ def report_per_year(records: List[Transaction]) \
 
         if yearly_income_last_year > 0:
             report['income_change'] = change(yearly_income, yearly_income_last_year)
-            report['income_pct_change'] = pct_change(yearly_income,
-                                                     yearly_income_last_year)
+            report['income_pct_change'] = pct_change(yearly_income, yearly_income_last_year)
 
         reports[year] = report
 
@@ -238,7 +237,8 @@ def print_annual_report(year: int, report: dict):
     columns: List[Tuple[str, Optional[str], Optional[str]]] = list()
 
     for month in months:
-        datestamp = date(year=year, month=month, day=1).strftime('%Y-%m %B')
+        month_date = date(year=year, month=month, day=1)
+        datestamp = month_date.strftime('%Y-%m %B')
 
         columns.append((f'{datestamp}', None, None))
 
@@ -256,35 +256,50 @@ def print_annual_report(year: int, report: dict):
         income_cumulative = monthly_report.get('income_cumulative', 0)
 
         if income > 0:
-            columns.append((f' income', format_amount(income), None))
-        columns.append((f' income (cumulative)', f'({format_amount(income_cumulative)}', None))
+            columns.append((f' income', f'({format_amount(income)}', None))
 
-        income_change = monthly_report.get('income_change', 0)
-        income_mom_change = monthly_report.get('income_mom_change', 0)
-        income_yoy_change = monthly_report.get('income_yoy_change', 0)
-        income_pct_change = monthly_report.get('income_pct_change', 0)
-        income_mom_pct_change = monthly_report.get('income_mom_pct_change', 0)
-        income_yoy_pct_change = monthly_report.get('income_yoy_pct_change', 0)
+        prev_year = year - 1
+        prev_month = previous_month(month_date).month
 
-        if income_change != 0:
-            columns.append((f' income (change)',
-                            f'{format_change(income_pct_change)}',
-                            f'% [{format_change(income_change)}]'))
+        if income > 0:
+            income_change = monthly_report.get('income_change', 0)
+            income_pct_change = monthly_report.get('income_pct_change', 0)
+            income_mom_change = monthly_report.get('income_mom_change', 0)
+            income_mom_pct_change = monthly_report.get('income_mom_pct_change', 0)
 
-        if income_mom_change != 0:
-            columns.append((f' income (change/MoM)',
-                            f'{format_change(income_mom_pct_change)}',
-                            f'% [{format_change(income_mom_change)}]'))
+            if income_change != 0:
+                prev_datestamp = date(year=year, month=prev_month, day=1).strftime('%b\'%y')
+                curr_datestamp = date(year=year, month=month, day=1).strftime('%b\'%y')
+                columns.append((f'  {prev_datestamp}/{curr_datestamp}',
+                                f'{format_change(income_pct_change)}',
+                                f'% [{format_change(income_change)}]'))
 
-        if income_yoy_change != 0:
-            columns.append((f' income (change/YoY)',
-                            f'{format_change(income_yoy_pct_change)}',
-                            f'% [{format_change(income_yoy_change)}]'))
+            if income_mom_change != 0:
+                prev_datestamp = date(year=prev_year, month=month, day=1).strftime('%b\'%y')
+                curr_datestamp = date(year=year, month=month, day=1).strftime('%b\'%y')
+                columns.append((f'  {prev_datestamp}/{curr_datestamp}',
+                                f'{format_change(income_mom_pct_change)}',
+                                f'% [{format_change(income_mom_change)}]'))
+
+        columns.append((f' income (YTD)', f'({format_amount(income_cumulative)}', None))
+
+        if income > 0:
+            income_yoy_change = monthly_report.get('income_yoy_change', 0)
+            income_yoy_pct_change = monthly_report.get('income_yoy_pct_change', 0)
+
+            if income_yoy_change != 0:
+                prev_datestamp = date(year=prev_year, month=1, day=1).strftime('%b-')
+                prev_datestamp = prev_datestamp + date(year=prev_year, month=month, day=1).strftime('%b\'%y')
+                curr_datestamp = date(year=year, month=1, day=1).strftime('%b-')
+                curr_datestamp = curr_datestamp + date(year=year, month=month, day=1).strftime('%b\'%y')
+                columns.append((f'  {prev_datestamp}/{curr_datestamp}',
+                                f'{format_change(income_yoy_pct_change)}',
+                                f'% [{format_change(income_yoy_change)}]'))
 
     income = report['income']
-    income_result = f'({format_amount(income)}'
+    income_result = f'{format_amount(income)}'
     columns.append((f'', ''.ljust(len(income_result), '='), None))
-    columns.append((f'', income_result, None))
+    columns.append((f'', f'({income_result}', None))
 
     left_column_width = 0
     right_column_width = 0
