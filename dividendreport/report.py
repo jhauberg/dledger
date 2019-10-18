@@ -194,6 +194,7 @@ import re
 
 from dividendreport.localeutil import trysetlocale
 
+COLOR_BRIGHT_WHITE = '\x1b[1;37m'
 COLOR_POSITIVE = '\x1b[0;32m'
 COLOR_NEGATIVE = '\x1b[0;33m'  # red is 31m
 COLOR_RESET = '\x1b[0m'
@@ -322,6 +323,8 @@ def print_annual_report(year: int, report: dict):
             right = right.rjust(right_column_width) + (')' if should_end_brace else '')
 
             line = left + right
+        else:
+            line = colored(line, COLOR_BRIGHT_WHITE)
 
         if additional is not None:
             line += f' {additional}'
