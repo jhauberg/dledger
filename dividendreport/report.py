@@ -196,7 +196,8 @@ from dividendreport.localeutil import trysetlocale
 
 COLOR_BRIGHT_WHITE = '\x1b[1;37m'
 COLOR_POSITIVE = '\x1b[0;32m'
-COLOR_NEGATIVE = '\x1b[0;33m'  # red is 31m
+COLOR_NEGATIVE = '\x1b[0;33m'
+COLOR_ALTERNATIVE = '\x1b[0;36m'
 COLOR_RESET = '\x1b[0m'
 
 MAX_TICKER_LENGTH = 12
@@ -253,7 +254,9 @@ def print_annual_report(year: int, report: dict):
             datestamp = transaction.date.strftime('%Y-%m-%d')
             ticker = transaction.ticker[:MAX_TICKER_LENGTH].strip()
 
-            columns.append((f'{datestamp} {ticker}', f'{format_amount(transaction.amount)}', None))
+            columns.append((f'{datestamp} {ticker}',
+                            f'{format_amount(transaction.amount)}',
+                            f'@ {colored(format_amount(amount_per_share(transaction)), COLOR_ALTERNATIVE)}'))
 
         income = monthly_report.get('income', 0)
         income_cumulative = monthly_report.get('income_cumulative', 0)
