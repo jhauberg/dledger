@@ -7,7 +7,7 @@ from dividendreport.projection import (
     scheduled_transactions, expired_transactions, estimated_schedule
 )
 from dividendreport.record import (
-    income, yearly, monthly, amount_per_share,
+    income, yearly, monthly, amount_per_share, trailing,
     tickers, by_ticker, previous, previous_comparable, latest
 )
 
@@ -378,11 +378,13 @@ def generate(records: List[Transaction]) -> None:
     printer.pprint(futures)
     print('=========== forward 12-month income')
     padi = income(futures)
+    ttm_income = income(trailing(records, since=datetime.today().date(), months=12))
     print(f'annual income: {format_amount(padi)}')
     print(f'monthly (avg): {format_amount(padi / 12)}')
     print(f'weekly  (avg): {format_amount(padi / 52)}')
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
+    print(f'change  (TTM): {format_change(change(padi, ttm_income))}')
     print('=========== impact of latest transaction')
     latest_record_not_in_future = latest(
         filter(lambda r: not r.is_special and r.date <= datetime.today().date(), records))
