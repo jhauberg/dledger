@@ -240,10 +240,13 @@ def print_annual_report(year: int, report: dict, transaction_reports: dict):
 
     columns: List[Tuple[str, Optional[str], Optional[str]]] = list()
 
-    latest_year = datetime.today().date().year
-    latest_month = datetime.today().date().month
+    actual_year = datetime.today().date().year
+    actual_month = datetime.today().date().month
+
+    latest_month = actual_month
 
     for month in months:
+        latest_month = month
         month_date = date(year=year, month=month, day=1)
         datestamp = month_date.strftime('%Y-%m %B')
 
@@ -309,7 +312,7 @@ def print_annual_report(year: int, report: dict, transaction_reports: dict):
                                 f'{format_change(income_yoy_pct_change)}',
                                 f'% [{format_change(income_yoy_change)}]'))
 
-        if year == latest_year and month == latest_month:
+        if year == actual_year and month == actual_month:
             break
 
     income = months[latest_month]['income_cumulative']
