@@ -450,6 +450,12 @@ def generate(records: List[Transaction]) -> None:
             print(f'frequency: {then_frequency} => {now_frequency}')
         if now_schedule != then_schedule:
             print(f'schedule: {then_schedule} => {now_schedule}')
+    print('=========== forward annual dividend')
+    printer = pprint.PrettyPrinter(indent=2, width=70)
+    timeline = dict()
+    for ticker in tickers(futures):
+        timeline[ticker] = sum([amount_per_share(r) for r in by_ticker(futures, ticker)])
+    printer.pprint(timeline)
     print('=========== forward 12-month income (weighted)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     weights = report_by_weight(futures)
