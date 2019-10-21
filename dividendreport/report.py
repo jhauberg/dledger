@@ -418,7 +418,8 @@ def generate(records: List[Transaction]) -> None:
     print(f'weekly  (avg): {format_amount(padi / 52)}')
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
-    print(f'change  (TTM): {format_change(change(padi, ttm_income))}')
+    print(f'change  (TTM): {format_change(change(padi, ttm_income))} / {format_change(pct_change(padi, ttm_income))}%')
+
     print('=========== impact of latest transaction')
     latest_record_not_in_future = latest(
         filter(lambda r: not r.is_special and r.date <= datetime.today().date(), records))
