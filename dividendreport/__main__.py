@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 """
-usage: dividendreport generate <file>... [--provider=<name>] [--verbose] [--debug]
-       dividendreport export   <file>... [--provider=<name>] [--verbose]
-                                           [--output=<file>]  [--pretty]
+usage: dividendreport annual <file>... [--provider=<name>] [--verbose] [--debug]
+       dividendreport export <file>... [--provider=<name>] [--verbose]
+                                         [--output=<file>]  [--pretty]
 
 EXAMPLES:
   dividendreport generate records.csv older-records.csv
@@ -46,6 +46,7 @@ def main() -> None:
 
     is_verbose = args['--verbose']
     is_debug = args['--debug']
+    show_annual_report = args['annual']
     should_export = args['export']
     input_paths = args['<file>']
     provider = args['--provider']
@@ -75,7 +76,8 @@ def main() -> None:
 
         sys.exit(0)
 
-    generate(records, debug=is_debug)
+    if show_annual_report:
+        generate(records, debug=is_debug)
 
     sys.exit(0)
 
