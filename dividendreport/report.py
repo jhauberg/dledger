@@ -1,17 +1,29 @@
+import sys
+import textwrap
+import locale
+import re
+
 from datetime import datetime, date
 
 from dividendreport.dateutil import previous_month
 from dividendreport.formatutil import change, pct_change, format_amount, format_change
+from dividendreport.localeutil import trysetlocale
 from dividendreport.ledger import Transaction
 from dividendreport.projection import (
     scheduled_transactions, expired_transactions, estimated_schedule
 )
 from dividendreport.record import (
-    income, yearly, monthly, amount_per_share,
+    income, yearly, monthly, amount_per_share, trailing,
     tickers, by_ticker, previous, previous_comparable, latest
 )
 
-from typing import List
+from typing import List, Tuple, Optional
+
+COLOR_BRIGHT_WHITE = '\x1b[1;37m'
+COLOR_POSITIVE = '\x1b[0;32m'
+COLOR_NEGATIVE = '\x1b[0;33m'
+COLOR_ALTERNATIVE = '\x1b[0;36m'
+COLOR_RESET = '\x1b[0m'
 
 
 def report_per_record(records: List[Transaction]) \
@@ -114,8 +126,7 @@ def report_per_year(records: List[Transaction]) \
 
         if yearly_income_last_year > 0:
             report['income_change'] = change(yearly_income, yearly_income_last_year)
-            report['income_pct_change'] = pct_change(yearly_income,
-                                                     yearly_income_last_year)
+            report['income_pct_change'] = pct_change(yearly_income, yearly_income_last_year)
 
         reports[year] = report
 
@@ -140,11 +151,8 @@ def report_per_month(records: List[Transaction], year: int) \
         monthly_income = income(transactions)
         cumulative_income += monthly_income
 
-        if monthly_income > 0:
-            report['income'] = monthly_income
-
-        if cumulative_income > 0:
-            report['income_cumulative'] = cumulative_income
+        report['income'] = monthly_income
+        report['income_cumulative'] = cumulative_income
 
         current_date = date(year=year, month=month, day=1)
         previous_date = previous_month(current_date)
@@ -191,15 +199,178 @@ def report_by_weight(records: List[Transaction]) \
     return report
 
 
-def generate(records: List[Transaction]) -> None:
-    reports = report_per_record(records)
+def supports_color(stream) -> bool:
+    """ Determine whether an output stream (e.g. stdout/stderr) supports displaying colored text.
+
+    A stream that is redirected to a file does not support color.
+    """
+
+    return stream.isatty() and hasattr(stream, 'isatty')
+
+
+def colored(text: str, color: str) -> str:
+    if not supports_color(sys.stdout):
+        return text
+
+    return f'{color}{text}{COLOR_RESET}'
+
+
+def print_annual_report(year: int, report: dict, transaction_reports: dict):
+    max_ticker_length = 12
+
+    prev_locale = locale.getlocale(locale.LC_NUMERIC)
+    trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
+
+    print(f'ANNUAL INCOME REPORT ({year})')
+    print()
+
+    transactions = report['transaction_count']
+    companies = report['ticker_count']
+
+    header = f'This report details income received through {transactions} dividend ' \
+             f'transactions by {companies} individual companies.'
+    header = textwrap.fill(header, width=80)
+
+    print(header)
+    print()
+
+    months = report['per_month']
+
+    columns: List[Tuple[str, Optional[str], Optional[str]]] = list()
+
+    actual_year = datetime.today().date().year
+    actual_month = datetime.today().date().month
+
+    latest_month = actual_month
+
+    for month in months:
+        latest_month = month
+        month_date = date(year=year, month=month, day=1)
+        datestamp = month_date.strftime('%Y-%m %B')
+
+        columns.append((f'{datestamp}', None, None))
+
+        monthly_report = months[month]
+
+        transactions = monthly_report.get('transactions', list())
+
+        for transaction in transactions:
+            datestamp = transaction.date.strftime('%Y-%m-%d')
+            ticker = transaction.ticker[:max_ticker_length].strip()
+
+            transaction_report = transaction_reports[transaction]
+
+            transaction_amount_change = transaction_report.get('amount_change', 0)
+
+            columns.append((f'{datestamp} {ticker}',
+                            f'{format_amount(transaction.amount)}',
+                            f'  [{format_change(transaction_amount_change)}]' if transaction_amount_change != 0 else None))
+
+        income = monthly_report.get('income', 0)
+        income_cumulative = monthly_report.get('income_cumulative', 0)
+
+        if income > 0:
+            columns.append((f' income', f'({format_amount(income)}', None))
+
+        prev_year = year - 1
+        prev_month = previous_month(month_date).month
+
+        if income > 0:
+            income_change = monthly_report.get('income_change', 0)
+            income_pct_change = monthly_report.get('income_pct_change', 0)
+            income_mom_change = monthly_report.get('income_mom_change', 0)
+            income_mom_pct_change = monthly_report.get('income_mom_pct_change', 0)
+
+            if income_change != 0:
+                prev_datestamp = date(year=year, month=prev_month, day=1).strftime('%b\'%y')
+                curr_datestamp = date(year=year, month=month, day=1).strftime('%b\'%y')
+                columns.append((f'  {prev_datestamp}/{curr_datestamp}',
+                                f'{format_change(income_pct_change)}',
+                                f'% [{format_change(income_change)}]'))
+
+            if income_mom_change != 0:
+                prev_datestamp = date(year=prev_year, month=month, day=1).strftime('%b\'%y')
+                curr_datestamp = date(year=year, month=month, day=1).strftime('%b\'%y')
+                columns.append((f'  {prev_datestamp}/{curr_datestamp}',
+                                f'{format_change(income_mom_pct_change)}',
+                                f'% [{format_change(income_mom_change)}]'))
+
+        columns.append((f' income (YTD)', f'({format_amount(income_cumulative)}', None))
+
+        if income > 0:
+            income_yoy_change = monthly_report.get('income_yoy_change', 0)
+            income_yoy_pct_change = monthly_report.get('income_yoy_pct_change', 0)
+
+            if income_yoy_change != 0:
+                prev_datestamp = date(year=prev_year, month=1, day=1).strftime('%b-')
+                prev_datestamp = prev_datestamp + date(year=prev_year, month=month, day=1).strftime('%b\'%y')
+                curr_datestamp = date(year=year, month=1, day=1).strftime('%b-')
+                curr_datestamp = curr_datestamp + date(year=year, month=month, day=1).strftime('%b\'%y')
+                columns.append((f'  {prev_datestamp}/{curr_datestamp}',
+                                f'{format_change(income_yoy_pct_change)}',
+                                f'% [{format_change(income_yoy_change)}]'))
+
+        if year == actual_year and month == actual_month:
+            break
+
+    income = months[latest_month]['income_cumulative']
+    income_result = f'{format_amount(income)}'
+    columns.append((f'', ''.ljust(len(income_result), '='), None))
+    columns.append((f'', f'({income_result}', None))
+
+    left_column_width = 0
+    right_column_width = 0
+    for left, right, additional in columns:
+        left_width = len(left)
+        if left_column_width < left_width:
+            left_column_width = left_width
+        if right is not None:
+            right_width = len(right)
+            if right_column_width < right_width:
+                right_column_width = right_width
+
+    for left, right, additional in columns:
+        line = left
+
+        if right is not None:
+            should_end_brace = right.startswith('(')
+
+            left = left.ljust(left_column_width + 4)
+            right = right.rjust(right_column_width) + (')' if should_end_brace else '')
+
+            line = left + right
+        else:
+            line = colored(line, COLOR_BRIGHT_WHITE)
+
+        if additional is not None:
+            line += f' {additional}'
+
+        def color_repl(m):
+            result = m.group(0)
+            if result.startswith('+'):
+                return colored(result, COLOR_POSITIVE)
+            if result.startswith('-'):
+                return colored(result, COLOR_NEGATIVE)
+
+        line = re.sub(r'[+-]\s[0-9.,]+', color_repl, line)
+
+        print(line)
+
+    print()
+
+    locale.setlocale(locale.LC_NUMERIC, prev_locale)
+
+
+def print_debug_reports(records: List[Transaction]) -> None:
     import pprint
+    reports = report_per_record(records)
     earliest_record = records[0]
     latest_record = records[-1]
     print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year})')
     transactions = list(filter(lambda r: r.amount > 0, records))
     print(f'{format_amount(income(records))} ({len(transactions)} transactions)')
-    print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year}, weighted)')
+    print(
+        f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year}, weighted)')
     weights = report_by_weight(records)
     weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
     printer = pprint.PrettyPrinter(indent=2, width=100)
@@ -234,11 +405,15 @@ def generate(records: List[Transaction]) -> None:
     printer.pprint(futures)
     print('=========== forward 12-month income')
     padi = income(futures)
+    ttm_income = income(trailing(records, since=datetime.today().date(), months=12))
     print(f'annual income: {format_amount(padi)}')
     print(f'monthly (avg): {format_amount(padi / 12)}')
     print(f'weekly  (avg): {format_amount(padi / 52)}')
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
+    print(
+        f'change  (TTM): {format_change(change(padi, ttm_income))} / {format_change(pct_change(padi, ttm_income))}%')
+
     print('=========== impact of latest transaction')
     latest_record_not_in_future = latest(
         filter(lambda r: not r.is_special and r.date <= datetime.today().date(), records))
@@ -249,7 +424,8 @@ def generate(records: List[Transaction]) -> None:
     # exclude unrealized projections (except the latest transaction)
     closed_except_latest = tickers(expired_transactions(futures_except_latest))
     futures_except_latest = list(filter(lambda r: r.ticker == latest_record_not_in_future.ticker or
-                                                  r.ticker not in closed_except_latest, futures_except_latest))
+                                                  r.ticker not in closed_except_latest,
+                                        futures_except_latest))
     padi_except_latest = income(futures_except_latest)
     printer.pprint(latest_record_not_in_future)
     print(f'annual income: {format_change(change(padi, padi_except_latest))}')
@@ -258,7 +434,8 @@ def generate(records: List[Transaction]) -> None:
     print(f'daily   (avg): {format_change(change(padi / 365, padi_except_latest / 365))}')
     print(f'hourly  (avg): {format_change(change(padi / 8760, padi_except_latest / 8760))}')
     previous_record = latest(
-        filter(lambda r: not r.is_special, by_ticker(records_except_latest, latest_record_not_in_future.ticker)))
+        filter(lambda r: not r.is_special,
+               by_ticker(records_except_latest, latest_record_not_in_future.ticker)))
     if previous_record is not None:
         now_report = reports[latest_record_not_in_future]
         then_report = reports_except_latest[previous_record]
@@ -270,6 +447,12 @@ def generate(records: List[Transaction]) -> None:
             print(f'frequency: {then_frequency} => {now_frequency}')
         if now_schedule != then_schedule:
             print(f'schedule: {then_schedule} => {now_schedule}')
+    print('=========== forward annual dividend')
+    printer = pprint.PrettyPrinter(indent=2, width=70)
+    timeline = dict()
+    for ticker in tickers(futures):
+        timeline[ticker] = sum([amount_per_share(r) for r in by_ticker(futures, ticker)])
+    printer.pprint(timeline)
     print('=========== forward 12-month income (weighted)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     weights = report_by_weight(futures)
@@ -281,3 +464,16 @@ def generate(records: List[Transaction]) -> None:
     annuals = report_per_year(extended_records)
     annuals = {year: report for year, report in annuals.items() if year >= datetime.today().year}
     printer.pprint(annuals)
+
+
+def generate(records: List[Transaction], debug: bool = False) -> None:
+    if debug:
+        print_debug_reports(records)
+
+        return
+
+    reports = report_per_record(records)
+    annual_reports = report_per_year(records)
+    for year in annual_reports.keys():
+        annual_report = annual_reports[year]
+        print_annual_report(year, annual_report, transaction_reports=reports)
