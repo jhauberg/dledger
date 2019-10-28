@@ -6,10 +6,10 @@ usage: dividendreport annual <file>... [--provider=<name>] [--verbose] [--debug]
                                          [--output=<file>]  [--pretty]
 
 EXAMPLES:
-  dividendreport generate records.csv older-records.csv
-    Print a dividend report from a set of records.
-  dividendreport generate transactions-2018.csv transactions-2019.csv --provider=nordnet
-    Print a dividend report from a set of transactions (by a specific provider).
+  dividendreport annual records.csv older-records.csv
+    Print an annual income report from a set of native records.
+  dividendreport annual transactions-2018.csv transactions-2019.csv --provider=nordnet
+    Print an annual income report from a set of transactions (by a specific provider).
     See list of supported providers.
 
   dividendreport export transactions-2018.csv transactions-2019.csv --provider=nordnet
