@@ -246,7 +246,7 @@ def print_annual_report(year: int, report: dict, transaction_reports: dict):
     for month in months:
         latest_month = month
         month_date = date(year=year, month=month, day=1)
-        datestamp = month_date.strftime('%Y-%m %B')
+        datestamp = month_date.strftime('%Y %B')
 
         columns.append((f'{datestamp}', None, None))
 
