@@ -108,6 +108,7 @@ def report_per_year(records: List[Transaction]) \
         report['income'] = yearly_income
 
         report['transaction_count'] = len(list(yearly(records, year=year)))
+        report['ticker_count'] = len(list(tickers(yearly(records, year=year))))
 
         yearly_income_last_year = income(yearly(records, year=year - 1))
 
@@ -180,10 +181,12 @@ def report_by_weight(records: List[Transaction]) \
     report = dict()
     total_income = income(records)
     for ticker in tickers(records):
-        total_income_by_ticker = income(by_ticker(records, ticker))
+        filtered_records = list(by_ticker(records, ticker))
+        total_income_by_ticker = income(filtered_records)
         report[ticker] = {
             'income': total_income_by_ticker,
-            'weight_pct': total_income_by_ticker / total_income * 100
+            'weight_pct': total_income_by_ticker / total_income * 100,
+            'transaction_count': len(filtered_records)
         }
     return report
 
