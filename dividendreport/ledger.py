@@ -50,14 +50,21 @@ def transactions(path: str, provider: str) \
     return []
 
 
+def raise_parse_error(error: str, location: Tuple[str, int]) -> None:
+    raise ValueError(f'{location[0]}:{location[1]} {error}')
+
+
 def read_native_transactions(path: str, encoding: str = 'utf-8') \
         -> List[Transaction]:
     records = []
 
     with open(path, newline='', encoding=encoding) as file:
         reader = csv.reader(file, delimiter='\t')
+        line_number = 0
 
         for row in reader:
+            line_number += 1
+
             if len(row) == 0:
                 # skip empty rows
                 continue
@@ -68,20 +75,30 @@ def read_native_transactions(path: str, encoding: str = 'utf-8') \
                 # skip this row
                 continue
 
-            records.append(read_native_transaction(row))
+            records.append(
+                read_native_transaction(row, location=(path, line_number)))
 
     return records
 
 
-def read_native_transaction(record: List[str]) \
+def read_native_transaction(record: List[str], *, location: Tuple[str, int]) \
         -> Transaction:
     if len(record) < 4:
-        raise ValueError('Unexpected number of columns')
+        raise_parse_error(f'Unexpected number of columns ({len(record)} < 4)', location)
 
     date_value = str(record[0]).strip()
     ticker = str(record[1]).strip()
     position_value = str(record[2]).strip()
     amount_value = str(record[3]).strip()
+
+    if len(date_value) == 0:
+        raise_parse_error('Blank date field', location)
+    if len(ticker) == 0:
+        raise_parse_error('Blank ticker field', location)
+    if len(position_value) == 0:
+        raise_parse_error('Blank position field', location)
+    if len(amount_value) == 0:
+        raise_parse_error('Blank amount field', location)
 
     special = amount_value.endswith('*')
 
@@ -95,8 +112,19 @@ def read_native_transaction(record: List[str]) \
 
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
-    position = locale.atoi(position_value)
-    amount = locale.atof(amount_value)
+    position = None
+
+    try:
+        position = locale.atoi(position_value)
+    except ValueError:
+        raise_parse_error('Invalid position value', location)
+
+    amount = None
+
+    try:
+        amount = locale.atof(amount_value)
+    except ValueError:
+        raise_parse_error('Invalid amount value', location)
 
     locale.setlocale(locale.LC_NUMERIC, prev_locale)
 
@@ -112,7 +140,11 @@ def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
 
         next(reader)  # skip headers
 
+        line_number = 1
+
         for row in reader:
+            line_number += 1
+
             if len(row) == 0:
                 # skip empty rows
                 continue
@@ -127,15 +159,16 @@ def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
             if not any(t == transactional_type for t in required_transactional_types):
                 continue
 
-            records.append(read_nordnet_transaction(row))
+            records.append(
+                read_nordnet_transaction(row, location=(path, line_number)))
 
     return records
 
 
-def read_nordnet_transaction(record: List[str]) \
+def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
         -> Transaction:
     if len(record) < 12:
-        raise ValueError('Unexpected number of columns')
+        raise_parse_error(f'Unexpected number of columns ({len(record)} > 12)', location)
 
     date_value = str(record[3]).strip()
     ticker = str(record[5]).strip()
@@ -174,7 +207,7 @@ def sanitize(records: List[Transaction], *, verbose: bool = False) \
 
     for record in negative_records:
         if verbose:
-            print(f'Removing record; negative position or amount: {record}', file=sys.stderr)
+            print(f'Skipping record; negative position or amount: {record}', file=sys.stderr)
 
         records.remove(record)
 
