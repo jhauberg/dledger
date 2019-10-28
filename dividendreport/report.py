@@ -1,7 +1,13 @@
+import sys
+import textwrap
+import locale
+import re
+
 from datetime import datetime, date
 
 from dividendreport.dateutil import previous_month
 from dividendreport.formatutil import change, pct_change, format_amount, format_change
+from dividendreport.localeutil import trysetlocale
 from dividendreport.ledger import Transaction
 from dividendreport.projection import (
     scheduled_transactions, expired_transactions, estimated_schedule
@@ -12,6 +18,12 @@ from dividendreport.record import (
 )
 
 from typing import List, Tuple, Optional
+
+COLOR_BRIGHT_WHITE = '\x1b[1;37m'
+COLOR_POSITIVE = '\x1b[0;32m'
+COLOR_NEGATIVE = '\x1b[0;33m'
+COLOR_ALTERNATIVE = '\x1b[0;36m'
+COLOR_RESET = '\x1b[0m'
 
 
 def report_per_record(records: List[Transaction]) \
@@ -187,22 +199,6 @@ def report_by_weight(records: List[Transaction]) \
     return report
 
 
-import sys
-import textwrap
-import locale
-import re
-
-from dividendreport.localeutil import trysetlocale
-
-COLOR_BRIGHT_WHITE = '\x1b[1;37m'
-COLOR_POSITIVE = '\x1b[0;32m'
-COLOR_NEGATIVE = '\x1b[0;33m'
-COLOR_ALTERNATIVE = '\x1b[0;36m'
-COLOR_RESET = '\x1b[0m'
-
-MAX_TICKER_LENGTH = 12
-
-
 def supports_color(stream) -> bool:
     """ Determine whether an output stream (e.g. stdout/stderr) supports displaying colored text.
 
@@ -220,6 +216,8 @@ def colored(text: str, color: str) -> str:
 
 
 def print_annual_report(year: int, report: dict, transaction_reports: dict):
+    max_ticker_length = 12
+
     prev_locale = locale.getlocale(locale.LC_NUMERIC)
     trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
 
@@ -258,7 +256,7 @@ def print_annual_report(year: int, report: dict, transaction_reports: dict):
 
         for transaction in transactions:
             datestamp = transaction.date.strftime('%Y-%m-%d')
-            ticker = transaction.ticker[:MAX_TICKER_LENGTH].strip()
+            ticker = transaction.ticker[:max_ticker_length].strip()
 
             transaction_report = transaction_reports[transaction]
 
@@ -363,21 +361,16 @@ def print_annual_report(year: int, report: dict, transaction_reports: dict):
     locale.setlocale(locale.LC_NUMERIC, prev_locale)
 
 
-def generate(records: List[Transaction]) -> None:
-    reports = report_per_record(records)
-    annual_reports = report_per_year(records)
-    for year in annual_reports.keys():
-        annual_report = annual_reports[year]
-        print_annual_report(year, annual_report, transaction_reports=reports)
-    return
-
+def print_debug_reports(records: List[Transaction]) -> None:
     import pprint
+    reports = report_per_record(records)
     earliest_record = records[0]
     latest_record = records[-1]
     print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year})')
     transactions = list(filter(lambda r: r.amount > 0, records))
     print(f'{format_amount(income(records))} ({len(transactions)} transactions)')
-    print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year}, weighted)')
+    print(
+        f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year}, weighted)')
     weights = report_by_weight(records)
     weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
     printer = pprint.PrettyPrinter(indent=2, width=100)
@@ -418,7 +411,8 @@ def generate(records: List[Transaction]) -> None:
     print(f'weekly  (avg): {format_amount(padi / 52)}')
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
-    print(f'change  (TTM): {format_change(change(padi, ttm_income))} / {format_change(pct_change(padi, ttm_income))}%')
+    print(
+        f'change  (TTM): {format_change(change(padi, ttm_income))} / {format_change(pct_change(padi, ttm_income))}%')
 
     print('=========== impact of latest transaction')
     latest_record_not_in_future = latest(
@@ -430,7 +424,8 @@ def generate(records: List[Transaction]) -> None:
     # exclude unrealized projections (except the latest transaction)
     closed_except_latest = tickers(expired_transactions(futures_except_latest))
     futures_except_latest = list(filter(lambda r: r.ticker == latest_record_not_in_future.ticker or
-                                                  r.ticker not in closed_except_latest, futures_except_latest))
+                                                  r.ticker not in closed_except_latest,
+                                        futures_except_latest))
     padi_except_latest = income(futures_except_latest)
     printer.pprint(latest_record_not_in_future)
     print(f'annual income: {format_change(change(padi, padi_except_latest))}')
@@ -439,7 +434,8 @@ def generate(records: List[Transaction]) -> None:
     print(f'daily   (avg): {format_change(change(padi / 365, padi_except_latest / 365))}')
     print(f'hourly  (avg): {format_change(change(padi / 8760, padi_except_latest / 8760))}')
     previous_record = latest(
-        filter(lambda r: not r.is_special, by_ticker(records_except_latest, latest_record_not_in_future.ticker)))
+        filter(lambda r: not r.is_special,
+               by_ticker(records_except_latest, latest_record_not_in_future.ticker)))
     if previous_record is not None:
         now_report = reports[latest_record_not_in_future]
         then_report = reports_except_latest[previous_record]
@@ -468,3 +464,16 @@ def generate(records: List[Transaction]) -> None:
     annuals = report_per_year(extended_records)
     annuals = {year: report for year, report in annuals.items() if year >= datetime.today().year}
     printer.pprint(annuals)
+
+
+def generate(records: List[Transaction], debug: bool = False) -> None:
+    if debug:
+        print_debug_reports(records)
+
+        return
+
+    reports = report_per_record(records)
+    annual_reports = report_per_year(records)
+    for year in annual_reports.keys():
+        annual_report = annual_reports[year]
+        print_annual_report(year, annual_report, transaction_reports=reports)

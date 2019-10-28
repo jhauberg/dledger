@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
 
 """
-usage: dividendreport generate <file>... [--provider=<name>] [--verbose]
+usage: dividendreport generate <file>... [--provider=<name>] [--verbose] [--debug]
        dividendreport export   <file>... [--provider=<name>] [--verbose]
                                            [--output=<file>]  [--pretty]
 
 EXAMPLES:
   dividendreport generate records.csv older-records.csv
-    Generate a report from a set of native records.
+    Print a dividend report from a set of records.
   dividendreport generate transactions-2018.csv transactions-2019.csv --provider=nordnet
-    Generate a report from a set of transactions by a specific provider.
+    Print a dividend report from a set of transactions (by a specific provider).
     See list of supported providers.
 
   dividendreport export transactions-2018.csv transactions-2019.csv --provider=nordnet
-    Export a set of transactions by a specific provider as native records.
+    Export a set of transactions (by a specific provider) as native records.
 
 OPTIONS
      --provider=<name>  Specify type of transaction data [default: native]
   -o --output=<file>    Specify filename of exported records [default: export.tsv]
      --pretty           Format exported records for humans
      --verbose          Show diagnostic messages
+     --debug            Print debug reports (overrides default report)
   -h --help             Show program help
   -v --version          Show program version
 
@@ -44,6 +45,7 @@ def main() -> None:
     args = docopt(__doc__, version='dividendreport ' + __version__.__version__)
 
     is_verbose = args['--verbose']
+    is_debug = args['--debug']
     should_export = args['export']
     input_paths = args['<file>']
     provider = args['--provider']
@@ -73,7 +75,7 @@ def main() -> None:
 
         sys.exit(0)
 
-    generate(records)
+    generate(records, debug=is_debug)
 
     sys.exit(0)
 
