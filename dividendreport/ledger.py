@@ -87,29 +87,37 @@ def read_native_transaction(record: List[str], *, location: Tuple[str, int]) \
         raise_parse_error(f'Unexpected number of columns ({len(record)} < 4)', location)
 
     date_value = str(record[0]).strip()
-    ticker = str(record[1]).strip()
+    ticker_value = str(record[1]).strip()
     position_value = str(record[2]).strip()
     amount_value = str(record[3]).strip()
 
     if len(date_value) == 0:
         raise_parse_error('Blank date field', location)
-    if len(ticker) == 0:
+    if len(ticker_value) == 0:
         raise_parse_error('Blank ticker field', location)
     if len(position_value) == 0:
         raise_parse_error('Blank position field', location)
     if len(amount_value) == 0:
         raise_parse_error('Blank amount field', location)
 
+    ticker = ticker_value
+
     special = amount_value.endswith('*')
 
     if special:
         amount_value = amount_value[:-1].strip()
 
-    # parse date; expects format '2018-03-19'
-    date = datetime.strptime(date_value, "%Y-%m-%d").date()
+    date = None
+
+    try:
+        # parse date; expects format '2018-03-19'
+        date = datetime.strptime(date_value, "%Y-%m-%d").date()
+    except ValueError:
+        raise_parse_error(f'Invalid date format (\'{date_value}\')', location)
 
     prev_locale = locale.getlocale(locale.LC_NUMERIC)
 
+    # parse numeric values in US locale
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
     position = None
@@ -117,14 +125,14 @@ def read_native_transaction(record: List[str], *, location: Tuple[str, int]) \
     try:
         position = locale.atoi(position_value)
     except ValueError:
-        raise_parse_error('Invalid position value', location)
+        raise_parse_error(f'Invalid position (\'{position_value}\')', location)
 
     amount = None
 
     try:
         amount = locale.atof(amount_value)
     except ValueError:
-        raise_parse_error('Invalid amount value', location)
+        raise_parse_error(f'Invalid amount (\'{amount_value}\')', location)
 
     locale.setlocale(locale.LC_NUMERIC, prev_locale)
 
