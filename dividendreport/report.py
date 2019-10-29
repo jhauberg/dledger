@@ -259,11 +259,18 @@ def build_annual_report(year: int, report: dict, transaction_reports: dict) \
 
             transaction_report = transaction_reports[transaction]
 
+            transaction_position_change = transaction_report.get('position_change', 0)
             transaction_amount_change = transaction_report.get('amount_change', 0)
+
+            change_column = None
+
+            if transaction_position_change != 0 or transaction_amount_change != 0:
+                change_column = '^' if transaction_position_change > 0 else ' '
+                change_column += f' [{format_change(transaction_amount_change)}]' if transaction_amount_change != 0 else ''
 
             columns.append((f'{datestamp} {ticker}',
                             f'{format_amount(transaction.amount)}',
-                            f'  [{format_change(transaction_amount_change)}]' if transaction_amount_change != 0 else None))
+                            change_column))
 
         income = monthly_report.get('income', 0)
         income_cumulative = monthly_report.get('income_cumulative', 0)
