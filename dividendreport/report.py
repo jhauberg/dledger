@@ -233,9 +233,6 @@ def build_annual_report(year: int, report: dict, transaction_reports: dict) \
         -> List[Tuple[str, Optional[str], Optional[str]]]:
     max_ticker_length = 12
 
-    prev_locale = locale.getlocale(locale.LC_NUMERIC)
-    trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
-
     months = report['per_month']
 
     columns: List[Tuple[str, Optional[str], Optional[str]]] = list()
@@ -320,8 +317,6 @@ def build_annual_report(year: int, report: dict, transaction_reports: dict) \
     columns.append((f'', ''.ljust(len(income_result), '='), None))
     columns.append((f'', f'({income_result}', None))
 
-    locale.setlocale(locale.LC_NUMERIC, prev_locale)
-
     return columns
 
 
@@ -333,8 +328,7 @@ def print_debug_reports(records: List[Transaction]) -> None:
     print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year})')
     transactions = list(filter(lambda r: r.amount > 0, records))
     print(f'{format_amount(income(records))} ({len(transactions)} transactions)')
-    print(
-        f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year}, weighted)')
+    print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year}, weighted)')
     weights = report_by_weight(records)
     weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
     printer = pprint.PrettyPrinter(indent=2, width=100)
@@ -375,9 +369,7 @@ def print_debug_reports(records: List[Transaction]) -> None:
     print(f'weekly  (avg): {format_amount(padi / 52)}')
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
-    print(
-        f'change  (TTM): {format_change(change(padi, ttm_income))} / {format_change(pct_change(padi, ttm_income))}%')
-
+    print(f'change  (TTM): {format_change(change(padi, ttm_income))} / {format_change(pct_change(padi, ttm_income))}%')
     print('=========== impact of latest transaction')
     latest_record_not_in_future = latest(
         filter(lambda r: not r.is_special and r.date <= datetime.today().date(), records))
@@ -431,6 +423,13 @@ def print_debug_reports(records: List[Transaction]) -> None:
 
 
 def generate(records: List[Transaction], debug: bool = False) -> None:
+    # default to use system locale
+    # note that this may depend on the current shell/environment and might not
+    # give the result that the user expects but is the "correct" approach
+    locale.setlocale(locale.LC_ALL, '')
+    # except for time/dates where we explicitly want US locale
+    trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
+
     if debug:
         print_debug_reports(records)
 
