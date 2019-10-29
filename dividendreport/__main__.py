@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 
 """
-usage: dividendreport annual <file>... [--provider=<name>] [--verbose] [--debug]
+usage: dividendreport annual <file>... [--provider=<name>] [--verbose]
+                                                             [--debug]
        dividendreport export <file>... [--provider=<name>] [--verbose]
                                          [--output=<file>]  [--pretty]
-
-EXAMPLES:
-  dividendreport annual records.csv older-records.csv
-    Print an annual income report from a set of native records.
-  dividendreport annual transactions-2018.csv transactions-2019.csv --provider=nordnet
-    Print an annual income report from a set of transactions (by a specific provider).
-    See list of supported providers.
-
-  dividendreport export transactions-2018.csv transactions-2019.csv --provider=nordnet
-    Export a set of transactions (by a specific provider) as native records.
 
 OPTIONS
      --provider=<name>  Specify type of transaction data [default: native]
@@ -45,7 +36,6 @@ def main() -> None:
     args = docopt(__doc__, version='dividendreport ' + __version__.__version__)
 
     is_verbose = args['--verbose']
-    is_debug = args['--debug']
     show_annual_report = args['annual']
     should_export = args['export']
     input_paths = args['<file>']
@@ -77,7 +67,7 @@ def main() -> None:
         sys.exit(0)
 
     if show_annual_report:
-        generate(records, debug=is_debug)
+        generate(records, debug=args['--debug'])
 
     sys.exit(0)
 
