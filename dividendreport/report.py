@@ -1,5 +1,3 @@
-import sys
-import textwrap
 import locale
 import re
 
@@ -16,14 +14,12 @@ from dividendreport.record import (
     income, yearly, monthly, amount_per_share, trailing,
     tickers, by_ticker, previous, previous_comparable, latest
 )
+from dividendreport.printutil import (
+    colored,
+    COLOR_BRIGHT_WHITE, COLOR_NEGATIVE, COLOR_POSITIVE
+)
 
 from typing import List, Tuple, Optional
-
-COLOR_BRIGHT_WHITE = '\x1b[1;37m'
-COLOR_POSITIVE = '\x1b[0;32m'
-COLOR_NEGATIVE = '\x1b[0;33m'
-COLOR_ALTERNATIVE = '\x1b[0;36m'
-COLOR_RESET = '\x1b[0m'
 
 
 def report_per_record(records: List[Transaction]) \
@@ -197,22 +193,6 @@ def report_by_weight(records: List[Transaction]) \
             'transaction_count': len(filtered_records)
         }
     return report
-
-
-def supports_color(stream) -> bool:
-    """ Determine whether an output stream (e.g. stdout/stderr) supports displaying colored text.
-
-    A stream that is redirected to a file does not support color.
-    """
-
-    return stream.isatty() and hasattr(stream, 'isatty')
-
-
-def colored(text: str, color: str) -> str:
-    if not supports_color(sys.stdout):
-        return text
-
-    return f'{color}{text}{COLOR_RESET}'
 
 
 def print_annual_report(columns: List[Tuple[str, Optional[str], Optional[str]]],
