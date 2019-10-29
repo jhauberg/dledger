@@ -215,24 +215,46 @@ def colored(text: str, color: str) -> str:
     return f'{color}{text}{COLOR_RESET}'
 
 
-def print_annual_report(year: int, report: dict, transaction_reports: dict):
+def print_annual_report(columns: List[Tuple[str, Optional[str], Optional[str]]],
+                        left_column_width: int,
+                        right_column_width: int) \
+        -> None:
+    for left, right, additional in columns:
+        line = left
+
+        if right is not None:
+            should_end_brace = right.startswith('(')
+
+            left = left.ljust(left_column_width + 4)
+            right = right.rjust(right_column_width) + (')' if should_end_brace else '')
+
+            line = left + right
+        else:
+            line = colored(line, COLOR_BRIGHT_WHITE)
+
+        if additional is not None:
+            line += f' {additional}'
+
+        def color_repl(m):
+            result = m.group(0)
+            if result.startswith('+'):
+                return colored(result, COLOR_POSITIVE)
+            if result.startswith('-'):
+                return colored(result, COLOR_NEGATIVE)
+
+        line = re.sub(r'[+-]\s[0-9.,]+', color_repl, line)
+
+        print(line)
+
+    print()
+
+
+def build_annual_report(year: int, report: dict, transaction_reports: dict) \
+        -> List[Tuple[str, Optional[str], Optional[str]]]:
     max_ticker_length = 12
 
     prev_locale = locale.getlocale(locale.LC_NUMERIC)
     trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
-
-    print(f'ANNUAL INCOME REPORT ({year})')
-    print()
-
-    transactions = report['transaction_count']
-    companies = report['ticker_count']
-
-    header = f'This report details income received through {transactions} dividend ' \
-             f'transactions by {companies} individual companies.'
-    header = textwrap.fill(header, width=80)
-
-    print(header)
-    print()
 
     months = report['per_month']
 
@@ -318,47 +340,9 @@ def print_annual_report(year: int, report: dict, transaction_reports: dict):
     columns.append((f'', ''.ljust(len(income_result), '='), None))
     columns.append((f'', f'({income_result}', None))
 
-    left_column_width = 0
-    right_column_width = 0
-    for left, right, additional in columns:
-        left_width = len(left)
-        if left_column_width < left_width:
-            left_column_width = left_width
-        if right is not None:
-            right_width = len(right)
-            if right_column_width < right_width:
-                right_column_width = right_width
-
-    for left, right, additional in columns:
-        line = left
-
-        if right is not None:
-            should_end_brace = right.startswith('(')
-
-            left = left.ljust(left_column_width + 4)
-            right = right.rjust(right_column_width) + (')' if should_end_brace else '')
-
-            line = left + right
-        else:
-            line = colored(line, COLOR_BRIGHT_WHITE)
-
-        if additional is not None:
-            line += f' {additional}'
-
-        def color_repl(m):
-            result = m.group(0)
-            if result.startswith('+'):
-                return colored(result, COLOR_POSITIVE)
-            if result.startswith('-'):
-                return colored(result, COLOR_NEGATIVE)
-
-        line = re.sub(r'[+-]\s[0-9.,]+', color_repl, line)
-
-        print(line)
-
-    print()
-
     locale.setlocale(locale.LC_NUMERIC, prev_locale)
+
+    return columns
 
 
 def print_debug_reports(records: List[Transaction]) -> None:
@@ -474,6 +458,25 @@ def generate(records: List[Transaction], debug: bool = False) -> None:
 
     reports = report_per_record(records)
     annual_reports = report_per_year(records)
+
+    listings = list()
+
     for year in annual_reports.keys():
         annual_report = annual_reports[year]
-        print_annual_report(year, annual_report, transaction_reports=reports)
+        columns = build_annual_report(year, annual_report, transaction_reports=reports)
+        listings.append(columns)
+
+    left_column_width = 0
+    right_column_width = 0
+    for listing in listings:
+        for left, right, additional in listing:
+            left_width = len(left)
+            if left_column_width < left_width:
+                left_column_width = left_width
+            if right is not None:
+                right_width = len(right)
+                if right_column_width < right_width:
+                    right_column_width = right_width
+
+    for listing in listings:
+        print_annual_report(listing, left_column_width, right_column_width)
