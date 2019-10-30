@@ -3,10 +3,12 @@ import re
 
 from datetime import datetime, date
 
-from dividendreport.dateutil import previous_month
-from dividendreport.formatutil import change, pct_change, format_amount, format_change
 from dividendreport.localeutil import trysetlocale
 from dividendreport.ledger import Transaction
+from dividendreport.dateutil import previous_month
+from dividendreport.formatutil import (
+    change, pct_change, format_amount, format_change
+)
 from dividendreport.projection import (
     scheduled_transactions, expired_transactions, estimated_schedule
 )
@@ -22,7 +24,7 @@ from dividendreport.printutil import (
 from typing import List, Tuple, Optional
 
 
-def report_per_record(records: List[Transaction]) \
+def report_by_record(records: List[Transaction]) \
         -> dict:
     reports = dict()
 
@@ -94,7 +96,7 @@ def report_per_record(records: List[Transaction]) \
     return reports
 
 
-def report_per_year(records: List[Transaction]) \
+def report_by_year(records: List[Transaction]) \
         -> dict:
     reports = dict()
 
@@ -112,7 +114,7 @@ def report_per_year(records: List[Transaction]) \
 
         report = dict()
 
-        report['per_month'] = report_per_month(records, year)
+        report['per_month'] = report_by_month(records, year)
         report['income'] = yearly_income
 
         report['transaction_count'] = len(list(yearly(records, year=year)))
@@ -129,7 +131,7 @@ def report_per_year(records: List[Transaction]) \
     return reports
 
 
-def report_per_month(records: List[Transaction], year: int) \
+def report_by_month(records: List[Transaction], year: int) \
         -> dict:
     reports = dict()
 
@@ -329,7 +331,7 @@ def build_annual_report(year: int, report: dict, transaction_reports: dict) \
 
 def print_debug_reports(records: List[Transaction]) -> None:
     import pprint
-    reports = report_per_record(records)
+    reports = report_by_record(records)
     earliest_record = records[0]
     latest_record = records[-1]
     print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year})')
@@ -342,7 +344,7 @@ def print_debug_reports(records: List[Transaction]) -> None:
     printer.pprint(weightings)
     print(f'=========== annual income ({earliest_record.date.year}-{latest_record.date.year})')
     printer = pprint.PrettyPrinter(indent=2, width=100)
-    printer.pprint(report_per_year(records))
+    printer.pprint(report_by_year(records))
     current_year = datetime.today().year
     print(f'=========== annual income ({current_year}) (weighted)')
     weights = report_by_weight(list(yearly(records, year=current_year)))
@@ -382,7 +384,7 @@ def print_debug_reports(records: List[Transaction]) -> None:
         filter(lambda r: not r.is_special and r.date <= datetime.today().date(), records))
     records_except_latest = list(records)
     records_except_latest.remove(latest_record_not_in_future)
-    reports_except_latest = report_per_record(records_except_latest)
+    reports_except_latest = report_by_record(records_except_latest)
     futures_except_latest = scheduled_transactions(records_except_latest)
     # exclude unrealized projections (except the latest transaction)
     closed_except_latest = tickers(expired_transactions(futures_except_latest))
@@ -424,7 +426,7 @@ def print_debug_reports(records: List[Transaction]) -> None:
     print('=========== annual income (projected)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     extended_records = records + futures
-    annuals = report_per_year(extended_records)
+    annuals = report_by_year(extended_records)
     annuals = {year: report for year, report in annuals.items() if year >= datetime.today().year}
     printer.pprint(annuals)
 
@@ -442,8 +444,8 @@ def generate(records: List[Transaction], debug: bool = False) -> None:
 
         return
 
-    reports = report_per_record(records)
-    annual_reports = report_per_year(records)
+    reports = report_by_record(records)
+    annual_reports = report_by_year(records)
 
     listings = list()
 
