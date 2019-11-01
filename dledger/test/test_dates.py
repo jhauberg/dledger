@@ -1,6 +1,6 @@
 from datetime import date
 
-from dividendreport.dateutil import (
+from dledger.dateutil import (
     months_between, in_months,
     next_month, previous_month, last_of_month,
 )

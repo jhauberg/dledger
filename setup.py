@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-https://github.com/jhauberg/dividendreport
+https://github.com/jhauberg/dledger
 
 Copyright 2019 Jacob Hauberg Hansen.
 License: MIT (see LICENSE)
@@ -12,13 +12,13 @@ import re
 
 from setuptools import setup, find_packages
 
-from dividendreport import VERSION_PATTERN
+from dledger import VERSION_PATTERN
 
 
 def determine_version_or_exit() -> str:
     """ Determine version identifier or exit with non-zero status. """
 
-    with open('dividendreport/__version__.py') as file:
+    with open('dledger/__version__.py') as file:
         version_contents = file.read()
         version_match = re.search(VERSION_PATTERN, version_contents, re.M)
 
@@ -31,18 +31,18 @@ def determine_version_or_exit() -> str:
 
 
 if sys.version_info < (3, 7):
-    sys.exit('Python 3.7+ required to use dividendreport')
+    sys.exit('Python 3.7+ required to run dledger')
 
 VERSION = determine_version_or_exit()
 
 setup(
-    name='dividendreport',
+    name='dledger',
     version=VERSION,
-    description='Create dividend income reports',
+    description='Track and forecast dividend income',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/jhauberg/dividendreport',
-    download_url='https://github.com/jhauberg/dividendreport/archive/master.zip',
+    url='https://github.com/jhauberg/dledger',
+    download_url='https://github.com/jhauberg/dividendledger/archive/master.zip',
     author='Jacob Hauberg Hansen',
     author_email='jacob.hauberg@gmail.com',
     license='MIT',
@@ -54,7 +54,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'dividendreport=dividendreport.__main__:main',
+            'dledger=dledger.__main__:main',
         ],
     }
 )

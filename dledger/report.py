@@ -3,20 +3,20 @@ import re
 
 from datetime import datetime, date
 
-from dividendreport.localeutil import trysetlocale
-from dividendreport.ledger import Transaction
-from dividendreport.dateutil import previous_month
-from dividendreport.formatutil import (
+from dledger.localeutil import trysetlocale
+from dledger.journal import Transaction
+from dledger.dateutil import previous_month
+from dledger.formatutil import (
     change, pct_change, format_amount, format_change
 )
-from dividendreport.projection import (
+from dledger.projection import (
     scheduled_transactions, expired_transactions, estimated_schedule
 )
-from dividendreport.record import (
+from dledger.record import (
     income, yearly, monthly, amount_per_share, trailing,
     tickers, by_ticker, previous, previous_comparable, latest
 )
-from dividendreport.printutil import (
+from dledger.printutil import (
     colored,
     COLOR_BRIGHT_WHITE, COLOR_NEGATIVE, COLOR_POSITIVE
 )

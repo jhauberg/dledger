@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from dividendreport.dateutil import months_between, in_months, first_of_month
-from dividendreport.ledger import Transaction
+from dledger.dateutil import months_between, in_months, first_of_month
+from dledger.journal import Transaction
 
 from typing import Iterable, Optional, List
 

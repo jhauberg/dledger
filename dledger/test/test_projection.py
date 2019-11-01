@@ -1,7 +1,7 @@
 from datetime import date
 
-from dividendreport.ledger import Transaction
-from dividendreport.projection import (
+from dledger.journal import Transaction
+from dledger.projection import (
     estimated_monthly_schedule,
     frequency, normalize_interval,
     next_scheduled_date,

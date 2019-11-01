@@ -3,10 +3,10 @@ from dataclasses import dataclass
 
 from statistics import mode, StatisticsError
 
-from dividendreport.ledger import Transaction
-from dividendreport.formatutil import format_amount
-from dividendreport.dateutil import last_of_month
-from dividendreport.record import (
+from dledger.journal import Transaction
+from dledger.formatutil import format_amount
+from dledger.dateutil import last_of_month
+from dledger.record import (
     by_ticker, tickers, trailing, latest, monthly_schedule,
     amount_per_share, amount_per_share_low, amount_per_share_high,
     before, after, intervals, pruned

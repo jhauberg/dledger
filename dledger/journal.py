@@ -2,9 +2,9 @@ import sys
 import csv
 import locale
 
-from dividendreport.localeutil import trysetlocale
-from dividendreport.formatutil import format_amount
-from dividendreport.fileutil import fileencoding
+from dledger.localeutil import trysetlocale
+from dledger.formatutil import format_amount
+from dledger.fileutil import fileencoding
 
 from dataclasses import dataclass
 from datetime import datetime

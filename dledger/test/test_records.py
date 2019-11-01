@@ -1,7 +1,7 @@
 from datetime import date
 
-from dividendreport.ledger import Transaction
-from dividendreport.record import (
+from dledger.journal import Transaction
+from dledger.record import (
     monthly_schedule, intervals, trailing, pruned
 )
 
