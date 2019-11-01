@@ -24,7 +24,10 @@ from docopt import docopt  # type: ignore
 
 from dividendreport import __version__
 from dividendreport.report import generate
-from dividendreport.ledger import export, transactions, sanitize, SUPPORTED_PROVIDERS
+from dividendreport.ledger import (
+    export, transactions, sanitize,
+    SUPPORTED_TYPES
+)
 
 
 def main() -> None:
@@ -35,6 +38,7 @@ def main() -> None:
 
     args = docopt(__doc__, version='dividendreport ' + __version__.__version__)
 
+    input_type = args['--type']
     is_verbose = args['--verbose']
     show_annual_report = args['annual']
     should_export = args['export']
@@ -44,14 +48,16 @@ def main() -> None:
     records = []
 
     for input_path in input_paths:
-        if provider not in SUPPORTED_PROVIDERS:
-            sys.exit('Provider not supported')
+        # note that --provider defaults to 'native' for all commands
+        # (only convert supports setting provider explicitly)
+        if input_type not in SUPPORTED_TYPES:
+            sys.exit(f'Transaction type is not supported: {input_type}')
 
         if not (input_path.endswith('.tsv') or
                 input_path.endswith('.csv')):
             sys.exit('Only TSV/CSV files are supported')
 
-        records.extend(transactions(input_path, provider))
+        records.extend(transactions(input_path, input_type))
 
     records = sanitize(records, verbose=is_verbose)
 

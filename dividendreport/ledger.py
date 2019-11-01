@@ -11,7 +11,7 @@ from datetime import datetime
 
 from typing import List, Tuple
 
-SUPPORTED_PROVIDERS = ['native', 'nordnet']
+SUPPORTED_TYPES = ['native', 'nordnet']
 
 
 @dataclass(frozen=True, unsafe_hash=True)
