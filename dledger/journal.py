@@ -11,7 +11,7 @@ from datetime import datetime
 
 from typing import List, Tuple
 
-SUPPORTED_TYPES = ['native', 'nordnet']
+SUPPORTED_TYPES = ['journal', 'native', 'nordnet']
 
 
 @dataclass(frozen=True, unsafe_hash=True)
@@ -33,7 +33,7 @@ class Transaction:
                     f'{format_amount(self.amount)}{suffix}'))
 
 
-def transactions(path: str, provider: str) \
+def transactions(path: str, kind: str) \
         -> List[Transaction]:
     """ Return a list of records imported from a file. """
 
@@ -42,9 +42,11 @@ def transactions(path: str, provider: str) \
     if encoding is None or len(encoding) == 0:
         raise ValueError(f'Path could not be read: \'{path}\'')
 
-    if provider == 'native':
+    if kind == 'journal':
+        return read_journal_transactions(path, encoding)
+    elif kind == 'native':
         return read_native_transactions(path, encoding)
-    elif provider == 'nordnet':
+    elif kind == 'nordnet':
         return read_nordnet_transactions(path, encoding)
 
     return []
@@ -52,6 +54,11 @@ def transactions(path: str, provider: str) \
 
 def raise_parse_error(error: str, location: Tuple[str, int]) -> None:
     raise ValueError(f'{location[0]}:{location[1]} {error}')
+
+
+def read_journal_transactions(path: str, encoding: str = 'utf-8') \
+        -> List[Transaction]:
+    pass
 
 
 def read_native_transactions(path: str, encoding: str = 'utf-8') \
