@@ -30,8 +30,8 @@ def determine_version_or_exit() -> str:
     sys.exit('Version not found')
 
 
-if sys.version_info < (3, 7):
-    sys.exit('Python 3.7+ required to run dledger')
+if sys.version_info < (3, 8):
+    sys.exit('Python 3.8+ required to run dledger')
 
 VERSION = determine_version_or_exit()
 

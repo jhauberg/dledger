@@ -33,8 +33,8 @@ from dledger.journal import (
 def main() -> None:
     """ Entry point for invoking the command-line interface. """
 
-    if sys.version_info < (3, 7):
-        sys.exit('Python 3.7+ required')
+    if sys.version_info < (3, 8):
+        sys.exit('Python 3.8+ required')
 
     args = docopt(__doc__, version='dledger ' + __version__.__version__)
 

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 
-from statistics import mode, StatisticsError
+from statistics import multimode
 
 from dledger.journal import Transaction
 from dledger.formatutil import format_amount
@@ -86,10 +86,12 @@ def frequency(records: Iterable[Transaction]) \
 
     timespans = sorted(intervals(records))
 
-    try:
+    m = multimode(timespans)
+
+    if len(m) == 1:
         # unambiguous; a clear pattern of common frequency (take a guess)
-        return normalize_interval(mode(timespans))
-    except StatisticsError:
+        return normalize_interval(m[0])
+    else:
         # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
         latest_record = latest(records)
         sample_records = trailing(records, since=last_of_month(latest_record.date), months=12)
