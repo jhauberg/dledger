@@ -1,5 +1,6 @@
 import sys
 import csv
+import re
 import locale
 
 from dledger.localeutil import trysetlocale
@@ -9,7 +10,7 @@ from dledger.fileutil import fileencoding
 from dataclasses import dataclass
 from datetime import datetime
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 SUPPORTED_TYPES = ['journal', 'native', 'nordnet']
 
@@ -23,14 +24,7 @@ class Transaction:
     position: int
     amount: float
     is_special: bool = False
-
-    def __repr__(self):
-        suffix = '*' if self.is_special else ''
-
-        return str((str(self.date),
-                    self.ticker,
-                    self.position,
-                    f'{format_amount(self.amount)}{suffix}'))
+    projected_position: Optional[int] = None
 
 
 def transactions(path: str, kind: str) \
@@ -58,7 +52,195 @@ def raise_parse_error(error: str, location: Tuple[str, int]) -> None:
 
 def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         -> List[Transaction]:
-    pass
+    try:
+        # default to system locale, if able
+        locale.setlocale(locale.LC_ALL, '')
+    except:
+        # fallback to US locale
+        trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    journal_entries = []
+
+    transaction_start = re.compile(r'[0-9]+[-/][0-9]+[-/][0-9]+')
+
+    with open(path, newline='', encoding=encoding) as file:
+        starting_line_number = None
+        line_number = 0
+        lines = []
+        while line := file.readline():
+            line_number += 1
+            # remove any surrounding whitespace
+            line = line.strip()
+            # strip any comment
+            if '#' in line:
+                line = line[:line.index('#')]
+            # determine start of transaction
+            if transaction_start.match(line) is not None:
+                if len(lines) > 0:
+                    # parse all lines read up to this point
+                    journal_entries.append(read_journal_transaction(
+                        lines, location=(path, starting_line_number)))
+                    lines.clear()
+                starting_line_number = line_number
+            if len(line) > 0:
+                lines.append(line)
+
+        if len(lines) > 0:
+            journal_entries.append(read_journal_transaction(
+                lines, location=(path, starting_line_number)))
+
+    # transactions are not necesarilly ordered by date in a journal
+    # so they must be sorted prior to inferring positions/currencies
+    journal_entries = sorted(journal_entries, key=lambda r: r[0])
+
+    records = []
+    for entry in journal_entries:
+        date, ticker, position, amount, dividend, is_special, location = entry
+        position, position_change_direction = position
+
+        if position is None or position_change_direction != 0:
+            # infer position
+            # todo: position can also be inferred by matching currency pairings
+            for previous_record in reversed(records):
+                if previous_record.ticker == ticker:
+                    if previous_record.position is None:
+                        continue
+                    if position is None:
+                        position = 0
+                    position = previous_record.position + position * position_change_direction
+                    break
+
+        if position is None:
+            raise raise_parse_error(f'Position could not be inferred', location=location)
+
+        # todo: infer currency pairings
+
+        records.append(Transaction(date, ticker, position, amount, is_special))
+
+    position_change_entries = filter(
+        lambda r: r.amount is None and position is not None, records)
+    records = list(filter(lambda r: r.amount is not None, records))
+
+    for position_change_entry in position_change_entries:
+        previous_records = filter(
+            lambda r: r.ticker == position_change_entry.ticker, records)
+        previous_records = list(filter(
+            lambda r: r.date <= position_change_entry.date, previous_records))
+        previous_record = previous_records[-1] if len(previous_records) > 0 else None
+
+        record = Transaction(previous_record.date,
+                             previous_record.ticker,
+                             previous_record.position,
+                             previous_record.amount,
+                             previous_record.is_special,
+                             projected_position=position_change_entry.position)
+        i = records.index(previous_record)
+        records.pop(i)
+        records.insert(i, record)
+
+    return records
+
+
+def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
+        -> tuple:
+    condensed_line = '  '.join(lines)
+    if len(condensed_line) < 10:
+        raise_parse_error('Invalid transaction', location)
+    datestamp = condensed_line[:10]
+    date = None
+    try:
+        date = datetime.strptime(datestamp, "%Y/%m/%d").date()
+    except ValueError:
+        try:
+            date = datetime.strptime(datestamp, "%Y-%m-%d").date()
+        except ValueError:
+            raise_parse_error(f'Invalid date format (\'{datestamp}\')', location)
+    condensed_line = condensed_line[10:].strip()
+    break_separators = ['(', '  ', '\t']
+    break_index = min(condensed_line.index(sep) for sep in break_separators if sep in condensed_line)
+    ticker = None
+    is_special = False
+    if break_index is not None:
+        ticker = condensed_line[:break_index].strip()
+        if ticker.startswith('*'):
+            is_special = True
+            ticker = ticker[1:].strip()
+        condensed_line = condensed_line[break_index:].strip()
+    if ticker is None or len(ticker) == 0:
+        raise_parse_error('Invalid ticker format', location)
+    position = None
+    position_change_direction = 0
+    if ')' in condensed_line:
+        break_index = condensed_line.index(')') + 1
+        position = condensed_line[:break_index].strip()
+        position = position[1:-1].strip()
+        if position.startswith('+'):
+            position_change_direction = 1
+            position = position[1:]
+        elif position.startswith('-'):
+            position_change_direction = -1
+            position = position[1:]
+        try:
+            position = locale.atoi(position)
+        except ValueError:
+            raise_parse_error(f'Invalid position (\'{position}\')', location)
+        condensed_line = condensed_line[break_index:].strip()
+
+    if len(condensed_line) == 0:
+        return date, ticker, (position, position_change_direction), None, None, is_special, location
+
+    amount_components = condensed_line.split('@')
+    amount = None
+    if len(amount_components) > 0:
+        amount = amount_components[0].strip()
+        amount = split_amount(amount)
+        try:
+            amount = locale.atof(amount[0])
+        except ValueError:
+            raise_parse_error(f'Invalid amount (\'{amount}\')', location)
+    dividend = None
+    if len(amount_components) > 1:
+        dividend = amount_components[1].strip()
+        dividend = split_amount(dividend)
+        try:
+            dividend = locale.atof(dividend[0])
+        except ValueError:
+            raise_parse_error(f'Invalid dividend (\'{dividend}\')', location)
+
+    return date, ticker, (position, position_change_direction), amount, dividend, is_special, location
+
+
+def split_amount(amount: str) \
+        -> Tuple[str, Optional[str]]:
+    symbol = None
+
+    lhs = ''
+
+    for c in amount:
+        if c.isdigit():
+            break
+        lhs += c
+
+    amount = amount[len(lhs):]
+
+    rhs = ''
+
+    for c in reversed(amount):
+        if c.isdigit():
+            break
+        rhs = c + rhs
+
+    amount = amount[:len(amount) - len(rhs)]
+
+    if len(lhs) > 0:
+        symbol = lhs.strip()
+    if len(rhs) > 0:
+        if symbol is not None:
+            # todo: error; ambiguous symbol definition
+            pass
+        symbol = rhs.strip()
+
+    return amount, symbol
 
 
 def read_native_transactions(path: str, encoding: str = 'utf-8') \
