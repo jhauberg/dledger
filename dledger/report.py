@@ -433,6 +433,20 @@ def print_debug_reports(records: List[Transaction]) -> None:
     printer.pprint(annuals)
 
 
+def print_journal_entries(records: List[Transaction]) -> None:
+    try:
+        # default to system locale, if able
+        locale.setlocale(locale.LC_ALL, '')
+    except:
+        # fallback to US locale
+        trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    for record in records:
+        special_indicator = '* ' if record.is_special else ''
+        print(f'{record.date} {special_indicator}{record.ticker} ({record.position})')
+        print(f'  {format_amount(record.amount)}')
+
+
 def generate(records: List[Transaction], debug: bool = False) -> None:
     # default to use system locale
     # note that this may depend on the current shell/environment and might not

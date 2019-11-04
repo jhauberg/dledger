@@ -4,10 +4,11 @@
 usage: dledger report         <journal>... [--period=<years>] [--weighted] [-V]
        dledger chart <ticker> <journal>... [--period=<years>] [-V]
        dledger forecast       <journal>... [--weighted] [-V]
+       dledger print          <journal>
        dledger convert <file>... [--type=<name>] [--output=<journal>] [-V]
 
 OPTIONS:
-     --type=<name>       Specify type of transaction data [default: native]
+     --type=<name>       Specify type of transaction data [default: journal]
      --output=<journal>  Specify journal filename [default: journal.tsv]
      --period=<years>    Specify range of years [default: current year]
      --weighted          Show report as a weighted table
@@ -23,7 +24,7 @@ import sys
 from docopt import docopt  # type: ignore
 
 from dledger import __version__
-from dledger.report import generate
+from dledger.report import generate, print_journal_entries
 from dledger.journal import (
     export, transactions, sanitize,
     SUPPORTED_TYPES
@@ -37,8 +38,6 @@ def main() -> None:
         sys.exit('Python 3.8+ required')
 
     args = docopt(__doc__, version='dledger ' + __version__.__version__)
-
-    print(args)
 
     input_paths = (args['<file>']
                    if args['convert'] else
@@ -55,10 +54,6 @@ def main() -> None:
         if input_type not in SUPPORTED_TYPES:
             sys.exit(f'Transaction type is not supported: {input_type}')
 
-        if not (input_path.endswith('.tsv') or
-                input_path.endswith('.csv')):
-            sys.exit('Only TSV/CSV files are supported')
-
         records.extend(transactions(input_path, input_type))
 
     records = sanitize(records, verbose=is_verbose)
@@ -74,7 +69,9 @@ def main() -> None:
 
         sys.exit(0)
 
-    if args['report']:
+    if args['print']:
+        print_journal_entries(records)
+    elif args['report']:
         period = args['--period']
         if period == 'current year':
             # todo: set to current year; maybe even use range() ?
