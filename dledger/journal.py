@@ -395,22 +395,6 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     return Transaction(date, ticker, position, amount)
 
 
-def sanitize(records: List[Transaction], *, verbose: bool = False) \
-        -> List[Transaction]:
-    """ Return a sanitized list of records. """
-
-    negative_records = filter(
-        lambda r: r.position < 0 or r.amount < 0, records)
-
-    for record in negative_records:
-        if verbose:
-            print(f'Skipping record; negative position or amount: {record}', file=sys.stderr)
-
-        records.remove(record)
-
-    return sorted(records, key=lambda r: r.date)
-
-
 def export(records: List[Transaction], filename: str = 'export.tsv', *, pretty: bool = False):
     """ Write records to file.
 

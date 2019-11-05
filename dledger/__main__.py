@@ -26,7 +26,7 @@ from docopt import docopt  # type: ignore
 from dledger import __version__
 from dledger.report import generate, print_journal_entries
 from dledger.journal import (
-    export, transactions, sanitize,
+    export, transactions,
     SUPPORTED_TYPES
 )
 
@@ -56,7 +56,7 @@ def main() -> None:
 
         records.extend(transactions(input_path, input_type))
 
-    records = sanitize(records, verbose=is_verbose)
+    records = sorted(records, key=lambda r: r.date)
 
     if len(records) == 0:
         if is_verbose:
