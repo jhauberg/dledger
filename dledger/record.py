@@ -10,8 +10,8 @@ def amount_per_share(record: Transaction) \
         -> float:
     """ Return the fractional amount per share. """
 
-    return (record.amount / record.position
-            if record.amount > 0 and record.position > 0
+    return (record.amount.value / record.position
+            if record.amount.value > 0 and record.position > 0
             else 0)
 
 
@@ -150,7 +150,7 @@ def income(records: Iterable[Transaction]) \
         -> float:
     """ Return the sum of amount components in a set of records. """
 
-    return sum([record.amount for record in records])
+    return sum([record.amount.value for record in records])
 
 
 def after(records: Iterable[Transaction], date: datetime.date) \

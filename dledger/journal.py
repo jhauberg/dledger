@@ -1,4 +1,3 @@
-import sys
 import csv
 import re
 import locale
@@ -18,8 +17,8 @@ SUPPORTED_TYPES = ['journal', 'native', 'nordnet']
 @dataclass(frozen=True)
 class Amount:
     value: float
-    symbol: Optional[str]
-    format: Optional[str]
+    symbol: Optional[str] = None
+    format: Optional[str] = None
 
 
 @dataclass(frozen=True, unsafe_hash=True)
@@ -29,7 +28,7 @@ class Transaction:
     date: datetime.date
     ticker: str
     position: int
-    amount: Optional[float] = None
+    amount: Optional[Amount] = None
     is_special: bool = False
 
 
@@ -104,9 +103,33 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         date, ticker, position, amount, dividend, is_special, location = entry
         position, position_change_direction = position
 
+        if amount is not None and dividend is not None:
+            if amount.symbol is None and dividend.symbol is not None:
+                amount = Amount(amount.value,
+                                symbol=dividend.symbol,
+                                format=dividend.format)
+            elif dividend.symbol is None and amount.symbol is not None:
+                dividend = Amount(dividend.value,
+                                  symbol=amount.symbol,
+                                  format=amount.format)
+
+        if amount is not None and amount.symbol is None:
+            # infer symbol/format from previous entries
+            for previous_record in reversed(records):
+                if previous_record.ticker == ticker:
+                    if previous_record.amount is None:
+                        continue
+                    amount = Amount(amount.value,
+                                    symbol=previous_record.amount.symbol,
+                                    format=previous_record.amount.format)
+                    if dividend is not None:
+                        dividend = Amount(dividend.value,
+                                          symbol=previous_record.amount.symbol,
+                                          format=previous_record.amount.format)
+                    break
+
         if position is None or position_change_direction != 0:
-            # infer position
-            # todo: position can also be inferred by matching currency pairings
+            # infer position from previous entries
             for previous_record in reversed(records):
                 if previous_record.ticker == ticker:
                     if previous_record.position is None:
@@ -116,12 +139,22 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                     position = previous_record.position + position * position_change_direction
                     break
 
-        if position is None:
-            raise raise_parse_error(f'Position could not be inferred', location=location)
+        if amount is not None and dividend is not None:
+            if amount.symbol == dividend.symbol:
+                logical_position = int(amount.value / dividend.value)
+                if position is None:
+                    # infer position from amount/dividend - if same currency
+                    position = logical_position
 
-        # todo: infer currency pairings
-        # todo: refactor to use proper amount object all over
-        records.append(Transaction(date, ticker, position, amount.value if amount is not None else None, is_special))
+                if position != logical_position:
+                    raise raise_parse_error(f'position does not match amount/dividend '
+                                            f'({logical_position})',
+                                            location=location)
+
+        if position is None:
+            raise raise_parse_error(f'position could not be inferred', location=location)
+
+        records.append(Transaction(date, ticker, position, amount, is_special))
 
     position_change_entries = list(filter(
         lambda r: r.amount is None and position is not None, records))
@@ -417,7 +450,7 @@ def export(records: List[Transaction], filename: str = 'export.tsv', *, pretty: 
             row = (str(date_repr),
                    str(transaction.ticker),
                    str(transaction.position),
-                   format_amount(transaction.amount))
+                   format_amount(transaction.amount.value))
 
             rows.append(row)
 

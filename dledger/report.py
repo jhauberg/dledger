@@ -58,13 +58,15 @@ def report_by_record(records: List[Transaction]) \
             report['position_pct_change'] = pct_change(record.position, previous_record.position)
 
         # linear change; e.g. from previous payout to this payout
-        if record.amount != previous_record.amount:
-            report['amount_change'] = change(record.amount, previous_record.amount)
-            report['amount_pct_change'] = pct_change(record.amount, previous_record.amount)
+        if record.amount.value != previous_record.amount.value:
+            # todo: assuming same currency
+            report['amount_change'] = change(record.amount.value, previous_record.amount.value)
+            report['amount_pct_change'] = pct_change(record.amount.value, previous_record.amount.value)
 
         previous_report = reports[previous_record]
 
         if report['amount_per_share'] != previous_report['amount_per_share']:
+            # todo: assuming same currency
             report['amount_per_share_change'] = change(report['amount_per_share'], previous_report['amount_per_share'])
             report['amount_per_share_pct_change'] = pct_change(report['amount_per_share'], previous_report['amount_per_share'])
 
@@ -78,9 +80,10 @@ def report_by_record(records: List[Transaction]) \
         comparable_report = reports[comparable_record]
 
         # comparable change; e.g. from similar payout in the past to this payout
-        if record.amount != comparable_record.amount:
-            report['amount_yoy_change'] = change(record.amount, comparable_record.amount)
-            report['amount_yoy_pct_change'] = pct_change(record.amount, comparable_record.amount)
+        if record.amount.value != comparable_record.amount.value:
+            # todo: assuming same currency
+            report['amount_yoy_change'] = change(record.amount.value, comparable_record.amount.value)
+            report['amount_yoy_pct_change'] = pct_change(record.amount.value, comparable_record.amount.value)
 
         # note that this includes both dividend change, but also exchange rate discrepancies;
         # e.g. a weaker currency in the past compared to stronger of present would contribute to
@@ -141,7 +144,7 @@ def report_by_month(records: List[Transaction], year: int) \
         report = dict()
 
         transactions = list(filter(
-            lambda r: r.amount > 0, monthly(records, year=year, month=month)))
+            lambda r: r.amount.value > 0, monthly(records, year=year, month=month)))
 
         if len(transactions) > 0:
             report['transactions'] = transactions
@@ -271,7 +274,7 @@ def build_annual_report(year: int, report: dict, transaction_reports: dict) \
                 change_column += f' [{format_change(transaction_amount_change)}]' if transaction_amount_change != 0 else ''
 
             columns.append((f'{datestamp} {ticker}',
-                            f'{format_amount(transaction.amount)}',
+                            f'{format_amount(transaction.amount.value)}',
                             change_column))
 
         income = monthly_report.get('income', 0)
@@ -331,7 +334,7 @@ def build_annual_report(year: int, report: dict, transaction_reports: dict) \
 
 def print_debug_reports(records: List[Transaction]) -> None:
     import pprint
-    transactions = list(filter(lambda r: r.amount is not None and r.amount > 0, records))
+    transactions = list(filter(lambda r: r.amount is not None and r.amount.value > 0, records))
     reports = report_by_record(transactions)
     earliest_record = transactions[0]
     latest_record = transactions[-1]
@@ -430,7 +433,7 @@ def print_debug_reports(records: List[Transaction]) -> None:
     print('=========== annual income (projected)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     extended_records = records + futures
-    extended_transactions = list(filter(lambda r: r.amount is not None and r.amount > 0, extended_records))
+    extended_transactions = list(filter(lambda r: r.amount is not None and r.amount.value > 0, extended_records))
     annuals = report_by_year(extended_transactions)
     annuals = {year: report for year, report in annuals.items() if year >= datetime.today().year}
     printer.pprint(annuals)
@@ -449,7 +452,10 @@ def print_journal_entries(records: List[Transaction]) -> None:
         datestamp = record.date.strftime('%Y/%m/%d')
         print(f'{datestamp} {special_indicator}{record.ticker} ({record.position})')
         if record.amount is not None:
-            print(f'  {format_amount(record.amount)}')
+            amount_display = format_amount(record.amount.value, trailing_zero=False)
+            if record.amount.format is not None:
+                amount_display = record.amount.format % amount_display
+            print(f'  {amount_display}')
 
 
 def generate(records: List[Transaction], debug: bool = False) -> None:

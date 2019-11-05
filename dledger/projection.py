@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from statistics import multimode
 
-from dledger.journal import Transaction
+from dledger.journal import Transaction, Amount
 from dledger.dateutil import last_of_month
 from dledger.record import (
     by_ticker, tickers, trailing, latest, monthly_schedule,
@@ -23,7 +23,7 @@ EARLY_LATE_THRESHOLD = 15  # early before or at this day of month, late after
 class FutureTransaction(Transaction):
     """ Represents an unrealized transaction; a projection. """
 
-    amount_range: Optional[Tuple[float, float]] = None
+    amount_range: Optional[Tuple[Amount, Amount]] = None
 
 
 @dataclass(frozen=True)
@@ -300,11 +300,19 @@ def estimated_transactions(records: List[Transaction]) \
                 mean_amount_per_share = (lowest_amount_per_share + highest_amount_per_share) / 2
 
                 future_amount = mean_amount_per_share * future_position
-                future_amount_range = (lowest_amount_per_share * future_position,
-                                       highest_amount_per_share * future_position)
+                # todo: this is assuming same currency
+                future_amount_range = (Amount(lowest_amount_per_share * future_position,
+                                              symbol=latest_transaction.amount.symbol,
+                                              format=latest_transaction.amount.format),
+                                       Amount(highest_amount_per_share * future_position,
+                                              symbol=latest_transaction.amount.symbol,
+                                              format=latest_transaction.amount.format))
 
             future_record = FutureTransaction(future_date, ticker, future_position,
-                                              amount=future_amount,
+                                              # todo: this is assuming same currency
+                                              amount=Amount(future_amount,
+                                                            symbol=latest_transaction.amount.symbol,
+                                                            format=latest_transaction.amount.format),
                                               amount_range=future_amount_range)
 
             scheduled_records.append(future_record)
@@ -339,9 +347,12 @@ def future_transactions(records: List[Transaction]) \
             # don't project closed positions
             continue
 
+        # todo: this is assuming both records are set in same currency
         future_amount = future_position * amount_per_share(record)
         future_record = FutureTransaction(future_date, record.ticker, future_position,
-                                          amount=future_amount)
+                                          amount=Amount(future_amount,
+                                                        symbol=latest_record.amount.symbol,
+                                                        format=latest_record.amount.format))
 
         future_records.append(future_record)
 
