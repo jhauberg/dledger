@@ -22,9 +22,8 @@ class Transaction:
     date: datetime.date
     ticker: str
     position: int
-    amount: float
+    amount: Optional[float] = None
     is_special: bool = False
-    projected_position: Optional[int] = None
 
 
 def transactions(path: str, kind: str) \
@@ -89,7 +88,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
             journal_entries.append(read_journal_transaction(
                 lines, location=(path, starting_line_number)))
 
-    # transactions are not necesarilly ordered by date in a journal
+    # transactions are not necessarily ordered by date in a journal
     # so they must be sorted prior to inferring positions/currencies
     journal_entries = sorted(journal_entries, key=lambda r: r[0])
 
@@ -117,26 +116,18 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
         records.append(Transaction(date, ticker, position, amount, is_special))
 
-    position_change_entries = filter(
-        lambda r: r.amount is None and position is not None, records)
-    records = list(filter(lambda r: r.amount is not None, records))
+    position_change_entries = list(filter(
+        lambda r: r.amount is None and position is not None, records))
 
-    for position_change_entry in position_change_entries:
-        previous_records = filter(
-            lambda r: r.ticker == position_change_entry.ticker, records)
-        previous_records = list(filter(
-            lambda r: r.date <= position_change_entry.date, previous_records))
-        previous_record = previous_records[-1] if len(previous_records) > 0 else None
+    latest_position_change_entries = []
+    for ticker in set([record.ticker for record in position_change_entries]):
+        fs = list(filter(lambda r: r.ticker == ticker, position_change_entries))
+        latest_position_change_entries.append(fs[-1])
 
-        record = Transaction(previous_record.date,
-                             previous_record.ticker,
-                             previous_record.position,
-                             previous_record.amount,
-                             previous_record.is_special,
-                             projected_position=position_change_entry.position)
-        i = records.index(previous_record)
-        records.pop(i)
-        records.insert(i, record)
+    for r in position_change_entries:
+        if r in latest_position_change_entries:
+            continue
+        records.remove(r)
 
     return records
 
@@ -198,6 +189,8 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
             amount = locale.atof(amount[0])
         except ValueError:
             raise_parse_error(f'Invalid amount (\'{amount}\')', location)
+        if amount < 0:
+            raise_parse_error(f'Invalid amount (\'{amount}\')', location)
     dividend = None
     if len(amount_components) > 1:
         dividend = amount_components[1].strip()
@@ -206,6 +199,8 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
             dividend = locale.atof(dividend[0])
         except ValueError:
             raise_parse_error(f'Invalid dividend (\'{dividend}\')', location)
+        if dividend < 0:
+            raise_parse_error(f'Invalid dividend (\'{amount}\')', location)
 
     return date, ticker, (position, position_change_direction), amount, dividend, is_special, location
 

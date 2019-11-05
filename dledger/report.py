@@ -331,36 +331,37 @@ def build_annual_report(year: int, report: dict, transaction_reports: dict) \
 
 def print_debug_reports(records: List[Transaction]) -> None:
     import pprint
-    reports = report_by_record(records)
-    earliest_record = records[0]
-    latest_record = records[-1]
+    transactions = list(filter(lambda r: r.amount is not None and r.amount > 0, records))
+    reports = report_by_record(transactions)
+    earliest_record = transactions[0]
+    latest_record = transactions[-1]
     print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year})')
-    transactions = list(filter(lambda r: r.amount > 0, records))
-    print(f'{format_amount(income(records))} ({len(transactions)} transactions)')
+    #transactions = list(filter(lambda r: r.amount is not None and r.amount > 0, records))
+    print(f'{format_amount(income(transactions))} ({len(transactions)} transactions)')
     print(f'=========== accumulated income ({earliest_record.date.year}-{latest_record.date.year}, weighted)')
-    weights = report_by_weight(records)
+    weights = report_by_weight(transactions)
     weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
     printer = pprint.PrettyPrinter(indent=2, width=100)
     printer.pprint(weightings)
     print(f'=========== annual income ({earliest_record.date.year}-{latest_record.date.year})')
     printer = pprint.PrettyPrinter(indent=2, width=100)
-    printer.pprint(report_by_year(records))
+    printer.pprint(report_by_year(transactions))
     current_year = datetime.today().year
     print(f'=========== annual income ({current_year}) (weighted)')
-    weights = report_by_weight(list(yearly(records, year=current_year)))
+    weights = report_by_weight(list(yearly(transactions, year=current_year)))
     weightings = sorted(weights.items(), key=lambda t: t[1]['weight_pct'], reverse=True)
     printer.pprint(weightings)
     print('=========== entries')
     printer = pprint.PrettyPrinter(indent=2, width=60)
-    for record in records:
+    for record in transactions:
         printer.pprint(record)
         printer.pprint(reports[record])
     print('=========== historical amount per share')
     printer = pprint.PrettyPrinter(indent=2, width=70)
     timeline = dict()
-    for ticker in tickers(records):
+    for ticker in tickers(transactions):
         timeline[ticker] = [(r.date, reports[r]['amount_per_share'])
-                            for r in by_ticker(records, ticker)
+                            for r in by_ticker(transactions, ticker)
                             if reports[r]['amount_per_share'] > 0]
     printer.pprint(timeline)
     print('=========== projections')
@@ -371,7 +372,7 @@ def print_debug_reports(records: List[Transaction]) -> None:
     futures = list(filter(lambda r: r.ticker not in closed, futures))
     printer.pprint(futures)
     print('=========== trailing 12-month income')
-    ttm_income = income(trailing(records, since=datetime.today().date(), months=12))
+    ttm_income = income(trailing(transactions, since=datetime.today().date(), months=12))
     print(f'annual income: {format_amount(ttm_income)}')
     print('=========== forward 12-month income')
     padi = income(futures)
@@ -382,11 +383,12 @@ def print_debug_reports(records: List[Transaction]) -> None:
     print(f'daily   (avg): {format_amount(padi / 365)}')
     print(f'hourly  (avg): {format_amount(padi / 8760)}')
     print('=========== impact of latest transaction')
+    # todo: i don't think this report is correct - needs a test before being formalized
     latest_record_not_in_future = latest(
-        filter(lambda r: not r.is_special and r.date <= datetime.today().date(), records))
+        filter(lambda r: r.amount is not None and not r.is_special and r.date <= datetime.today().date(), records))
     records_except_latest = list(records)
     records_except_latest.remove(latest_record_not_in_future)
-    reports_except_latest = report_by_record(records_except_latest)
+    reports_except_latest = report_by_record(list(filter(lambda r: r.amount is not None, records_except_latest)))
     futures_except_latest = scheduled_transactions(records_except_latest)
     # exclude unrealized projections (except the latest transaction)
     closed_except_latest = tickers(expired_transactions(futures_except_latest))
@@ -401,7 +403,7 @@ def print_debug_reports(records: List[Transaction]) -> None:
     print(f'daily   (avg): {format_change(change(padi / 365, padi_except_latest / 365))}')
     print(f'hourly  (avg): {format_change(change(padi / 8760, padi_except_latest / 8760))}')
     previous_record = latest(
-        filter(lambda r: not r.is_special,
+        filter(lambda r: r.amount is not None and not r.is_special,
                by_ticker(records_except_latest, latest_record_not_in_future.ticker)))
     if previous_record is not None:
         now_report = reports[latest_record_not_in_future]
@@ -418,7 +420,7 @@ def print_debug_reports(records: List[Transaction]) -> None:
     printer = pprint.PrettyPrinter(indent=2, width=70)
     timeline = dict()
     for ticker in tickers(futures):
-        timeline[ticker] = sum([amount_per_share(r) for r in by_ticker(futures, ticker)])
+        timeline[ticker] = sum([amount_per_share(r) for r in by_ticker(futures, ticker) if r.amount is not None])
     printer.pprint(timeline)
     print('=========== forward 12-month income (weighted)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
@@ -428,7 +430,8 @@ def print_debug_reports(records: List[Transaction]) -> None:
     print('=========== annual income (projected)')
     printer = pprint.PrettyPrinter(indent=2, width=100)
     extended_records = records + futures
-    annuals = report_by_year(extended_records)
+    extended_transactions = list(filter(lambda r: r.amount is not None and r.amount > 0, extended_records))
+    annuals = report_by_year(extended_transactions)
     annuals = {year: report for year, report in annuals.items() if year >= datetime.today().year}
     printer.pprint(annuals)
 
@@ -443,8 +446,10 @@ def print_journal_entries(records: List[Transaction]) -> None:
 
     for record in records:
         special_indicator = '* ' if record.is_special else ''
-        print(f'{record.date} {special_indicator}{record.ticker} ({record.position})')
-        print(f'  {format_amount(record.amount)}')
+        datestamp = record.date.strftime('%Y/%m/%d')
+        print(f'{datestamp} {special_indicator}{record.ticker} ({record.position})')
+        if record.amount is not None:
+            print(f'  {format_amount(record.amount)}')
 
 
 def generate(records: List[Transaction], debug: bool = False) -> None:

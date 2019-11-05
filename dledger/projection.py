@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from statistics import multimode
 
 from dledger.journal import Transaction
-from dledger.formatutil import format_amount
 from dledger.dateutil import last_of_month
 from dledger.record import (
     by_ticker, tickers, trailing, latest, monthly_schedule,
@@ -25,20 +24,6 @@ class FutureTransaction(Transaction):
     """ Represents an unrealized transaction; a projection. """
 
     amount_range: Optional[Tuple[float, float]] = None
-
-    def __repr__(self):
-        if self.amount_range is None:
-            return str((f'{str(self.date)} *',
-                        self.ticker,
-                        self.position,
-                        format_amount(self.amount)))
-
-        return str((f'{str(self.date)} *',
-                    self.ticker,
-                    self.position,
-                    format_amount(self.amount),
-                    f'[{format_amount(self.amount_range[0])} -'
-                    f' {format_amount(self.amount_range[1])}]'))
 
 
 @dataclass(frozen=True)
@@ -282,12 +267,19 @@ def estimated_transactions(records: List[Transaction]) \
             # don't project closed positions
             continue
 
-        sched = estimated_schedule(records, latest_record)
+        transactions = list(filter(lambda r: r.amount is not None, by_ticker(records, ticker)))
+
+        if len(transactions) == 0:
+            continue
+
+        latest_transaction = latest(transactions)
+
+        sched = estimated_schedule(transactions, latest_transaction)
 
         scheduled_months = sched.months
         scheduled_records = []
 
-        future_date = latest_record.date
+        future_date = latest_transaction.date
         # estimate timeframe by latest actual record
         future_timeframe = projected_timeframe(future_date)
 
@@ -296,11 +288,10 @@ def estimated_transactions(records: List[Transaction]) \
             future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
                                          timeframe=future_timeframe)
 
-            future_amount = amount_per_share(latest_record) * future_position
+            future_amount = amount_per_share(latest_transaction) * future_position
             future_amount_range = None
 
-            reference_records = list(trailing(by_ticker(records, ticker),
-                                              since=future_date, months=12))
+            reference_records = list(trailing(by_ticker(transactions, ticker), since=future_date, months=12))
 
             if len(reference_records) > 0:
                 highest_amount_per_share = amount_per_share_high(reference_records)
@@ -325,7 +316,7 @@ def estimated_transactions(records: List[Transaction]) \
 
 def future_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
-    """ Return a matching list of records dated 12 months into the future.
+    """ Return a list of transactions dated 12 months into the future.
 
     Each record has its amount adjusted to match the position of the latest matching record.
     """
@@ -333,6 +324,9 @@ def future_transactions(records: List[Transaction]) \
     future_records = []
 
     for record in records:
+        if record.amount is None:
+            continue
+
         # offset 12 months into the future by assuming an annual schedule
         future_date = projected_date(next_scheduled_date(record.date, [record.date.month]),
                                      timeframe=projected_timeframe(record.date))
