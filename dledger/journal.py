@@ -15,6 +15,13 @@ from typing import List, Tuple, Optional
 SUPPORTED_TYPES = ['journal', 'native', 'nordnet']
 
 
+@dataclass(frozen=True)
+class Amount:
+    value: float
+    symbol: Optional[str]
+    format: Optional[str]
+
+
 @dataclass(frozen=True, unsafe_hash=True)
 class Transaction:
     """ Represents a transaction. """
@@ -113,8 +120,8 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
             raise raise_parse_error(f'Position could not be inferred', location=location)
 
         # todo: infer currency pairings
-
-        records.append(Transaction(date, ticker, position, amount, is_special))
+        # todo: refactor to use proper amount object all over
+        records.append(Transaction(date, ticker, position, amount.value if amount is not None else None, is_special))
 
     position_change_entries = list(filter(
         lambda r: r.amount is None and position is not None, records))
@@ -185,30 +192,21 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     if len(amount_components) > 0:
         amount = amount_components[0].strip()
         amount = split_amount(amount, location=location)
-        try:
-            amount = locale.atof(amount[0])
-        except ValueError:
-            raise_parse_error(f'Invalid amount (\'{amount}\')', location)
-        if amount < 0:
+        if amount.value < 0:
             raise_parse_error(f'Invalid amount (\'{amount}\')', location)
     dividend = None
     if len(amount_components) > 1:
         dividend = amount_components[1].strip()
         dividend = split_amount(dividend, location=location)
-        try:
-            dividend = locale.atof(dividend[0])
-        except ValueError:
-            raise_parse_error(f'Invalid dividend (\'{dividend}\')', location)
-        if dividend < 0:
+        if dividend.value < 0:
             raise_parse_error(f'Invalid dividend (\'{amount}\')', location)
 
     return date, ticker, (position, position_change_direction), amount, dividend, is_special, location
 
 
 def split_amount(amount: str, *, location: Tuple[str, int]) \
-        -> Tuple[str, Optional[str]]:
+        -> Amount:
     symbol = None
-
     lhs = ''
 
     for c in amount:
@@ -234,7 +232,16 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
             raise_parse_error(f'ambiguous symbol definition ({rhs.strip()})', location)
         symbol = rhs.strip()
 
-    return amount, symbol
+    value = None
+
+    try:
+        value = locale.atof(amount)
+    except ValueError:
+        raise_parse_error(f'Invalid value (\'{amount}\')', location)
+
+    fmt = f'{lhs}%s{rhs}'
+
+    return Amount(value, symbol, fmt)
 
 
 def read_native_transactions(path: str, encoding: str = 'utf-8') \
