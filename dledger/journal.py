@@ -184,7 +184,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     amount = None
     if len(amount_components) > 0:
         amount = amount_components[0].strip()
-        amount = split_amount(amount)
+        amount = split_amount(amount, location=location)
         try:
             amount = locale.atof(amount[0])
         except ValueError:
@@ -194,7 +194,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     dividend = None
     if len(amount_components) > 1:
         dividend = amount_components[1].strip()
-        dividend = split_amount(dividend)
+        dividend = split_amount(dividend, location=location)
         try:
             dividend = locale.atof(dividend[0])
         except ValueError:
@@ -205,7 +205,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     return date, ticker, (position, position_change_direction), amount, dividend, is_special, location
 
 
-def split_amount(amount: str) \
+def split_amount(amount: str, *, location: Tuple[str, int]) \
         -> Tuple[str, Optional[str]]:
     symbol = None
 
@@ -231,8 +231,7 @@ def split_amount(amount: str) \
         symbol = lhs.strip()
     if len(rhs) > 0:
         if symbol is not None:
-            # todo: error; ambiguous symbol definition
-            pass
+            raise_parse_error(f'ambiguous symbol definition ({rhs.strip()})', location)
         symbol = rhs.strip()
 
     return amount, symbol
