@@ -256,6 +256,8 @@ def estimated_schedule(records: List[Transaction], record: Transaction) \
 
 def estimated_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
+    """ Return a list of transactions dated into the future according to an estimated schedule. """
+
     approximate_records = []
 
     for ticker in tickers(records):
@@ -267,6 +269,7 @@ def estimated_transactions(records: List[Transaction]) \
             # don't project closed positions
             continue
 
+        # weed out position-only records
         transactions = list(filter(lambda r: r.amount is not None, by_ticker(records, ticker)))
 
         if len(transactions) == 0:
@@ -291,7 +294,10 @@ def estimated_transactions(records: List[Transaction]) \
             future_amount = amount_per_share(latest_transaction) * future_position
             future_amount_range = None
 
-            reference_records = list(trailing(by_ticker(transactions, ticker), since=future_date, months=12))
+            reference_records = trailing(
+                by_ticker(transactions, ticker), since=future_date, months=12)
+            reference_records = list(filter(
+                lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))
 
             if len(reference_records) > 0:
                 highest_amount_per_share = amount_per_share_high(reference_records)
@@ -300,7 +306,7 @@ def estimated_transactions(records: List[Transaction]) \
                 mean_amount_per_share = (lowest_amount_per_share + highest_amount_per_share) / 2
 
                 future_amount = mean_amount_per_share * future_position
-                # todo: this is assuming same currency
+
                 future_amount_range = (Amount(lowest_amount_per_share * future_position,
                                               symbol=latest_transaction.amount.symbol,
                                               format=latest_transaction.amount.format),
@@ -309,7 +315,6 @@ def estimated_transactions(records: List[Transaction]) \
                                               format=latest_transaction.amount.format))
 
             future_record = FutureTransaction(future_date, ticker, future_position,
-                                              # todo: this is assuming same currency
                                               amount=Amount(future_amount,
                                                             symbol=latest_transaction.amount.symbol,
                                                             format=latest_transaction.amount.format),
