@@ -29,6 +29,7 @@ class Transaction:
     ticker: str
     position: int
     amount: Optional[Amount] = None
+    dividend: Optional[Amount] = None
     is_special: bool = False
 
 
@@ -154,7 +155,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         if position is None:
             raise raise_parse_error(f'position could not be inferred', location=location)
 
-        records.append(Transaction(date, ticker, position, amount, is_special))
+        records.append(Transaction(date, ticker, position, amount, dividend, is_special))
 
     position_change_entries = list(filter(
         lambda r: r.amount is None and position is not None, records))

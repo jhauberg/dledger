@@ -451,10 +451,18 @@ def print_journal_entries(records: List[Transaction]) -> None:
         special_indicator = '* ' if record.is_special else ''
         datestamp = record.date.strftime('%Y/%m/%d')
         print(f'{datestamp} {special_indicator}{record.ticker} ({record.position})')
+        amount_display = ''
         if record.amount is not None:
-            amount_display = format_amount(record.amount.value, trailing_zero=False)
+            payout_display = format_amount(record.amount.value, trailing_zero=False)
             if record.amount.format is not None:
-                amount_display = record.amount.format % amount_display
+                payout_display = record.amount.format % payout_display
+            amount_display += payout_display
+        if record.dividend is not None:
+            dividend_display = format_amount(record.dividend.value, trailing_zero=False)
+            if record.dividend.format is not None:
+                dividend_display = record.dividend.format % dividend_display
+            amount_display += f' @ {dividend_display}'
+        if len(amount_display) > 0:
             print(f'  {amount_display}')
 
 
