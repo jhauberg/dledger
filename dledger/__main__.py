@@ -9,7 +9,7 @@ usage: dledger report         <journal>... [--period=<years>] [--weighted] [-V]
 
 OPTIONS:
      --type=<name>       Specify type of transaction data [default: journal]
-     --output=<journal>  Specify journal filename [default: journal.tsv]
+     --output=<journal>  Specify journal filename [default: ledger.journal]
      --period=<years>    Specify range of years [default: current year]
      --weighted          Show report as a weighted table
   -V --verbose           Show diagnostic messages
@@ -24,10 +24,9 @@ import sys
 from docopt import docopt  # type: ignore
 
 from dledger import __version__
-from dledger.report import generate, print_journal_entries
+from dledger.report import generate
 from dledger.journal import (
-    export, transactions,
-    SUPPORTED_TYPES
+    write, transactions, SUPPORTED_TYPES
 )
 
 
@@ -65,12 +64,13 @@ def main() -> None:
         sys.exit(0)
 
     if args['convert']:
-        export(records, filename=args['--output'], pretty=True)
+        with open(args['--output'], 'w', newline='') as file:
+            write(records, file=file)
 
         sys.exit(0)
 
     if args['print']:
-        print_journal_entries(records)
+        write(records, file=sys.stdout)
     elif args['report']:
         period = args['--period']
         if period == 'current year':

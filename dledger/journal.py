@@ -439,7 +439,37 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
         Amount(amount, symbol=amount_symbol, format=f'%s {amount_symbol}'),
         Amount(dividend, symbol=dividend_symbol, format=f'%s {dividend_symbol}'))
 
-def export(records: List[Transaction], filename: str = 'export.tsv', *, pretty: bool = False):
+
+def write(records: List[Transaction], file, *, condensed: bool = False):
+    try:
+        # default to system locale, if able
+        locale.setlocale(locale.LC_ALL, '')
+    except:
+        # fallback to US locale
+        trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    for record in records:
+        special_indicator = '* ' if record.is_special else ''
+        datestamp = record.date.strftime('%Y/%m/%d')
+        print(f'{datestamp} {special_indicator}{record.ticker} ({record.position})', file=file)
+        amount_display = ''
+        if record.amount is not None:
+            payout_display = format_amount(record.amount.value, trailing_zero=False)
+            if record.amount.format is not None:
+                payout_display = record.amount.format % payout_display
+            amount_display += payout_display
+        if record.dividend is not None:
+            dividend_display = format_amount(record.dividend.value, trailing_zero=False)
+            if record.dividend.format is not None:
+                dividend_display = record.dividend.format % dividend_display
+            amount_display += f' @ {dividend_display}'
+        if len(amount_display) > 0:
+            print(f'  {amount_display}', file=file)
+        if record != records[-1]:
+            print(file=file)
+
+
+def write_native(records: List[Transaction], filename: str = 'export.tsv', *, pretty: bool = False):
     """ Write records to file.
 
     Optionally formatting for humans.
