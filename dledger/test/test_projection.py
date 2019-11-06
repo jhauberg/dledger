@@ -6,6 +6,7 @@ from dledger.projection import (
     frequency, normalize_interval,
     next_scheduled_date,
     future_transactions,
+    estimated_transactions,
     expired_transactions
 )
 
@@ -378,6 +379,108 @@ def test_future_transactions():
 
     assert len(futures) == 1
     assert futures[0].date == date(2020, 7, 15)
+
+
+def test_estimated_transactions():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1)
+    ]
+
+    estimations = estimated_transactions(records)
+
+    assert len(estimations) == 0
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100))
+    ]
+
+    estimations = estimated_transactions(records)
+
+    assert len(estimations) == 1
+    assert estimations[0].date == date(2020, 3, 15)
+
+    records = [
+        Transaction(date(2019, 3, 16), 'ABC', 1, Amount(100))
+    ]
+
+    estimations = estimated_transactions(records)
+
+    assert len(estimations) == 1
+    assert estimations[0].date == date(2020, 3, 31)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 12, 16), 'ABC', 1, Amount(100))
+    ]
+
+    estimations = estimated_transactions(records)
+
+    assert len(estimations) == 2
+    assert estimations[0].date == date(2021, 3, 31)
+    assert estimations[1].date == date(2021, 12, 31)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100))
+    ]
+
+    estimations = estimated_transactions(records)
+
+    assert len(estimations) == 4
+    assert estimations[0].date == date(2019, 12, 15)
+    assert estimations[0].amount.value == 100
+    assert estimations[0].amount_range[0].value == 100
+    assert estimations[0].amount_range[1].value == 100
+    assert estimations[1].date == date(2020, 3, 15)
+    assert estimations[1].amount.value == 100
+    assert estimations[2].date == date(2020, 6, 15)
+    assert estimations[2].amount.value == 100
+    assert estimations[3].date == date(2020, 9, 15)
+    assert estimations[3].amount.value == 100
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(30)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(40)),
+        Transaction(date(2019, 9, 1), 'ABC', 2, Amount(100))
+    ]
+
+    estimations = estimated_transactions(records)
+
+    assert len(estimations) == 4
+    assert estimations[0].date == date(2019, 12, 15)
+    assert estimations[0].amount_range[0].value == 60   # lowest (adjusted by position)
+    assert estimations[0].amount_range[1].value == 100  # highest (adjusted by position)
+    assert estimations[0].amount.value == 80            # mean of highest / lowest
+    assert estimations[1].date == date(2020, 3, 15)
+    assert estimations[1].amount_range[0].value == 80  # lowest (adjusted by position)
+    assert estimations[1].amount_range[1].value == 100  # highest (adjusted by position)
+    assert estimations[1].amount.value == 90
+    assert estimations[2].date == date(2020, 6, 15)
+    assert estimations[2].amount.value == 100
+    assert estimations[3].date == date(2020, 9, 15)
+    assert estimations[3].amount.value == 100
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(40, symbol='$')),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(200, symbol='kr')),
+        Transaction(date(2019, 9, 1), 'ABC', 2, Amount(600, symbol='kr'))
+    ]
+
+    estimations = estimated_transactions(records)
+
+    assert len(estimations) == 4
+    assert estimations[0].amount_range[0].value == 400  # lowest (adjusted by position)
+    assert estimations[0].amount_range[1].value == 600  # highest (adjusted by position)
+    assert estimations[0].amount.value == 500            # mean of highest aps / lowest aps
+    assert estimations[1].date == date(2020, 3, 15)
+    assert estimations[1].amount_range[0].value == 400
+    assert estimations[1].amount_range[1].value == 600
+    assert estimations[1].amount.value == 500
+    assert estimations[2].date == date(2020, 6, 15)
+    assert estimations[2].amount.value == 600
+    assert estimations[3].date == date(2020, 9, 15)
+    assert estimations[3].amount.value == 600
 
 
 def test_expired_transactions():
