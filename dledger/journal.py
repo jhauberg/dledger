@@ -405,13 +405,17 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     date_value = str(record[3]).strip()
     ticker = str(record[5]).strip()
     position_value = str(record[8]).strip()
+    dividend_value = str(record[9]).strip()
     amount_value = str(record[12]).strip()
+    amount_symbol = str(record[13]).strip()
+    dividend_symbol = str(record[19]).strip()
 
     # hack: some numbers may show as e.g. '1.500' which atof will parse as 1.5,
     #       when in fact it should be parsed as 1.500,00 as per danish locale
     #       so this attempts to negate that issue by removing all dot-separators,
     #       but leaving comma-decimal separator
     amount_value = amount_value.replace('.', '')
+    dividend_value = dividend_value.replace('.', '')
 
     # parse date; expects format '2018-03-19'
     date = datetime.strptime(date_value, "%Y-%m-%d").date()
@@ -424,11 +428,16 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
 
     position = locale.atoi(position_value)
     amount = locale.atof(amount_value)
+    dividend = locale.atof(dividend_value)
 
     locale.setlocale(locale.LC_NUMERIC, prev)
 
-    return Transaction(date, ticker, position, amount)
+    dividend_symbol = dividend_symbol.split(' ')[-1].split('/')[0]
 
+    return Transaction(
+        date, ticker, position,
+        Amount(amount, symbol=amount_symbol, format=f'%s {amount_symbol}'),
+        Amount(dividend, symbol=dividend_symbol, format=f'%s {dividend_symbol}'))
 
 def export(records: List[Transaction], filename: str = 'export.tsv', *, pretty: bool = False):
     """ Write records to file.
