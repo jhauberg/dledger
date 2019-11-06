@@ -368,6 +368,17 @@ def test_future_transactions():
     assert futures[0].date == date(2020, 3, 15)
     assert futures[1].date == date(2021, 12, 31)
 
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100, symbol='$')),
+        Transaction(date(2019, 5, 1), 'ABC', 1, Amount(100, symbol='$')),
+        Transaction(date(2019, 7, 1), 'ABC', 1, Amount(100, symbol='kr'))
+    ]
+
+    futures = future_transactions(records)
+
+    assert len(futures) == 1
+    assert futures[0].date == date(2020, 7, 15)
+
 
 def test_expired_transactions():
     records = [

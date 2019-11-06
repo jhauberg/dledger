@@ -326,20 +326,16 @@ def future_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
     """ Return a list of transactions dated 12 months into the future.
 
-    Each record has its amount adjusted to match the position of the latest matching record.
+    Each transaction has its amount adjusted to match the position of the latest matching record.
     """
     
     future_records = []
 
-    for record in records:
-        if record.amount is None:
-            continue
+    # weed out position-only records
+    transactions = list(filter(lambda r: r.amount is not None, records))
 
-        # offset 12 months into the future by assuming an annual schedule
-        future_date = projected_date(next_scheduled_date(record.date, [record.date.month]),
-                                     timeframe=projected_timeframe(record.date))
-
-        latest_record = latest(by_ticker(records, record.ticker))
+    for transaction in transactions:
+        latest_record = latest(by_ticker(records, transaction.ticker))
 
         future_position = latest_record.position
 
@@ -347,9 +343,18 @@ def future_transactions(records: List[Transaction]) \
             # don't project closed positions
             continue
 
-        # todo: this is assuming both records are set in same currency
-        future_amount = future_position * amount_per_share(record)
-        future_record = FutureTransaction(future_date, record.ticker, future_position,
+        latest_transaction = latest(by_ticker(transactions, transaction.ticker))
+
+        if transaction.amount.symbol != latest_transaction.amount.symbol:
+            # don't project transactions that do not match latest recorded currency
+            continue
+
+        # offset 12 months into the future by assuming an annual schedule
+        next_date = next_scheduled_date(transaction.date, [transaction.date.month])
+        future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.date))
+
+        future_amount = future_position * amount_per_share(transaction)
+        future_record = FutureTransaction(future_date, transaction.ticker, future_position,
                                           amount=Amount(future_amount,
                                                         symbol=latest_record.amount.symbol,
                                                         format=latest_record.amount.format))
