@@ -8,9 +8,9 @@ from dledger.record import (
 
 def test_trailing():
     records = [
-        Transaction(date(2019, 1, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 2, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 1, 1), 'ABC', 1),
+        Transaction(date(2019, 2, 1), 'ABC', 1),
+        Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
     recs = list(trailing(records, since=records[2].date, months=1))
@@ -19,9 +19,9 @@ def test_trailing():
     assert recs[0] == records[2]
 
     records = [
-        Transaction(date(2019, 1, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 2, 2), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 1, 1), 'ABC', 1),
+        Transaction(date(2019, 2, 2), 'ABC', 1),
+        Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
     recs = list(trailing(records, since=records[2].date, months=1))
@@ -30,9 +30,9 @@ def test_trailing():
     assert recs[0] == records[1] and recs[1] == records[2]
 
     records = [
-        Transaction(date(2019, 1, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 2, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 31), 'ABC', 1, 100)
+        Transaction(date(2019, 1, 1), 'ABC', 1),
+        Transaction(date(2019, 2, 1), 'ABC', 1),
+        Transaction(date(2019, 3, 31), 'ABC', 1)
     ]
 
     recs = list(trailing(records, since=records[2].date, months=1))
@@ -43,94 +43,94 @@ def test_trailing():
 
 def test_intervals():
     records = [
-        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 5, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 4, 1), 'ABC', 1),
+        Transaction(date(2019, 5, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [1, 11]
 
     records = [
-        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2021, 5, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 4, 1), 'ABC', 1),
+        Transaction(date(2021, 5, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [1, 11]
 
     records = [
-        Transaction(date(2019, 1, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 1, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [12]
 
     records = [
-        Transaction(date(2019, 1, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 1, 1), 'ABC', 1, 100),
-        Transaction(date(2022, 1, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 1, 1), 'ABC', 1),
+        Transaction(date(2020, 1, 1), 'ABC', 1),
+        Transaction(date(2022, 1, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [12, 12, 12]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [3, 3, 6]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [3, 6, 3]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [6, 3, 3]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [9, 3]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1),
+        Transaction(date(2020, 3, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [9, 3, 12]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1),
+        Transaction(date(2020, 3, 1), 'ABC', 1),
+        Transaction(date(2020, 12, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [9, 3, 9, 3]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 4, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 8, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [1, 2, 2, 1, 6]
 
     records = [
-        Transaction(date(2018, 5, 4), 'ABC', 1, 10),
-        Transaction(date(2018, 5, 4), 'ABC', 1, 10)
+        Transaction(date(2018, 5, 4), 'ABC', 1),
+        Transaction(date(2018, 5, 4), 'ABC', 1)
     ]
 
     # this might seem wrong, but what we're interested in here is the pattern of payouts,
@@ -139,33 +139,33 @@ def test_intervals():
     assert intervals(records) == [12, 12]
 
     records = [
-        Transaction(date(2018, 5, 4), 'ABC', 1, 10),
-        Transaction(date(2018, 5, 14), 'ABC', 1, 10)
+        Transaction(date(2018, 5, 4), 'ABC', 1),
+        Transaction(date(2018, 5, 14), 'ABC', 1)
     ]
 
     assert intervals(records) == [12, 12]
 
     records = [
-        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 200)
+        Transaction(date(2018, 3, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [5, 12, 7]
 
     records = [
-        Transaction(date(2019, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 8, 1), 'ABC', 1, 200),
-        Transaction(date(2020, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 8, 1), 'ABC', 1),
+        Transaction(date(2019, 8, 1), 'ABC', 1),
+        Transaction(date(2020, 3, 1), 'ABC', 1)
     ]
 
     assert intervals(records) == [12, 7, 5]
 
     records = [
-        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 200),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2018, 3, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1),
+        Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
     # note that while the results for this case are correct, in the actual scenario where it could
@@ -175,10 +175,10 @@ def test_intervals():
 
 def test_schedule():
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
     ]
 
     assert monthly_schedule(records) == [3, 6, 9, 12]
@@ -186,10 +186,10 @@ def test_schedule():
 
 def test_pruned():
     records = [
-        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 200),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2018, 3, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1),
+        Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
     assert len(pruned(records)) == 3

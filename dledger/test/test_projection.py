@@ -1,6 +1,6 @@
 from datetime import date
 
-from dledger.journal import Transaction
+from dledger.journal import Transaction, Amount
 from dledger.projection import (
     estimated_monthly_schedule,
     frequency, normalize_interval,
@@ -30,48 +30,48 @@ def test_normalize_interval():
 
 def test_annual_frequency():
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 12
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2021, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2020, 3, 1), 'ABC', 1),
+        Transaction(date(2021, 3, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 12
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2021, 5, 1), 'ABC', 1, 100),
-        Transaction(date(2022, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2023, 5, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2020, 3, 1), 'ABC', 1),
+        Transaction(date(2021, 5, 1), 'ABC', 1),
+        Transaction(date(2022, 3, 1), 'ABC', 1),
+        Transaction(date(2023, 5, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 12
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2021, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2021, 3, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 12
 
     records = [
-        Transaction(date(2018, 5, 4), 'ABC', 1, 100),
-        Transaction(date(2018, 5, 4), 'ABC', 1, 100)
+        Transaction(date(2018, 5, 4), 'ABC', 1),
+        Transaction(date(2018, 5, 4), 'ABC', 1)
     ]
 
     assert frequency(records) == 12
 
     records = [
-        Transaction(date(2018, 5, 4), 'ABC', 1, 100),
-        Transaction(date(2018, 5, 4), 'ABC', 1, 100),
-        Transaction(date(2019, 5, 4), 'ABC', 1, 100),
-        Transaction(date(2019, 5, 4), 'ABC', 1, 100)
+        Transaction(date(2018, 5, 4), 'ABC', 1),
+        Transaction(date(2018, 5, 4), 'ABC', 1),
+        Transaction(date(2019, 5, 4), 'ABC', 1),
+        Transaction(date(2019, 5, 4), 'ABC', 1)
     ]
 
     assert frequency(records) == 12
@@ -79,84 +79,84 @@ def test_annual_frequency():
 
 def test_biannual_frequency():
     records = [
-        Transaction(date(2019, 5, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 11, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 5, 1), 'ABC', 1),
+        Transaction(date(2019, 11, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 6
 
     records = [
-        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 6, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 4, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2020, 4, 1), 'ABC', 1),
+        Transaction(date(2020, 6, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 6
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100)
-    ]
-
-    # ambiguous; fallback as biannual
-    assert frequency(records) == 6
-
-    records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1)
     ]
 
     # ambiguous; fallback as biannual
     assert frequency(records) == 6
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
     ]
 
     # ambiguous; fallback as biannual
     assert frequency(records) == 6
 
     records = [
-        Transaction(date(2019, 3, 5), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1),
+        Transaction(date(2020, 3, 1), 'ABC', 1)
     ]
 
     # ambiguous; fallback as biannual
     assert frequency(records) == 6
 
     records = [
-        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 5, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 5), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1),
+        Transaction(date(2020, 3, 1), 'ABC', 1)
     ]
 
     # ambiguous; fallback as biannual
     assert frequency(records) == 6
 
     records = [
-        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 200)
+        Transaction(date(2019, 4, 1), 'ABC', 1),
+        Transaction(date(2019, 5, 1), 'ABC', 1)
+    ]
+
+    # ambiguous; fallback as biannual
+    assert frequency(records) == 6
+
+    records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 6
 
     records = [
-        Transaction(date(2019, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 8, 1), 'ABC', 1, 200),
-        Transaction(date(2020, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 8, 1), 'ABC', 1),
+        Transaction(date(2019, 8, 1), 'ABC', 1),
+        Transaction(date(2020, 3, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 6
 
     records = [
-        Transaction(date(2018, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2018, 8, 1), 'ABC', 1, 200),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2018, 3, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1),
+        Transaction(date(2018, 8, 1), 'ABC', 1),
+        Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
     # note that while this result is not a biannual frequency, it is actually correct for the
@@ -167,54 +167,54 @@ def test_biannual_frequency():
 
 def test_quarterly_frequency():
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 3
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 3
 
     records = [
-        Transaction(date(2019, 1, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 1, 1), 'ABC', 1),
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 3
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 3
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2021, 12, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2020, 6, 1), 'ABC', 1),
+        Transaction(date(2021, 12, 1), 'ABC', 1),
     ]
 
     assert frequency(records) == 3
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 5), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 5), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 5), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1),
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 5), 'ABC', 1)
     ]
 
     assert frequency(records) == 3
@@ -222,18 +222,18 @@ def test_quarterly_frequency():
 
 def test_monthly_frequency():
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 5, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 4, 1), 'ABC', 1),
+        Transaction(date(2019, 5, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 1
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 5, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 4, 1), 'ABC', 1),
+        Transaction(date(2019, 5, 1), 'ABC', 1)
     ]
 
     assert frequency(records) == 1
@@ -241,11 +241,11 @@ def test_monthly_frequency():
 
 def test_irregular_frequency():
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 4, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 8, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1)
     ]
 
     # todo: this is a bad case; can this really be considered quarterly?
@@ -254,9 +254,9 @@ def test_irregular_frequency():
 
 def test_estimate_monthly_schedule():
     records = [
-        Transaction(date(2019, 1, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 2, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 1, 1), 'ABC', 1),
+        Transaction(date(2019, 2, 1), 'ABC', 1),
+        Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
     schedule = estimated_monthly_schedule(records, interval=1)
@@ -264,10 +264,10 @@ def test_estimate_monthly_schedule():
     assert schedule == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
     ]
 
     schedule = estimated_monthly_schedule(records, interval=3)
@@ -275,7 +275,7 @@ def test_estimate_monthly_schedule():
     assert schedule == [3, 6, 9, 12]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
     schedule = estimated_monthly_schedule(records, interval=3)
@@ -283,8 +283,8 @@ def test_estimate_monthly_schedule():
     assert schedule == [3, 6, 9, 12]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1)
     ]
 
     schedule = estimated_monthly_schedule(records, interval=3)
@@ -292,9 +292,9 @@ def test_estimate_monthly_schedule():
     assert schedule == [3, 6, 9, 12]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
+        Transaction(date(2019, 3, 1), 'ABC', 1),
         # note the different ticker
-        Transaction(date(2019, 9, 1), 'ABCD', 1, 100)
+        Transaction(date(2019, 9, 1), 'ABCD', 1)
     ]
 
     schedule = estimated_monthly_schedule(records, interval=3)
@@ -302,11 +302,11 @@ def test_estimate_monthly_schedule():
     assert schedule == [3, 6, 9, 12]
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 4, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 8, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 4, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 8, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1)
     ]
 
     # note that this is an incorrect interval; it is irregular
@@ -332,7 +332,15 @@ def test_next_scheduled_date():
 
 def test_future_transactions():
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1)
+    ]
+
+    futures = future_transactions(records)
+
+    assert len(futures) == 0
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100))
     ]
 
     futures = future_transactions(records)
@@ -341,7 +349,7 @@ def test_future_transactions():
     assert futures[0].date == date(2020, 3, 15)
 
     records = [
-        Transaction(date(2019, 3, 16), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 16), 'ABC', 1, Amount(100))
     ]
 
     futures = future_transactions(records)
@@ -350,8 +358,8 @@ def test_future_transactions():
     assert futures[0].date == date(2020, 3, 31)
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2020, 12, 16), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 12, 16), 'ABC', 1, Amount(100))
     ]
 
     futures = future_transactions(records)
@@ -363,10 +371,10 @@ def test_future_transactions():
 
 def test_expired_transactions():
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 6, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 9, 1), 'ABC', 1, 100),
-        Transaction(date(2019, 12, 1), 'ABC', 1, 100)
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
     ]
 
     assert len(list(expired_transactions(records, since=date(2019, 3, 1), grace_period=3))) == 0
