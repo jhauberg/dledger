@@ -142,7 +142,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
         if amount is not None and dividend is not None:
             if amount.symbol == dividend.symbol:
-                logical_position = int(amount.value / dividend.value)
+                logical_position = int(round(amount.value / dividend.value))
                 if position is None:
                     # infer position from amount/dividend - if same currency
                     position = logical_position
