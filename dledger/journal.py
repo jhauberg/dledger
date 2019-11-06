@@ -138,6 +138,9 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                     if position is None:
                         position = 0
                     position = previous_record.position + position * position_change_direction
+                    if position < 0:
+                        raise_parse_error(f'position change to negative position ({position})',
+                                          location=location)
                     break
 
         if amount is not None and dividend is not None:
