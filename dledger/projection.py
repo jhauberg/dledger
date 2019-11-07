@@ -222,6 +222,8 @@ def scheduled_transactions(records: List[Transaction],
 
     pending = list(pending_transactions(filter(lambda r: not r.is_special, records), since=since))
 
+    # bias toward pending; e.g. keep manually set transactions in the future,
+    # discard projections on same date
     for record in pending:
         duplicates = [r for r in scheduled
                       if r.ticker == record.ticker
@@ -233,6 +235,10 @@ def scheduled_transactions(records: List[Transaction],
 
         for dupe in duplicates:
             scheduled.remove(dupe)
+
+    # exclude unrealized projections
+    closed = tickers(expired_transactions(scheduled, since=since))
+    scheduled = filter(lambda r: r.ticker not in closed, scheduled)
 
     return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
