@@ -439,33 +439,6 @@ def print_debug_reports(records: List[Transaction]) -> None:
     printer.pprint(annuals)
 
 
-# def print_journal_entries(records: List[Transaction]) -> None:
-#     try:
-#         # default to system locale, if able
-#         locale.setlocale(locale.LC_ALL, '')
-#     except:
-#         # fallback to US locale
-#         trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
-#
-#     for record in records:
-#         special_indicator = '* ' if record.is_special else ''
-#         datestamp = record.date.strftime('%Y/%m/%d')
-#         print(f'{datestamp} {special_indicator}{record.ticker} ({record.position})')
-#         amount_display = ''
-#         if record.amount is not None:
-#             payout_display = format_amount(record.amount.value, trailing_zero=False)
-#             if record.amount.format is not None:
-#                 payout_display = record.amount.format % payout_display
-#             amount_display += payout_display
-#         if record.dividend is not None:
-#             dividend_display = format_amount(record.dividend.value, trailing_zero=False)
-#             if record.dividend.format is not None:
-#                 dividend_display = record.dividend.format % dividend_display
-#             amount_display += f' @ {dividend_display}'
-#         if len(amount_display) > 0:
-#             print(f'  {amount_display}')
-
-
 def generate(records: List[Transaction], debug: bool = False) -> None:
     # default to use system locale
     # note that this may depend on the current shell/environment and might not
@@ -479,8 +452,9 @@ def generate(records: List[Transaction], debug: bool = False) -> None:
 
         return
 
-    reports = report_by_record(records)
-    annual_reports = report_by_year(records)
+    transactions = list(filter(lambda r: r.amount is not None and r.amount.value > 0, records))
+    reports = report_by_record(transactions)
+    annual_reports = report_by_year(transactions)
 
     listings = list()
 
