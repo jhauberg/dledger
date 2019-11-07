@@ -25,6 +25,7 @@ from docopt import docopt  # type: ignore
 
 from dledger import __version__
 from dledger.report import generate
+from dledger.projection import scheduled_transactions
 from dledger.journal import (
     write, transactions, SUPPORTED_TYPES
 )
@@ -81,7 +82,8 @@ def main() -> None:
         ticker = args['<ticker>']
         pass
     elif args['forecast']:
-        pass
+        future_transactions = scheduled_transactions(records)
+        write(future_transactions, file=sys.stdout)
 
     sys.exit(0)
 
