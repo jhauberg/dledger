@@ -92,6 +92,23 @@ def tickers(records: Iterable[Transaction]) \
     return list(set([record.ticker for record in records]))
 
 
+def symbols(records: Iterable[Transaction]) \
+        -> List[str]:
+    """ Return a list of unique symbol components in a set of records. """
+
+    transactions = filter(lambda r: r.amount is not None, records)
+
+    collected_symbols = []
+
+    for record in transactions:
+        if record.amount is not None and record.amount.symbol is not None:
+            collected_symbols.append(record.amount.symbol)
+        if record.dividend is not None and record.dividend.symbol is not None:
+            collected_symbols.append(record.dividend.symbol)
+
+    return list(set(collected_symbols))
+
+
 def monthly_schedule(records: Iterable[Transaction]) \
         -> List[int]:
     """ Return a list of unique month components in a set of records. """
