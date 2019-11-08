@@ -33,7 +33,7 @@ class Transaction:
     is_special: bool = False
 
 
-def transactions(path: str, kind: str) \
+def read(path: str, kind: str) \
         -> List[Transaction]:
     """ Return a list of records imported from a file. """
 

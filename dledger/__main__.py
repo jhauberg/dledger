@@ -27,7 +27,7 @@ from dledger import __version__
 from dledger.report import generate
 from dledger.projection import scheduled_transactions
 from dledger.journal import (
-    write, transactions, SUPPORTED_TYPES
+    write, read, SUPPORTED_TYPES
 )
 
 
@@ -54,7 +54,7 @@ def main() -> None:
         if input_type not in SUPPORTED_TYPES:
             sys.exit(f'Transaction type is not supported: {input_type}')
 
-        records.extend(transactions(input_path, input_type))
+        records.extend(read(input_path, input_type))
 
     records = sorted(records, key=lambda r: r.date)
 

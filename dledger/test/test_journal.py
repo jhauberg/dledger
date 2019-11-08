@@ -1,11 +1,11 @@
-from dledger.journal import transactions
+from dledger.journal import read
 
 
 def test_transactions():
-    records = transactions('../example/simple.journal', kind='journal')
+    records = read('../example/simple.journal', kind='journal')
 
     assert len(records) == 4
 
-    records = transactions('../example/simple-condensed.journal', kind='journal')
+    records = read('../example/simple-condensed.journal', kind='journal')
 
     assert len(records) == 4
