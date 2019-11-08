@@ -4,6 +4,7 @@
 usage: dledger report         <journal>... [--period=<years>] [--weighted] [-V]
        dledger chart <ticker> <journal>... [--period=<years>] [-V]
        dledger forecast       <journal>... [--weighted] [-V]
+       dledger stats          <journal>... [--period=<years>]
        dledger print          <journal>
        dledger convert <file>... [--type=<name>] [--output=<journal>] [-V]
 
@@ -20,10 +21,13 @@ See https://github.com/jhauberg/dledger for additional details.
 """
 
 import sys
+import os
+import locale
 
 from docopt import docopt  # type: ignore
 
 from dledger import __version__
+from dledger.record import tickers, symbols
 from dledger.report import generate
 from dledger.projection import scheduled_transactions
 from dledger.journal import (
@@ -72,6 +76,29 @@ def main() -> None:
 
     if args['print']:
         write(records, file=sys.stdout)
+    elif args['stats']:
+        def print_stat_row(name: str, text: str) -> None:
+            name = name.rjust(10)
+            print(f'{name}: {text}')
+        for n, journal_path in enumerate(input_paths):
+            print_stat_row(f'Journal {n+1}', os.path.abspath(journal_path))
+        try:
+            lc = locale.getlocale(locale.LC_ALL)
+            print_stat_row('Locale', f'{lc}')
+        except:
+            print_stat_row('Locale', 'Not configured')
+        transactions = list(filter(lambda r: r.amount is not None, records))
+        if len(transactions) > 0 and len(transactions) != len(records):
+            print_stat_row('Records', f'{len(records)} ({len(transactions)})')
+        else:
+            print_stat_row('Records', f'{len(records)}')
+        if len(records) > 0:
+            currencies = ', '.join(symbols(records))
+            print_stat_row('Earliest', f'{records[0].date}')
+            print_stat_row('Latest', f'{records[-1].date}')
+            print_stat_row('Tickers', f'{len(tickers(records))}')
+            if len(currencies) > 0:
+                print_stat_row('Symbols', f'{currencies}')
     elif args['report']:
         period = args['--period']
         if period == 'current year':
