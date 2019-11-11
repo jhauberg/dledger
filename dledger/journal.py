@@ -278,7 +278,7 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
 
     fmt = f'{lhs}%s{rhs}'
 
-    return Amount(value, symbol, fmt)
+    return Amount(value, symbol if symbol is not None else '', fmt)
 
 
 def read_native_transactions(path: str, encoding: str = 'utf-8') \

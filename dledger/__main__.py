@@ -93,7 +93,8 @@ def main() -> None:
         else:
             print_stat_row('Records', f'{len(records)}')
         if len(records) > 0:
-            currencies = ', '.join(symbols(records))
+            commodities = filter(lambda c: len(c) > 0, symbols(records))
+            currencies = ', '.join(commodities)
             print_stat_row('Earliest', f'{records[0].date}')
             print_stat_row('Latest', f'{records[-1].date}')
             print_stat_row('Tickers', f'{len(tickers(records))}')
