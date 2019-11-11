@@ -13,8 +13,8 @@ from dledger.projection import (
     scheduled_transactions, expired_transactions, estimated_schedule
 )
 from dledger.record import (
-    income, yearly, monthly, amount_per_share, trailing,
-    tickers, by_ticker, previous, previous_comparable, latest
+    income, yearly, monthly, amount_per_share, trailing, symbols,
+    tickers, by_ticker, previous, previous_comparable, latest, earliest
 )
 from dledger.printutil import (
     colored,
@@ -446,6 +446,33 @@ def generate(records: List[Transaction], debug: bool = False) -> None:
     locale.setlocale(locale.LC_ALL, '')
     # except for time/dates where we explicitly want US locale
     trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
+
+    transactions = list(filter(lambda r: r.amount is not None, records))
+
+    years = range(earliest(transactions).date.year,
+                  latest(transactions).date.year + 1)
+
+    commodities = symbols(transactions, excluding_dividends=True)
+
+    for commodity in commodities:
+        for year in years:
+            matching_transactions = list(filter(lambda r: r.amount.symbol == commodity, transactions))
+            if len(matching_transactions) == 0:
+                continue
+            yearly_transactions = list(yearly(matching_transactions, year=year))
+            if len(yearly_transactions) == 0:
+                continue
+            latest_transaction = latest(yearly_transactions)
+            total = income(yearly_transactions)
+            amount = format_amount(total, trailing_zero=False)
+            amount = latest_transaction.amount.format % amount
+            now = datetime.today()
+            year_indicator = f'{year}/{now.month}' if year == now.year else f'{year}'
+            print(f'{amount.rjust(18)}    {year_indicator}')
+        if commodity != commodities[-1]:
+            print()
+
+    return
 
     if debug:
         print_debug_reports(records)
