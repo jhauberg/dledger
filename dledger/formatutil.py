@@ -47,12 +47,12 @@ def format_pct_change(pct: float) -> str:
     return f'{sign} {d:n}%'
 
 
-def format_change(amount: float) -> str:
+def format_change(amount: float, trailing_zero: bool = True) -> str:
     """ Return a human-readable string for a change in totals. """
 
     sign = '-' if amount < 0 else '+'
 
-    return f'{sign} {format_amount(abs(amount))}'
+    return f'{sign} {format_amount(abs(amount), trailing_zero=trailing_zero)}'
 
 
 def format_amount(amount: float, trailing_zero: bool = True) -> str:
