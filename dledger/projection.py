@@ -367,8 +367,8 @@ def future_transactions(records: List[Transaction]) \
         future_amount = future_position * amount_per_share(transaction)
         future_record = FutureTransaction(future_date, transaction.ticker, future_position,
                                           amount=Amount(future_amount,
-                                                        symbol=latest_record.amount.symbol,
-                                                        format=latest_record.amount.format))
+                                                        symbol=latest_transaction.amount.symbol,
+                                                        format=latest_transaction.amount.format))
 
         future_records.append(future_record)
 
