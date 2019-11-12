@@ -547,6 +547,16 @@ def print_simple_quarterly_report(records: List[Transaction]):
                 print()
 
 
+def print_simple_forecast(records: List[Transaction]):
+    for transaction in records:
+        amount = format_amount(transaction.amount.value, trailing_zero=False)
+        amount = transaction.amount.format % amount
+
+        d = transaction.date.strftime('%Y/%m/%d')
+
+        print(f'{amount.rjust(18)}  ~ {d} {transaction.ticker}')
+
+
 def generate(records: List[Transaction], debug: bool = False) -> None:
     # default to use system locale
     # note that this may depend on the current shell/environment and might not

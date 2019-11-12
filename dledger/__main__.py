@@ -114,8 +114,8 @@ def main() -> None:
         transactions = list(filter(lambda r: r.amount is not None and r.ticker == ticker, records))
         print_simple_monthly_report(transactions)
     elif args['forecast']:
-        future_transactions = scheduled_transactions(records)
-        write(future_transactions, file=sys.stdout)
+        transactions = scheduled_transactions(records)
+        print_simple_forecast(transactions)
 
     sys.exit(0)
 
