@@ -439,15 +439,11 @@ def print_debug_reports(records: List[Transaction]) -> None:
     printer.pprint(annuals)
 
 
-def generate(records: List[Transaction], debug: bool = False) -> None:
-    # default to use system locale
-    # note that this may depend on the current shell/environment and might not
-    # give the result that the user expects but is the "correct" approach
-    locale.setlocale(locale.LC_ALL, '')
-    # except for time/dates where we explicitly want US locale
-    trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
-
+def print_simple_annual_report(records: List[Transaction]):
     transactions = list(filter(lambda r: r.amount is not None, records))
+
+    if len(transactions) == 0:
+        return
 
     years = range(earliest(transactions).date.year,
                   latest(transactions).date.year + 1)
@@ -456,23 +452,108 @@ def generate(records: List[Transaction], debug: bool = False) -> None:
 
     for commodity in commodities:
         for year in years:
-            matching_transactions = list(filter(lambda r: r.amount.symbol == commodity, transactions))
+            matching_transactions = list(
+                filter(lambda r: r.amount.symbol == commodity, transactions))
             if len(matching_transactions) == 0:
                 continue
+            latest_transaction = latest(matching_transactions)
             yearly_transactions = list(yearly(matching_transactions, year=year))
             if len(yearly_transactions) == 0:
                 continue
-            latest_transaction = latest(yearly_transactions)
+
             total = income(yearly_transactions)
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.format % amount
             now = datetime.today()
-            year_indicator = f'{year}/{now.month}' if year == now.year else f'{year}'
+            month_indicator = f'{now.month}'.zfill(2)
+            year_indicator = f'{year}/{month_indicator}' if year == now.year else f'{year}'
             print(f'{amount.rjust(18)}    {year_indicator}')
         if commodity != commodities[-1]:
             print()
 
-    return
+
+def print_simple_monthly_report(records: List[Transaction]):
+    transactions = list(filter(lambda r: r.amount is not None, records))
+
+    if len(transactions) == 0:
+        return
+
+    years = range(earliest(transactions).date.year,
+                  latest(transactions).date.year + 1)
+
+    commodities = symbols(transactions, excluding_dividends=True)
+
+    for commodity in commodities:
+        for year in years:
+            for month in range(1, 12 + 1):
+                now = datetime.today()
+                if month > now.month:
+                    break
+                matching_transactions = list(
+                    filter(lambda r: r.amount.symbol == commodity, transactions))
+                if len(matching_transactions) == 0:
+                    continue
+                latest_transaction = latest(matching_transactions)
+                monthly_transactions = list(monthly(matching_transactions, year=year, month=month))
+                if len(monthly_transactions) == 0:
+                    continue
+
+                total = income(monthly_transactions)
+                amount = format_amount(total, trailing_zero=False)
+                amount = latest_transaction.amount.format % amount
+                month_indicator = f'{month}'.zfill(2)
+                print(f'{amount.rjust(18)}    {year}/{month_indicator}')
+            if commodity != commodities[-1]:
+                print()
+
+
+def print_simple_quarterly_report(records: List[Transaction]):
+    transactions = list(filter(lambda r: r.amount is not None, records))
+
+    if len(transactions) == 0:
+        return
+
+    years = range(earliest(transactions).date.year,
+                  latest(transactions).date.year + 1)
+
+    commodities = symbols(transactions, excluding_dividends=True)
+
+    for commodity in commodities:
+        for year in years:
+            for quarter in range(1, 4 + 1):
+                now = datetime.today()
+                starting_month = (quarter - 1) * 3
+                if starting_month > now.month:
+                    break
+                matching_transactions = list(
+                    filter(lambda r: r.amount.symbol == commodity, transactions))
+                if len(matching_transactions) == 0:
+                    continue
+                latest_transaction = latest(matching_transactions)
+                ending_month = quarter * 3
+                quarterly_transactions = []
+                for month in range(starting_month, ending_month + 1):
+                    monthly_transactions = monthly(matching_transactions, year=year, month=month)
+                    quarterly_transactions.extend(monthly_transactions)
+                if len(quarterly_transactions) == 0:
+                    continue
+
+                total = income(quarterly_transactions)
+                amount = format_amount(total, trailing_zero=False)
+                amount = latest_transaction.amount.format % amount
+
+                print(f'{amount.rjust(18)}    {year}/Q{quarter}')
+            if commodity != commodities[-1]:
+                print()
+
+
+def generate(records: List[Transaction], debug: bool = False) -> None:
+    # default to use system locale
+    # note that this may depend on the current shell/environment and might not
+    # give the result that the user expects but is the "correct" approach
+    locale.setlocale(locale.LC_ALL, '')
+    # except for time/dates where we explicitly want US locale
+    trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
 
     if debug:
         print_debug_reports(records)

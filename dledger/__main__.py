@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report         <journal>... [--period=<years>] [--weighted] [-V]
+usage: dledger report         <journal>... [--period=<years>] [--monthly | --quarterly] [--weighted] [-V]
        dledger chart <ticker> <journal>... [--period=<years>] [-V]
        dledger forecast       <journal>... [--weighted] [-V]
        dledger stats          <journal>... [--period=<years>]
@@ -28,7 +28,9 @@ from docopt import docopt  # type: ignore
 
 from dledger import __version__
 from dledger.record import tickers, symbols
-from dledger.report import generate
+from dledger.report import (
+    print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report
+)
 from dledger.projection import scheduled_transactions
 from dledger.journal import (
     write, read, SUPPORTED_TYPES
@@ -100,14 +102,17 @@ def main() -> None:
             if len(currencies) > 0:
                 print_stat_row('Symbols', f'{currencies}')
     elif args['report']:
-        period = args['--period']
-        if period == 'current year':
-            # todo: set to current year; maybe even use range() ?
-            pass
-        generate(records)
+        if args['--monthly']:
+            # todo: weighted means weighing months?
+            print_simple_monthly_report(records)
+        elif args['--quarterly']:
+            print_simple_quarterly_report(records)
+        else:
+            print_simple_annual_report(records)
     elif args['chart']:
         ticker = args['<ticker>']
-        pass
+        transactions = list(filter(lambda r: r.amount is not None and r.ticker == ticker, records))
+        print_simple_monthly_report(transactions)
     elif args['forecast']:
         future_transactions = scheduled_transactions(records)
         write(future_transactions, file=sys.stdout)
