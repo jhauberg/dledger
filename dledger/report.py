@@ -451,12 +451,13 @@ def print_simple_annual_report(records: List[Transaction]):
     commodities = symbols(transactions, excluding_dividends=True)
 
     for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, transactions))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+
         for year in years:
-            matching_transactions = list(
-                filter(lambda r: r.amount.symbol == commodity, transactions))
-            if len(matching_transactions) == 0:
-                continue
-            latest_transaction = latest(matching_transactions)
             yearly_transactions = list(yearly(matching_transactions, year=year))
             if len(yearly_transactions) == 0:
                 continue
@@ -484,16 +485,17 @@ def print_simple_monthly_report(records: List[Transaction]):
     commodities = symbols(transactions, excluding_dividends=True)
 
     for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, transactions))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
         for year in years:
             for month in range(1, 12 + 1):
                 now = datetime.today()
                 if month > now.month:
                     break
-                matching_transactions = list(
-                    filter(lambda r: r.amount.symbol == commodity, transactions))
-                if len(matching_transactions) == 0:
-                    continue
-                latest_transaction = latest(matching_transactions)
+
                 monthly_transactions = list(monthly(matching_transactions, year=year, month=month))
                 if len(monthly_transactions) == 0:
                     continue
@@ -519,20 +521,21 @@ def print_simple_quarterly_report(records: List[Transaction]):
     commodities = symbols(transactions, excluding_dividends=True)
 
     for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, transactions))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
         for year in years:
             for quarter in range(1, 4 + 1):
                 now = datetime.today()
-                starting_month = (quarter - 1) * 3
+                ending_month = quarter * 3 + 1
+                starting_month = ending_month - 3
                 if starting_month > now.month:
                     break
-                matching_transactions = list(
-                    filter(lambda r: r.amount.symbol == commodity, transactions))
-                if len(matching_transactions) == 0:
-                    continue
-                latest_transaction = latest(matching_transactions)
-                ending_month = quarter * 3
+
                 quarterly_transactions = []
-                for month in range(starting_month, ending_month + 1):
+                for month in range(starting_month, ending_month):
                     monthly_transactions = monthly(matching_transactions, year=year, month=month)
                     quarterly_transactions.extend(monthly_transactions)
                 if len(quarterly_transactions) == 0:
