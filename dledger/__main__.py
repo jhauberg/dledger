@@ -12,7 +12,9 @@ OPTIONS:
      --type=<name>       Specify type of transaction data [default: journal]
      --output=<journal>  Specify journal filename [default: ledger.journal]
      --period=<years>    Specify range of years [default: current year]
-     --weighted          Show report as a weighted table
+  -q --quarterly         Show income by quarter
+  -m --monthly           Show income by month
+  -w --weighted          Show income as a weighted table
   -V --verbose           Show diagnostic messages
   -h --help              Show program help
   -v --version           Show program version
@@ -29,7 +31,8 @@ from docopt import docopt  # type: ignore
 from dledger import __version__
 from dledger.record import tickers, symbols
 from dledger.report import (
-    print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report
+    print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
+    print_simple_forecast
 )
 from dledger.projection import scheduled_transactions
 from dledger.journal import (
