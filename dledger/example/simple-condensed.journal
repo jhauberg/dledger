@@ -1,0 +1,10 @@
+# this file serves as an example journal for dledger
+
+2019/02/14 AAPL (100) $ 73
+
+# note that if position is not set (inferred), then ticker and amount
+# must be separated by at least two spaces (or a single tab)
+
+2019/05/16 AAPL  $ 77
+2019/08/15 AAPL  $ 77
+2019/11/14 AAPL  $ 77

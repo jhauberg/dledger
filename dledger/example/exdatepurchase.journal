@@ -1,0 +1,19 @@
+# this file serves as an example journal for dledger to illustrate the issue
+# where additional shares are purchased/sold within ex-date/paydate interval
+
+2019/02/14 AAPL (100)    # starting position of 100
+  $ 73
+
+2019/05/14 AAPL (+20)    # position = 120
+
+# now, the following transaction will infer position to 120, however,
+# the additional 20 shares were purchased *after* the ex-date, resulting
+# in dividends received for a position of only 100
+
+2019/05/16 AAPL          # position = 120, but really only 100
+  $ 77
+
+# this problem can be solved by either:
+#  1) explicitly setting position to 100 on the dividend transaction
+#      (effectively nullifying the additional 20 shares)
+#  2) pushing the purchase transaction (at least) 1 day ahead (in this case, 2019/05/17)

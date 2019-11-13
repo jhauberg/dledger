@@ -1,8 +1,9 @@
 from datetime import date
 
-from dividendreport.dateutil import (
+from dledger.dateutil import (
     months_between, in_months,
     next_month, previous_month, last_of_month,
+    parse_period, parse_datestamp
 )
 
 
@@ -112,3 +113,39 @@ def test_previous_next_month():
     d = previous_month(date(year=2020, month=1, day=1))
 
     assert d.year == 2019 and d.month == 12 and d.day == 31
+
+
+def test_parse_datestamp():
+    assert parse_datestamp('2019/11/11') == date(2019, 11, 11)
+    assert parse_datestamp('2019/11') == date(2019, 11, 1)
+    assert parse_datestamp('2019') == date(2019, 1, 1)
+
+    assert parse_datestamp('2019-11-11') == date(2019, 11, 11)
+    assert parse_datestamp('2019-11') == date(2019, 11, 1)
+    assert parse_datestamp('2019') == date(2019, 1, 1)
+
+    assert parse_datestamp('') is None
+    assert parse_datestamp('2019/11-11') is None
+    assert parse_datestamp('2019 / 11/11') is None
+
+
+def test_parse_period():
+    assert parse_period('2019/11/11;2020/11/11') == (date(2019, 11, 11),
+                                                     date(2020, 11, 11))
+    assert parse_period('2019/11;2020/11') == (date(2019, 11, 1),
+                                               date(2020, 11, 1))
+    assert parse_period('2019;2020') == (date(2019, 1, 1),
+                                         date(2020, 1, 1))
+
+    assert parse_period('2019;') == (date(2019, 1, 1), None)
+    assert parse_period(';2019') == (None, date(2019, 1, 1))
+
+    assert parse_period('2019') == (date(2019, 1, 1), date(2019, 12, 31))
+    assert parse_period('2019/11') == (date(2019, 11, 1), date(2019, 11, 30))
+    assert parse_period('2019/11/11') == (date(2019, 11, 11), date(2019, 11, 11))
+
+    assert parse_period('2019/11/11;2020/11') == (date(2019, 11, 11),
+                                                  date(2020, 11, 1))
+
+    assert parse_period('2020/11/11;2019/11/11') == (date(2019, 11, 11),
+                                                     date(2020, 11, 11))

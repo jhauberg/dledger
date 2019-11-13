@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from dividendreport.dateutil import months_between, in_months, first_of_month
-from dividendreport.ledger import Transaction
+from dledger.dateutil import months_between, in_months, first_of_month
+from dledger.journal import Transaction
 
 from typing import Iterable, Optional, List
 
@@ -10,8 +10,8 @@ def amount_per_share(record: Transaction) \
         -> float:
     """ Return the fractional amount per share. """
 
-    return (record.amount / record.position
-            if record.amount > 0 and record.position > 0
+    return (record.amount.value / record.position
+            if record.amount.value > 0 and record.position > 0
             else 0)
 
 
@@ -92,6 +92,27 @@ def tickers(records: Iterable[Transaction]) \
     return list(set([record.ticker for record in records]))
 
 
+def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False) \
+        -> List[str]:
+    """ Return a list of unique symbol components in a set of records.
+
+    Optionally excluding symbols attached only to dividends.
+    """
+
+    transactions = filter(lambda r: r.amount is not None, records)
+
+    collected_symbols = []
+
+    for record in transactions:
+        if record.amount is not None:
+            collected_symbols.append(record.amount.symbol)
+        if not excluding_dividends:
+            if record.dividend is not None:
+                collected_symbols.append(record.dividend.symbol)
+
+    return sorted(set(collected_symbols))
+
+
 def monthly_schedule(records: Iterable[Transaction]) \
         -> List[int]:
     """ Return a list of unique month components in a set of records. """
@@ -150,7 +171,7 @@ def income(records: Iterable[Transaction]) \
         -> float:
     """ Return the sum of amount components in a set of records. """
 
-    return sum([record.amount for record in records])
+    return sum([record.amount.value for record in records])
 
 
 def after(records: Iterable[Transaction], date: datetime.date) \
