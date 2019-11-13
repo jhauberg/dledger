@@ -132,6 +132,7 @@ def main() -> None:
         sys.exit(0)
 
     if args['report']:
+        records = list(filter_by_period(records, interval))
         if args['--monthly']:
             print_simple_monthly_report(records)
         elif args['--quarterly']:
@@ -143,7 +144,9 @@ def main() -> None:
 
     if args['chart']:
         ticker = args['<ticker>']
-        transactions = list(filter(lambda r: r.amount is not None and r.ticker == ticker, records))
+        transactions = filter(
+            lambda r: r.amount is not None and r.ticker == ticker, records)
+        transactions = list(filter_by_period(transactions, interval))
         print_simple_chart(transactions)
 
         sys.exit(0)
