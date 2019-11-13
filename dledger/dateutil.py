@@ -2,6 +2,8 @@ import calendar
 
 from datetime import datetime, timedelta
 
+from typing import Tuple, Optional
+
 
 def months_between(a: datetime.date, b: datetime.date,
                    *, ignore_years: bool = False) -> int:
@@ -81,7 +83,8 @@ def next_month(date: datetime.date) -> datetime.date:
     return date
 
 
-def parse_datestamp(datestamp: str, *, strict: bool = False) -> datetime.date:
+def parse_datestamp(datestamp: str, *, strict: bool = False) \
+        -> datetime.date:
     """ Return the date that maps to datestamp.
 
     A datestamp can be specified in any of the following variations:
@@ -127,10 +130,26 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) -> datetime.date:
     return None
 
 
-def parse_period(interval: str):
+def parse_period(interval: str) \
+        -> Tuple[Optional[datetime.date],
+                 Optional[datetime.date]]:
     datestamps = interval.split(';')
 
-    if len(datestamps) != 2:
+    if len(datestamps) > 2 or len(datestamps) == 0:
         raise ValueError('malformed period')
 
-    return sorted([parse_datestamp(datestamp.strip()) for datestamp in datestamps])
+    starting = datestamps[0].strip()
+    starting = parse_datestamp(starting) if len(starting) > 0 else None
+
+    ending = datestamps[1].strip() if len(datestamps) > 1 else None
+
+    if ending is not None:
+        ending = parse_datestamp(ending) if len(ending) > 0 else None
+
+    if starting is not None and ending is not None:
+        if starting > ending:
+            tmp = starting
+            starting = ending
+            ending = tmp
+
+    return starting, ending
