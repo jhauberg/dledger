@@ -138,8 +138,11 @@ def test_parse_period():
                                          date(2020, 1, 1))
 
     assert parse_period('2019;') == (date(2019, 1, 1), None)
-    assert parse_period('2019') == (date(2019, 1, 1), None)
     assert parse_period(';2019') == (None, date(2019, 1, 1))
+
+    assert parse_period('2019') == (date(2019, 1, 1), date(2019, 12, 31))
+    assert parse_period('2019/11') == (date(2019, 11, 1), date(2019, 11, 30))
+    assert parse_period('2019/11/11') == (date(2019, 11, 11), date(2019, 11, 11))
 
     assert parse_period('2019/11/11;2020/11') == (date(2019, 11, 11),
                                                   date(2020, 11, 1))

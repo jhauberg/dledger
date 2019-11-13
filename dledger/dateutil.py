@@ -99,7 +99,7 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
         "2019-11"    => 2019/11/01
         "2019"       => 2019/01/01
 
-    Components left out will always default to the first of year or month.
+    Components left out will default to the first of year or month.
     """
 
     try:
@@ -130,7 +130,7 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
     return None
 
 
-def parse_period(interval: str) \
+def parse_interval(interval: str) \
         -> Tuple[Optional[datetime.date],
                  Optional[datetime.date]]:
     datestamps = interval.split(';')
@@ -153,3 +153,25 @@ def parse_period(interval: str) \
             ending = tmp
 
     return starting, ending
+
+
+def parse_period(interval: str) \
+        -> Tuple[Optional[datetime.date],
+                 Optional[datetime.date]]:
+    if ';' in interval:
+        return parse_interval(interval)
+
+    n = max(interval.count('/'), interval.count('-'))
+
+    starting = parse_datestamp(interval)
+    ending = None
+
+    if n == 0:
+        ending = last_of_month(starting.replace(month=12))
+    if n == 1:
+        ending = last_of_month(starting)
+    if n == 2:
+        ending = starting
+
+    return starting, ending
+
