@@ -5,6 +5,7 @@ import locale
 from dledger.localeutil import trysetlocale
 from dledger.formatutil import format_amount
 from dledger.fileutil import fileencoding
+from dledger.dateutil import parse_datestamp
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -184,12 +185,9 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     datestamp = condensed_line[:10]
     date = None
     try:
-        date = datetime.strptime(datestamp, "%Y/%m/%d").date()
+        date = parse_datestamp(datestamp, strict=True)
     except ValueError:
-        try:
-            date = datetime.strptime(datestamp, "%Y-%m-%d").date()
-        except ValueError:
-            raise_parse_error(f'Invalid date format (\'{datestamp}\')', location)
+        raise_parse_error(f'Invalid date format (\'{datestamp}\')', location)
     condensed_line = condensed_line[10:].strip()
     break_separators = ['(', '  ', '\t']
     break_index = min(condensed_line.index(sep) for sep in break_separators if sep in condensed_line)

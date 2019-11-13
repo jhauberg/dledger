@@ -112,3 +112,18 @@ def test_previous_next_month():
     d = previous_month(date(year=2020, month=1, day=1))
 
     assert d.year == 2019 and d.month == 12 and d.day == 31
+
+
+def test_parse_datestamp():
+    assert parse_datestamp('2019/11/11') == date(2019, 11, 11)
+    assert parse_datestamp('2019/11') == date(2019, 11, 1)
+    assert parse_datestamp('2019') == date(2019, 1, 1)
+
+    assert parse_datestamp('2019-11-11') == date(2019, 11, 11)
+    assert parse_datestamp('2019-11') == date(2019, 11, 1)
+    assert parse_datestamp('2019') == date(2019, 1, 1)
+
+    assert parse_datestamp('') is None
+    assert parse_datestamp('2019/11-11') is None
+    assert parse_datestamp('2019 / 11/11') is None
+

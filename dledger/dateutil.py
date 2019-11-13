@@ -79,3 +79,49 @@ def next_month(date: datetime.date) -> datetime.date:
             date = date.replace(year=date.year + 1, month=1)
 
     return date
+
+
+def parse_datestamp(datestamp: str, *, strict: bool = False) -> datetime.date:
+    """ Return the date that maps to datestamp.
+
+    A datestamp can be specified in any of the following variations:
+
+        "2019/11/11" => 2019/11/11
+        "2019/11"    => 2019/11/01
+        "2019"       => 2019/01/01
+
+        or
+
+        "2019-11-11" => 2019/11/11
+        "2019-11"    => 2019/11/01
+        "2019"       => 2019/01/01
+
+    Components left out will always default to the first of year or month.
+    """
+
+    try:
+        return datetime.strptime(datestamp, '%Y/%m/%d').date()
+    except ValueError:
+        try:
+            return datetime.strptime(datestamp, '%Y-%m-%d').date()
+        except ValueError:
+            if strict:
+                raise
+
+    try:
+        return datetime.strptime(datestamp, '%Y/%m').date()
+    except ValueError:
+        try:
+            return datetime.strptime(datestamp, '%Y-%m').date()
+        except ValueError:
+            pass
+
+    try:
+        return datetime.strptime(datestamp, '%Y').date()
+    except ValueError:
+        try:
+            return datetime.strptime(datestamp, '%Y').date()
+        except ValueError:
+            pass
+
+    return None
