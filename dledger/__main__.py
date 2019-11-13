@@ -149,7 +149,8 @@ def main() -> None:
         sys.exit(0)
 
     if args['forecast']:
-        transactions = scheduled_transactions(records)
+        transactions = list(filter_by_period(scheduled_transactions(records), interval))
+
         if args['--weighted']:
             print_simple_weight_by_ticker(transactions)
         else:
