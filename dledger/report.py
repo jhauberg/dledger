@@ -466,7 +466,7 @@ def print_simple_annual_report(records: List[Transaction]):
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.format % amount
             year_indicator = f'{year}'
-            print(f'{amount.rjust(18)}    {year_indicator}')
+            print(f'{amount.rjust(20)}    {year_indicator}')
         if commodity != commodities[-1]:
             print()
 
@@ -502,7 +502,7 @@ def print_simple_monthly_report(records: List[Transaction]):
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.format % amount
                 month_indicator = f'{month}'.zfill(2)
-                print(f'{amount.rjust(18)}    {year}/{month_indicator}')
+                print(f'{amount.rjust(20)}    {year}/{month_indicator}')
             if commodity != commodities[-1]:
                 print()
 
@@ -543,7 +543,7 @@ def print_simple_quarterly_report(records: List[Transaction]):
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.format % amount
 
-                print(f'{amount.rjust(18)}    {year}/Q{quarter}')
+                print(f'{amount.rjust(20)}    {year}/Q{quarter}')
             if commodity != commodities[-1]:
                 print()
 
@@ -555,7 +555,36 @@ def print_simple_forecast(records: List[Transaction]):
 
         d = transaction.date.strftime('%Y/%m/%d')
 
-        print(f'{amount.rjust(18)}  ~ {d} {transaction.ticker}')
+        print(f'{amount.rjust(20)}  ~ {d} {transaction.ticker}')
+
+
+def print_simple_weight_by_ticker(records: List[Transaction]):
+    commodities = symbols(records, excluding_dividends=True)
+
+    for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, records))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+        total_income = income(matching_transactions)
+
+        weights = []
+        for ticker in tickers(records):
+            filtered_records = list(by_ticker(records, ticker))
+            income_by_ticker = income(filtered_records)
+
+            amount = format_amount(income_by_ticker, trailing_zero=False)
+            amount = latest_transaction.amount.format % amount
+
+            weight = income_by_ticker / total_income * 100
+
+            weights.append((ticker, amount, weight))
+        weights.sort(key=lambda w: w[2], reverse=True)
+        for weight in weights:
+            ticker, amount, pct = weight
+            pct = f'{format_amount(pct)}%'
+            print(f'{amount.rjust(20)}    {pct.rjust(7)}    {ticker}')
 
 
 def print_simple_chart(records: List[Transaction]):
@@ -565,7 +594,7 @@ def print_simple_chart(records: List[Transaction]):
 
         d = transaction.date.strftime('%Y/%m/%d')
 
-        line = f'{amount.rjust(18)}    {d}'
+        line = f'{amount.rjust(20)}    {d}'
 
         if transaction.dividend is not None:
             dividend = format_amount(transaction.dividend.value, trailing_zero=False)
