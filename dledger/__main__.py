@@ -32,7 +32,7 @@ from dledger import __version__
 from dledger.record import tickers, symbols
 from dledger.report import (
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
-    print_simple_forecast
+    print_simple_forecast, print_simple_chart
 )
 from dledger.projection import scheduled_transactions
 from dledger.journal import (
