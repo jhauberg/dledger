@@ -125,3 +125,12 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) -> datetime.date:
             pass
 
     return None
+
+
+def parse_period(interval: str):
+    datestamps = interval.split(';')
+
+    if len(datestamps) != 2:
+        raise ValueError('malformed period')
+
+    return sorted([parse_datestamp(datestamp.strip()) for datestamp in datestamps])
