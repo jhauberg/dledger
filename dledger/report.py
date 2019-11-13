@@ -465,9 +465,7 @@ def print_simple_annual_report(records: List[Transaction]):
             total = income(yearly_transactions)
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.format % amount
-            now = datetime.today()
-            month_indicator = f'{now.month}'.zfill(2)
-            year_indicator = f'{year}/{month_indicator}' if year == now.year else f'{year}'
+            year_indicator = f'{year}'
             print(f'{amount.rjust(18)}    {year_indicator}')
         if commodity != commodities[-1]:
             print()
@@ -558,6 +556,26 @@ def print_simple_forecast(records: List[Transaction]):
         d = transaction.date.strftime('%Y/%m/%d')
 
         print(f'{amount.rjust(18)}  ~ {d} {transaction.ticker}')
+
+
+def print_simple_chart(records: List[Transaction]):
+    for transaction in records:
+        amount = format_amount(transaction.amount.value, trailing_zero=False)
+        amount = transaction.amount.format % amount
+
+        d = transaction.date.strftime('%Y/%m/%d')
+
+        line = f'{amount.rjust(18)}    {d}'
+
+        if transaction.dividend is not None:
+            dividend = format_amount(transaction.dividend.value, trailing_zero=False)
+            dividend = transaction.dividend.format % dividend
+
+            line = f'{line} {dividend.rjust(14)}'
+
+        line = f'{line} / {transaction.position}'
+
+        print(line)
 
 
 def generate(records: List[Transaction], debug: bool = False) -> None:

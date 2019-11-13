@@ -106,7 +106,6 @@ def main() -> None:
                 print_stat_row('Symbols', f'{currencies}')
     elif args['report']:
         if args['--monthly']:
-            # todo: weighted means weighing months?
             print_simple_monthly_report(records)
         elif args['--quarterly']:
             print_simple_quarterly_report(records)
@@ -115,7 +114,7 @@ def main() -> None:
     elif args['chart']:
         ticker = args['<ticker>']
         transactions = list(filter(lambda r: r.amount is not None and r.ticker == ticker, records))
-        print_simple_monthly_report(transactions)
+        print_simple_chart(transactions)
     elif args['forecast']:
         transactions = scheduled_transactions(records)
         print_simple_forecast(transactions)
