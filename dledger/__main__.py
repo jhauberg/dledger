@@ -48,9 +48,11 @@ def filter_by_period(records, interval):
     starting, ending = interval
 
     if starting is not None:
+        # inclusive of starting date
         records = filter(lambda r: starting <= r.date, records)
     if ending is not None:
-        records = filter(lambda r: r.date <= ending, records)
+        # exclusive of ending date
+        records = filter(lambda r: r.date < ending, records)
 
     return records
 

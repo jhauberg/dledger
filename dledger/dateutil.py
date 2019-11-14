@@ -165,11 +165,11 @@ def parse_period(interval: str) \
     ending = None
 
     if n == 0:
-        ending = last_of_month(starting.replace(month=12))
+        ending = starting.replace(year=starting.year + 1)
     if n == 1:
-        ending = last_of_month(starting)
+        ending = next_month(starting)
     if n == 2:
-        ending = starting
+        ending = starting + timedelta(days=1)
 
     return starting, ending
 
