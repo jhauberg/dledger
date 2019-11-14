@@ -125,18 +125,16 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
         try:
             return datetime.strptime(datestamp, '%Y').date()
         except ValueError:
-            pass
-
-    return None
+            raise ValueError(f'invalid date format (\'{datestamp}\')')
 
 
 def parse_interval(interval: str) \
         -> Tuple[Optional[datetime.date],
                  Optional[datetime.date]]:
-    datestamps = interval.split(';')
+    datestamps = interval.split(':')
 
     if len(datestamps) > 2 or len(datestamps) == 0:
-        raise ValueError('malformed period')
+        raise ValueError('malformed interval')
 
     starting = datestamps[0].strip()
     starting = parse_datestamp(starting) if len(starting) > 0 else None
@@ -158,7 +156,7 @@ def parse_interval(interval: str) \
 def parse_period(interval: str) \
         -> Tuple[Optional[datetime.date],
                  Optional[datetime.date]]:
-    if ';' in interval:
+    if ':' in interval:
         return parse_interval(interval)
 
     n = max(interval.count('/'), interval.count('-'))
