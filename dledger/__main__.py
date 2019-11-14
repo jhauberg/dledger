@@ -3,7 +3,7 @@
 """
 usage: dledger report         <journal>... [--period=<interval>] [--monthly | --quarterly] [-V]
        dledger chart <ticker> <journal>... [--period=<interval>] [-V]
-       dledger forecast       <journal>... [--period=<interval>] [--weighted] [-V]
+       dledger forecast       <journal>... [[--period=<interval>] [--weighted] | --projected] [-V]
        dledger stats          <journal>... [--period=<interval>] [-V]
        dledger print          <journal> [-V]
        dledger convert <file>... [--type=<name>] [--output=<journal>] [-V]
@@ -33,7 +33,8 @@ from dledger.record import tickers, symbols
 from dledger.dateutil import parse_period
 from dledger.report import (
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
-    print_simple_forecast, print_simple_weight_by_ticker, print_simple_chart
+    print_simple_forecast, print_simple_weight_by_ticker, print_simple_chart,
+    print_simple_padi
 )
 from dledger.projection import scheduled_transactions
 from dledger.journal import (
@@ -154,12 +155,14 @@ def main() -> None:
         sys.exit(0)
 
     if args['forecast']:
-        transactions = list(filter_by_period(scheduled_transactions(records), interval))
+        projected_transactions = list(filter_by_period(scheduled_transactions(records), interval))
 
         if args['--weighted']:
-            print_simple_weight_by_ticker(transactions)
+            print_simple_weight_by_ticker(projected_transactions)
+        elif args['--projected']:
+            print_simple_padi(records, projected_transactions)
         else:
-            print_simple_forecast(transactions)
+            print_simple_forecast(projected_transactions)
 
         sys.exit(0)
 

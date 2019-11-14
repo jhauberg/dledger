@@ -558,6 +558,38 @@ def print_simple_forecast(records: List[Transaction]):
         print(f'{amount.rjust(20)}  ~ {d} {transaction.ticker}')
 
 
+def print_simple_padi(records: List[Transaction], projected_records: List[Transaction]):
+    transactions = list(filter(lambda r: r.amount is not None, records))
+
+    commodities = symbols(transactions, excluding_dividends=True)
+
+    for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, transactions))
+        matching_projected_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, projected_records))
+        if len(matching_transactions) == 0 and len(matching_projected_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+        trailing_transactions = list(trailing(matching_transactions, since=datetime.today().date(), months=12))
+        trailing_income = income(trailing_transactions)
+        projected_income = income(matching_projected_transactions)  # assuming forecasted records always for next 12 months
+        trailing_income_amount = format_amount(trailing_income, trailing_zero=False)
+        trailing_income_amount = latest_transaction.amount.format % trailing_income_amount
+        projected_income_amount = format_amount(projected_income, trailing_zero=False)
+        projected_income_amount = latest_transaction.amount.format % projected_income_amount
+        change_amount = change(projected_income, trailing_income)
+        change_amount = format_change(change_amount, trailing_zero=False)
+        change_amount = latest_transaction.amount.format % change_amount
+        change_pct = pct_change(projected_income, trailing_income)
+        change_pct = f'{format_change(change_pct, trailing_zero=False)}%'
+        color = COLOR_POSITIVE if projected_income > trailing_income else COLOR_NEGATIVE
+        print(f'{projected_income_amount.rjust(20)}  [{colored(change_pct, color)} / {colored(change_amount, color)}]')
+        print(f'({trailing_income_amount.rjust(19)})')
+        if commodity != commodities[-1]:
+            print()
+
+
 def print_simple_weight_by_ticker(records: List[Transaction]):
     commodities = symbols(records, excluding_dividends=True)
 
