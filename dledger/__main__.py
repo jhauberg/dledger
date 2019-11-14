@@ -3,7 +3,7 @@
 """
 usage: dledger report         <journal>... [--period=<interval>] [--monthly | --quarterly] [-V]
        dledger chart <ticker> <journal>... [--period=<interval>] [-V]
-       dledger forecast       <journal>... [[--period=<interval>] [--weighted] | --projected] [-V]
+       dledger forecast       <journal>... [[--period=<interval>] [--weighted] | --compared] [--ticker=<ticker>] [-V]
        dledger stats          <journal>... [--period=<interval>] [-V]
        dledger print          <journal> [-V]
        dledger convert <file>... [--type=<name>] [--output=<journal>] [-V]
@@ -12,9 +12,11 @@ OPTIONS:
      --type=<name>        Specify type of transaction data [default: journal]
      --output=<journal>   Specify journal filename [default: ledger.journal]
      --period=<interval>  Specify reporting date interval
+     --ticker=<ticker>    Specify filtering by ticker
   -q --quarterly          Show income by quarter
   -m --monthly            Show income by month
   -w --weighted           Show income as a weighted table
+     --compared           Compare forecasted income to trailing 12-month income
   -V --verbose            Show diagnostic messages
   -h --help               Show program help
   -v --version            Show program version
@@ -135,32 +137,44 @@ def main() -> None:
         sys.exit(0)
 
     if args['report']:
-        records = list(filter_by_period(records, interval))
+        transactions = list(
+            filter_by_period(filter(
+                lambda r: r.amount is not None, records), interval))
+
         if args['--monthly']:
-            print_simple_monthly_report(records)
+            print_simple_monthly_report(transactions)
         elif args['--quarterly']:
-            print_simple_quarterly_report(records)
+            print_simple_quarterly_report(transactions)
         else:
-            print_simple_annual_report(records)
+            print_simple_annual_report(transactions)
 
         sys.exit(0)
 
     if args['chart']:
         ticker = args['<ticker>']
+        matching_records = list(filter(
+            lambda r: r.ticker == ticker, records))
         transactions = filter(
-            lambda r: r.amount is not None and r.ticker == ticker, records)
+            lambda r: r.amount is not None and r.ticker == ticker, matching_records)
         transactions = list(filter_by_period(transactions, interval))
+
         print_simple_chart(transactions)
 
         sys.exit(0)
 
     if args['forecast']:
-        projected_transactions = list(filter_by_period(scheduled_transactions(records), interval))
+        transactions = records
+
+        ticker = args['--ticker']
+        if ticker is not None:
+            transactions = list(filter(lambda r: r.ticker == ticker, records))
+
+        projected_transactions = list(filter_by_period(scheduled_transactions(transactions), interval))
 
         if args['--weighted']:
             print_simple_weight_by_ticker(projected_transactions)
-        elif args['--projected']:
-            print_simple_padi(records, projected_transactions)
+        elif args['--compared']:
+            print_simple_padi(transactions, projected_transactions)
         else:
             print_simple_forecast(projected_transactions)
 
