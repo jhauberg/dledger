@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report         <journal>... [--period=<interval>] [--monthly | --quarterly] [-V]
+usage: dledger report         <journal>... [--period=<interval>] [[--monthly | --quarterly] | --weighted] [-V]
        dledger chart <ticker> <journal>... [--period=<interval>] [-V]
        dledger forecast       <journal>... [[--period=<interval>] [--weighted] | --compared] [--ticker=<ticker>] [-V]
        dledger stats          <journal>... [--period=<interval>] [-V]
@@ -16,7 +16,7 @@ OPTIONS:
   -q --quarterly          Show income by quarter
   -m --monthly            Show income by month
   -w --weighted           Show income as a weighted table
-     --compared           Compare forecasted income to trailing 12-month income
+     --compared           Show comparison of projected 12-month income to trailing 12-month income
   -V --verbose            Show diagnostic messages
   -h --help               Show program help
   -v --version            Show program version
@@ -141,7 +141,9 @@ def main() -> None:
             filter_by_period(filter(
                 lambda r: r.amount is not None, records), interval))
 
-        if args['--monthly']:
+        if args['--weighted']:
+            print_simple_weight_by_ticker(transactions)
+        elif args['--monthly']:
             print_simple_monthly_report(transactions)
         elif args['--quarterly']:
             print_simple_quarterly_report(transactions)
