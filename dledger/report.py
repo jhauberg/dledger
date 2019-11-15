@@ -456,7 +456,6 @@ def print_simple_annual_report(records: List[Transaction]):
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
-
         for year in years:
             yearly_transactions = list(yearly(matching_transactions, year=year))
             if len(yearly_transactions) == 0:
@@ -465,8 +464,8 @@ def print_simple_annual_report(records: List[Transaction]):
             total = income(yearly_transactions)
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.format % amount
-            year_indicator = f'{year}'
-            print(f'{amount.rjust(20)}    {year_indicator}')
+            d = f'{year}'
+            print(f'{amount.rjust(20)}    {d.ljust(11)}')
         if commodity != commodities[-1]:
             print()
 
@@ -502,7 +501,9 @@ def print_simple_monthly_report(records: List[Transaction]):
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.format % amount
                 month_indicator = f'{month}'.zfill(2)
-                print(f'{amount.rjust(20)}    {year}/{month_indicator}')
+                d = f'{year}/{month_indicator}'
+                print(f'{amount.rjust(20)}    {d.ljust(11)}')
+
             if commodity != commodities[-1]:
                 print()
 
@@ -543,7 +544,8 @@ def print_simple_quarterly_report(records: List[Transaction]):
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.format % amount
 
-                print(f'{amount.rjust(20)}    {year}/Q{quarter}')
+                d = f'{year}/Q{quarter}'
+                print(f'{amount.rjust(20)}    {d.ljust(11)}')
             if commodity != commodities[-1]:
                 print()
 
@@ -643,7 +645,12 @@ def print_simple_chart(records: List[Transaction]):
             dividend = format_amount(transaction.dividend.value, trailing_zero=False)
             dividend = transaction.dividend.format % dividend
 
-            line = f'{line} {dividend.rjust(14)}'
+            line = f'{line} {dividend.rjust(12)}'
+        else:
+            dividend = format_amount(transaction.amount.value / transaction.position, trailing_zero=False)
+            dividend = transaction.amount.format % dividend
+
+            line = f'{line} {dividend.rjust(12)}'
 
         line = f'{line} / {transaction.position}'
 
