@@ -439,6 +439,16 @@ def print_debug_reports(records: List[Transaction]) -> None:
     printer.pprint(annuals)
 
 
+def print_simple_report(records: List[Transaction]):
+    for transaction in records:
+        amount = format_amount(transaction.amount.value, trailing_zero=False)
+        amount = transaction.amount.format % amount
+
+        d = transaction.date.strftime('%Y/%m/%d')
+
+        print(f'{amount.rjust(20)}    {d} {transaction.ticker}')
+
+
 def print_simple_annual_report(records: List[Transaction]):
     transactions = list(filter(lambda r: r.amount is not None, records))
 

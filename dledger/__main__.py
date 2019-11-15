@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report         <journal>... [--period=<interval>] [[--monthly | --quarterly] | --weighted] [-V]
+usage: dledger report         <journal>... [--period=<interval>] [[--monthly | --quarterly | --annual] | --weighted] [-V]
        dledger chart <ticker> <journal>... [--period=<interval>] [-V]
        dledger forecast       <journal>... [[--period=<interval>] [--weighted] | --compared] [--ticker=<ticker>] [-V]
        dledger stats          <journal>... [--period=<interval>] [-V]
@@ -34,8 +34,11 @@ from dledger import __version__
 from dledger.record import tickers, symbols
 from dledger.dateutil import parse_period
 from dledger.report import (
+    print_simple_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
-    print_simple_forecast, print_simple_weight_by_ticker, print_simple_chart,
+    print_simple_forecast,
+    print_simple_weight_by_ticker,
+    print_simple_chart,
     print_simple_padi
 )
 from dledger.projection import scheduled_transactions
@@ -143,12 +146,14 @@ def main() -> None:
 
         if args['--weighted']:
             print_simple_weight_by_ticker(transactions)
+        elif args['--annual']:
+            print_simple_annual_report(transactions)
         elif args['--monthly']:
             print_simple_monthly_report(transactions)
         elif args['--quarterly']:
             print_simple_quarterly_report(transactions)
         else:
-            print_simple_annual_report(transactions)
+            print_simple_report(transactions)
 
         sys.exit(0)
 
