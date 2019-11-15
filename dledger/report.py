@@ -561,6 +561,8 @@ def print_simple_forecast(records: List[Transaction]):
 def print_simple_padi(records: List[Transaction], projected_records: List[Transaction]):
     transactions = list(filter(lambda r: r.amount is not None, records))
 
+    today = datetime.today().date()
+
     commodities = symbols(transactions, excluding_dividends=True)
 
     for commodity in commodities:
@@ -584,8 +586,10 @@ def print_simple_padi(records: List[Transaction], projected_records: List[Transa
         change_pct = pct_change(projected_income, trailing_income)
         change_pct = f'{format_change(change_pct, trailing_zero=False)}%'
         color = COLOR_POSITIVE if projected_income > trailing_income else COLOR_NEGATIVE
-        print(f'{projected_income_amount.rjust(20)}  [{colored(change_pct, color)} / {colored(change_amount, color)}]')
-        print(f'({trailing_income_amount.rjust(19)})')
+        change_str = f'[{colored(change_pct, color)} / {colored(change_amount, color)}]'
+        d = today.strftime('%Y/%m/%d')
+        print(f'{projected_income_amount.rjust(20)}    {d}  +12M    {change_str}')
+        print(f'{trailing_income_amount.rjust(20)}    {d}  -12M')
         if commodity != commodities[-1]:
             print()
 
