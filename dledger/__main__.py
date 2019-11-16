@@ -3,7 +3,7 @@
 """
 usage: dledger report         <journal>... [--period=<interval>] [[--monthly | --quarterly | --annual] | --weighted] [-V]
        dledger chart <ticker> <journal>... [--period=<interval>] [-V]
-       dledger forecast       <journal>... [[--period=<interval>] [--weighted] | --compared] [--ticker=<ticker>] [-V]
+       dledger forecast       <journal>... [[--period=<interval>] [[--monthly | --quarterly | --annual] | --weighted] | --compared] [--ticker=<ticker>] [-V]
        dledger stats          <journal>... [--period=<interval>] [-V]
        dledger print          <journal> [-V]
        dledger convert <file>... [--type=<name>] [--output=<journal>] [-V]
@@ -11,8 +11,9 @@ usage: dledger report         <journal>... [--period=<interval>] [[--monthly | -
 OPTIONS:
      --type=<name>        Specify type of transaction data [default: journal]
      --output=<journal>   Specify journal filename [default: ledger.journal]
-     --period=<interval>  Specify reporting date interval
+  -p --period=<interval>  Specify reporting date interval
      --ticker=<ticker>    Specify filtering by ticker
+  -a --annual             SHow income by year
   -q --quarterly          Show income by quarter
   -m --monthly            Show income by month
   -w --weighted           Show income as a weighted table
@@ -182,6 +183,12 @@ def main() -> None:
             print_simple_weight_by_ticker(projected_transactions)
         elif args['--compared']:
             print_simple_padi(transactions, projected_transactions)
+        elif args['--annual']:
+            print_simple_annual_report(projected_transactions)
+        elif args['--monthly']:
+            print_simple_monthly_report(projected_transactions)
+        elif args['--quarterly']:
+            print_simple_quarterly_report(projected_transactions)
         else:
             print_simple_forecast(projected_transactions)
 
