@@ -633,13 +633,6 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
             ticker, amount, pct = weight
             pct = f'{format_amount(pct)}%'
             print(f'{amount.rjust(20)}    {pct.rjust(7)}    {ticker}')
-        total_amount = format_amount(total_income, trailing_zero=False)
-        total_amount = latest_transaction.amount.format % total_amount
-        total_pct = f'{format_amount(sum([pct for _, _, pct in weights]))}%'
-        sep1 = '=' * len(total_amount)
-        sep2 = '=' * len(total_pct)
-        print(f'{sep1.rjust(20)}    {sep2.rjust(7)}')
-        print(f'{total_amount.rjust(20)}    {total_pct.rjust(7)}')
 
 
 def print_simple_chart(records: List[Transaction]):
