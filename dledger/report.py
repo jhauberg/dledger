@@ -10,6 +10,7 @@ from dledger.formatutil import (
     change, pct_change, format_amount, format_change
 )
 from dledger.projection import (
+    FutureTransaction,
     scheduled_transactions, expired_transactions, estimated_schedule
 )
 from dledger.record import (
@@ -439,16 +440,6 @@ def print_debug_reports(records: List[Transaction]) -> None:
     printer.pprint(annuals)
 
 
-def print_simple_report(records: List[Transaction]):
-    for transaction in records:
-        amount = format_amount(transaction.amount.value, trailing_zero=False)
-        amount = transaction.amount.format % amount
-
-        d = transaction.date.strftime('%Y/%m/%d')
-
-        print(f'{amount.rjust(20)}    {d} {transaction.ticker}')
-
-
 def print_simple_annual_report(records: List[Transaction]):
     transactions = list(filter(lambda r: r.amount is not None, records))
 
@@ -560,14 +551,17 @@ def print_simple_quarterly_report(records: List[Transaction]):
                 print()
 
 
-def print_simple_forecast(records: List[Transaction]):
+def print_simple_report(records: List[Transaction]):
     for transaction in records:
         amount = format_amount(transaction.amount.value, trailing_zero=False)
         amount = transaction.amount.format % amount
 
         d = transaction.date.strftime('%Y/%m/%d')
 
-        print(f'{amount.rjust(20)}  ~ {d} {transaction.ticker}')
+        if isinstance(transaction, FutureTransaction):
+            print(f'{amount.rjust(20)}  ~ {d} {transaction.ticker}')
+        else:
+            print(f'{amount.rjust(20)}    {d} {transaction.ticker}')
 
 
 def print_simple_padi(records: List[Transaction], projected_records: List[Transaction]):
@@ -650,7 +644,7 @@ def print_simple_chart(records: List[Transaction]):
 
             line = f'{line} {dividend.rjust(12)}'
         else:
-            dividend = format_amount(transaction.amount.value / transaction.position, trailing_zero=False)
+            dividend = format_amount(amount_per_share(transaction), trailing_zero=False)
             dividend = transaction.amount.format % dividend
 
             line = f'{line} {dividend.rjust(12)}'

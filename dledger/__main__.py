@@ -37,7 +37,6 @@ from dledger.dateutil import parse_period
 from dledger.report import (
     print_simple_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
-    print_simple_forecast,
     print_simple_weight_by_ticker,
     print_simple_chart,
     print_simple_padi
@@ -190,7 +189,7 @@ def main() -> None:
         elif args['--quarterly']:
             print_simple_quarterly_report(projected_transactions)
         else:
-            print_simple_forecast(projected_transactions)
+            print_simple_report(projected_transactions)
 
         sys.exit(0)
 
