@@ -162,7 +162,7 @@ def main() -> None:
         matching_records = list(filter(
             lambda r: r.ticker == ticker, records))
         transactions = filter(
-            lambda r: r.amount is not None and r.ticker == ticker, matching_records)
+            lambda r: r.amount is not None, matching_records)
         transactions = list(filter_by_period(transactions, interval))
 
         print_simple_chart(transactions)
