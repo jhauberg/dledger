@@ -10,6 +10,7 @@ from dledger.formatutil import (
     change, pct_change, format_amount, format_change
 )
 from dledger.projection import (
+    FutureTransaction,
     scheduled_transactions, expired_transactions, estimated_schedule
 )
 from dledger.record import (
@@ -456,7 +457,6 @@ def print_simple_annual_report(records: List[Transaction]):
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
-
         for year in years:
             yearly_transactions = list(yearly(matching_transactions, year=year))
             if len(yearly_transactions) == 0:
@@ -465,8 +465,15 @@ def print_simple_annual_report(records: List[Transaction]):
             total = income(yearly_transactions)
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.format % amount
-            year_indicator = f'{year}'
-            print(f'{amount.rjust(20)}    {year_indicator}')
+            d = f'{year}'
+            if any(isinstance(x, FutureTransaction) for x in yearly_transactions):
+                if year == years[-1]:
+                    d = latest_transaction.date.strftime('%Y/%m')
+                    print(f'~ {amount.rjust(18)}  < {d.ljust(11)}')
+                else:
+                    print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
+            else:
+                print(f'{amount.rjust(20)}    {d.ljust(11)}')
         if commodity != commodities[-1]:
             print()
 
@@ -490,10 +497,6 @@ def print_simple_monthly_report(records: List[Transaction]):
         latest_transaction = latest(matching_transactions)
         for year in years:
             for month in range(1, 12 + 1):
-                now = datetime.today()
-                if month > now.month:
-                    break
-
                 monthly_transactions = list(monthly(matching_transactions, year=year, month=month))
                 if len(monthly_transactions) == 0:
                     continue
@@ -502,7 +505,12 @@ def print_simple_monthly_report(records: List[Transaction]):
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.format % amount
                 month_indicator = f'{month}'.zfill(2)
-                print(f'{amount.rjust(20)}    {year}/{month_indicator}')
+                d = f'{year}/{month_indicator}'
+                if any(isinstance(x, FutureTransaction) for x in monthly_transactions):
+                    print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
+                else:
+                    print(f'{amount.rjust(20)}    {d.ljust(11)}')
+
             if commodity != commodities[-1]:
                 print()
 
@@ -526,11 +534,8 @@ def print_simple_quarterly_report(records: List[Transaction]):
         latest_transaction = latest(matching_transactions)
         for year in years:
             for quarter in range(1, 4 + 1):
-                now = datetime.today()
                 ending_month = quarter * 3 + 1
                 starting_month = ending_month - 3
-                if starting_month > now.month:
-                    break
 
                 quarterly_transactions = []
                 for month in range(starting_month, ending_month):
@@ -543,19 +548,62 @@ def print_simple_quarterly_report(records: List[Transaction]):
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.format % amount
 
-                print(f'{amount.rjust(20)}    {year}/Q{quarter}')
+                d = f'{year}/Q{quarter}'
+                if any(isinstance(x, FutureTransaction) for x in quarterly_transactions):
+                    print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
+                else:
+                    print(f'{amount.rjust(20)}    {d.ljust(11)}')
             if commodity != commodities[-1]:
                 print()
 
 
-def print_simple_forecast(records: List[Transaction]):
+def print_simple_report(records: List[Transaction]):
     for transaction in records:
         amount = format_amount(transaction.amount.value, trailing_zero=False)
         amount = transaction.amount.format % amount
 
         d = transaction.date.strftime('%Y/%m/%d')
 
-        print(f'{amount.rjust(20)}  ~ {d} {transaction.ticker}')
+        if isinstance(transaction, FutureTransaction):
+            print(f'~ {amount.rjust(18)}  < {d} {transaction.ticker}')
+        else:
+            print(f'{amount.rjust(20)}    {d} {transaction.ticker}')
+
+
+def print_simple_padi(records: List[Transaction], projected_records: List[Transaction]):
+    transactions = list(filter(lambda r: r.amount is not None, records))
+
+    today = datetime.today().date()
+
+    commodities = symbols(transactions, excluding_dividends=True)
+
+    for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, transactions))
+        matching_projected_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, projected_records))
+        if len(matching_transactions) == 0 and len(matching_projected_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+        trailing_transactions = list(trailing(matching_transactions, since=datetime.today().date(), months=12))
+        trailing_income = income(trailing_transactions)
+        projected_income = income(matching_projected_transactions)  # assuming forecasted records always for next 12 months
+        trailing_income_amount = format_amount(trailing_income, trailing_zero=False)
+        trailing_income_amount = latest_transaction.amount.format % trailing_income_amount
+        projected_income_amount = format_amount(projected_income, trailing_zero=False)
+        projected_income_amount = latest_transaction.amount.format % projected_income_amount
+        change_amount = change(projected_income, trailing_income)
+        change_amount = format_change(change_amount, trailing_zero=False)
+        change_amount = latest_transaction.amount.format % change_amount
+        change_pct = pct_change(projected_income, trailing_income)
+        change_pct = f'{format_change(change_pct, trailing_zero=False)}%'
+        color = COLOR_POSITIVE if projected_income > trailing_income else COLOR_NEGATIVE
+        change_str = f'[{colored(change_pct, color)} / {colored(change_amount, color)}]'
+        d = today.strftime('%Y/%m/%d')
+        print(f'{projected_income_amount.rjust(20)}    {d}  +12M    {change_str}')
+        print(f'{trailing_income_amount.rjust(20)}    {d}  -12M')
+        if commodity != commodities[-1]:
+            print()
 
 
 def print_simple_weight_by_ticker(records: List[Transaction]):
@@ -585,13 +633,6 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
             ticker, amount, pct = weight
             pct = f'{format_amount(pct)}%'
             print(f'{amount.rjust(20)}    {pct.rjust(7)}    {ticker}')
-        total_amount = format_amount(total_income, trailing_zero=False)
-        total_amount = latest_transaction.amount.format % total_amount
-        total_pct = f'{format_amount(sum([pct for _, _, pct in weights]))}%'
-        sep1 = '=' * len(total_amount)
-        sep2 = '=' * len(total_pct)
-        print(f'{sep1.rjust(20)}    {sep2.rjust(7)}')
-        print(f'{total_amount.rjust(20)}    {total_pct.rjust(7)}')
 
 
 def print_simple_chart(records: List[Transaction]):
@@ -601,13 +642,21 @@ def print_simple_chart(records: List[Transaction]):
 
         d = transaction.date.strftime('%Y/%m/%d')
 
-        line = f'{amount.rjust(20)}    {d}'
+        if isinstance(transaction, FutureTransaction):
+            line = f'~ {amount.rjust(18)}  < {d}'
+        else:
+            line = f'{amount.rjust(20)}    {d}'
 
         if transaction.dividend is not None:
             dividend = format_amount(transaction.dividend.value, trailing_zero=False)
             dividend = transaction.dividend.format % dividend
 
-            line = f'{line} {dividend.rjust(14)}'
+            line = f'{line} {dividend.rjust(12)}'
+        else:
+            dividend = format_amount(amount_per_share(transaction), trailing_zero=False)
+            dividend = transaction.amount.format % dividend
+
+            line = f'{line} {dividend.rjust(12)}'
 
         line = f'{line} / {transaction.position}'
 
