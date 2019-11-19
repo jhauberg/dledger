@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report         <journal>... [--period=<interval>] [--monthly | --quarterly | --annual | --weighted] [--without-forecast] [-V]
-       dledger chart <ticker> <journal>... [--period=<interval>] [--without-forecast] [-V]
+usage: dledger report         <journal>... [--period=<interval>] [-V]
+                                           [--monthly | --quarterly | --annual | --weighted]
+                                           [--without-forecast]
+       dledger chart <ticker> <journal>... [--period=<interval>] [-V]
+                                           [--without-forecast]
        dledger stats          <journal>... [--period=<interval>] [-V]
-       dledger print          <journal> [-V]
-       dledger convert <file>... [--type=<name>] [--output=<journal>] [-V]
+       dledger print          <journal>... [-V]
+       dledger convert        <file>...    [--type=<name>] [-V]
+                                           [--output=<journal>]
 
 OPTIONS:
      --type=<name>        Specify type of transaction data [default: journal]
