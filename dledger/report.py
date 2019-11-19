@@ -466,7 +466,14 @@ def print_simple_annual_report(records: List[Transaction]):
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.format % amount
             d = f'{year}'
-            print(f'{amount.rjust(20)}    {d.ljust(11)}')
+            if any(isinstance(x, FutureTransaction) for x in yearly_transactions):
+                if year == years[-1]:
+                    d = latest_transaction.date.strftime('%Y/%m')
+                    print(f'~ {amount.rjust(18)}  < {d.ljust(11)}')
+                else:
+                    print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
+            else:
+                print(f'{amount.rjust(20)}    {d.ljust(11)}')
         if commodity != commodities[-1]:
             print()
 
@@ -490,10 +497,6 @@ def print_simple_monthly_report(records: List[Transaction]):
         latest_transaction = latest(matching_transactions)
         for year in years:
             for month in range(1, 12 + 1):
-                now = datetime.today()
-                if month > now.month:
-                    break
-
                 monthly_transactions = list(monthly(matching_transactions, year=year, month=month))
                 if len(monthly_transactions) == 0:
                     continue
@@ -503,7 +506,10 @@ def print_simple_monthly_report(records: List[Transaction]):
                 amount = latest_transaction.amount.format % amount
                 month_indicator = f'{month}'.zfill(2)
                 d = f'{year}/{month_indicator}'
-                print(f'{amount.rjust(20)}    {d.ljust(11)}')
+                if any(isinstance(x, FutureTransaction) for x in monthly_transactions):
+                    print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
+                else:
+                    print(f'{amount.rjust(20)}    {d.ljust(11)}')
 
             if commodity != commodities[-1]:
                 print()
@@ -528,11 +534,8 @@ def print_simple_quarterly_report(records: List[Transaction]):
         latest_transaction = latest(matching_transactions)
         for year in years:
             for quarter in range(1, 4 + 1):
-                now = datetime.today()
                 ending_month = quarter * 3 + 1
                 starting_month = ending_month - 3
-                if starting_month > now.month:
-                    break
 
                 quarterly_transactions = []
                 for month in range(starting_month, ending_month):
@@ -546,7 +549,10 @@ def print_simple_quarterly_report(records: List[Transaction]):
                 amount = latest_transaction.amount.format % amount
 
                 d = f'{year}/Q{quarter}'
-                print(f'{amount.rjust(20)}    {d.ljust(11)}')
+                if any(isinstance(x, FutureTransaction) for x in quarterly_transactions):
+                    print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
+                else:
+                    print(f'{amount.rjust(20)}    {d.ljust(11)}')
             if commodity != commodities[-1]:
                 print()
 
@@ -559,7 +565,7 @@ def print_simple_report(records: List[Transaction]):
         d = transaction.date.strftime('%Y/%m/%d')
 
         if isinstance(transaction, FutureTransaction):
-            print(f'{amount.rjust(20)}  ~ {d} {transaction.ticker}')
+            print(f'~ {amount.rjust(18)}  < {d} {transaction.ticker}')
         else:
             print(f'{amount.rjust(20)}    {d} {transaction.ticker}')
 
@@ -636,7 +642,10 @@ def print_simple_chart(records: List[Transaction]):
 
         d = transaction.date.strftime('%Y/%m/%d')
 
-        line = f'{amount.rjust(20)}    {d}'
+        if isinstance(transaction, FutureTransaction):
+            line = f'~ {amount.rjust(18)}  < {d}'
+        else:
+            line = f'{amount.rjust(20)}    {d}'
 
         if transaction.dividend is not None:
             dividend = format_amount(transaction.dividend.value, trailing_zero=False)
