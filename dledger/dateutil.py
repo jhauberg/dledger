@@ -1,11 +1,11 @@
 import calendar
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from typing import Tuple, Optional
 
 
-def months_between(a: datetime.date, b: datetime.date,
+def months_between(a: date, b: date,
                    *, ignore_years: bool = False) -> int:
     """ Return the number of months between two dates, from earliest to latest.
 
@@ -34,57 +34,57 @@ def months_between(a: datetime.date, b: datetime.date,
     return months
 
 
-def in_months(date: datetime.date, months: int) -> datetime.date:
+def in_months(d: date, months: int) -> date:
     """ Return the date in a number of months. """
 
-    month = date.month - 1 + months
-    year = date.year + month // 12
+    month = d.month - 1 + months
+    year = d.year + month // 12
     month = month % 12 + 1
-    day = min(date.day, calendar.monthrange(year, month)[1])
+    day = min(d.day, calendar.monthrange(year, month)[1])
 
-    return date.replace(year=year, month=month, day=day)
+    return d.replace(year=year, month=month, day=day)
 
 
-def last_of_month(date: datetime.date) -> datetime.date:
+def last_of_month(d: date) -> date:
     """ Return the date at the last day of the month. """
 
-    return previous_month(next_month(date))
+    return previous_month(next_month(d))
 
 
-def first_of_month(date: datetime.date) -> datetime.date:
+def first_of_month(d: date) -> date:
     """ Return the date at the first day of the month. """
 
-    return date.replace(day=1)
+    return d.replace(day=1)
 
 
-def previous_month(date: datetime.date) -> datetime.date:
+def previous_month(d: date) -> date:
     """ Return the date at the last day of the previous month. """
 
-    date = first_of_month(date)
+    d = first_of_month(d)
     # then backtrack by 1 day to find previous month
-    date -= timedelta(days=1)
+    d -= timedelta(days=1)
 
-    return date
+    return d
 
 
-def next_month(date: datetime.date) -> datetime.date:
+def next_month(d: date) -> date:
     """ Return the date at the first day of the following month. """
 
-    date = first_of_month(date)
+    d = first_of_month(d)
 
     try:
         # try fast-forwarding 1 month
-        date = date.replace(month=date.month + 1)
+        d = d.replace(month=d.month + 1)
     except ValueError:
-        if date.month == 12:
+        if d.month == 12:
             # fast-forward to next year
-            date = date.replace(year=date.year + 1, month=1)
+            d = d.replace(year=d.year + 1, month=1)
 
-    return date
+    return d
 
 
 def parse_datestamp(datestamp: str, *, strict: bool = False) \
-        -> datetime.date:
+        -> date:
     """ Return the date that maps to datestamp.
 
     A datestamp can be specified in any of the following variations:
@@ -129,20 +129,24 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
 
 
 def parse_interval(interval: str) \
-        -> Tuple[Optional[datetime.date],
-                 Optional[datetime.date]]:
+        -> Tuple[Optional[date],
+                 Optional[date]]:
     datestamps = interval.split(':')
 
     if len(datestamps) > 2 or len(datestamps) == 0:
         raise ValueError('malformed interval')
 
-    starting = datestamps[0].strip()
-    starting = parse_datestamp(starting) if len(starting) > 0 else None
+    starting_datestamp = datestamps[0].strip()
+    starting: Optional[date] = None
 
-    ending = datestamps[1].strip() if len(datestamps) > 1 else None
+    if len(starting_datestamp) > 0:
+        starting = parse_datestamp(starting_datestamp)
 
-    if ending is not None:
-        ending = parse_datestamp(ending) if len(ending) > 0 else None
+    ending_datestamp: Optional[str] = datestamps[1].strip() if len(datestamps) > 1 else None
+    ending: Optional[date] = None
+
+    if ending_datestamp is not None and len(ending_datestamp) > 0:
+        ending = parse_datestamp(ending_datestamp)
 
     if starting is not None and ending is not None:
         if starting > ending:
@@ -154,8 +158,8 @@ def parse_interval(interval: str) \
 
 
 def parse_period(interval: str) \
-        -> Tuple[Optional[datetime.date],
-                 Optional[datetime.date]]:
+        -> Tuple[Optional[date],
+                 Optional[date]]:
     if ':' in interval:
         return parse_interval(interval)
 

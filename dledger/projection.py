@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from dataclasses import dataclass
 
 from statistics import multimode
@@ -123,8 +123,8 @@ def estimated_monthly_schedule(records: List[Transaction],
     return sorted(set(approx_schedule))
 
 
-def next_scheduled_date(date: datetime.date, months: List[int]) \
-        -> datetime.date:
+def next_scheduled_date(d: date, months: List[int]) \
+        -> date:
     """ Return the date that would follow a given date, going by a monthly schedule.
 
     For example, given a date (2019, 6, 18) and a schedule of (3, 6, 9, 12),
@@ -137,42 +137,42 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
         raise ValueError('schedule exceeds 12-month range')
     if len(months) != len(set(months)):
         raise ValueError('schedule must not contain duplicate months')
-    if date.month not in months:
-        raise ValueError('schedule does not match to given date')
+    if d.month not in months:
+        raise ValueError('schedule does not match given date')
 
-    next_month_index = months.index(date.month) + 1
-    next_year = date.year
+    next_month_index = months.index(d.month) + 1
+    next_year = d.year
 
     if next_month_index == len(months):
         next_year = next_year + 1
         next_month_index = 0
 
-    future_date = date.replace(year=next_year,
-                               month=months[next_month_index],
-                               day=1)
+    future_date = d.replace(year=next_year,
+                            month=months[next_month_index],
+                            day=1)
 
     return future_date
 
 
-def projected_timeframe(date: datetime.date) -> int:
+def projected_timeframe(d: date) -> int:
     """ Return the timeframe of a given date. """
 
-    return EARLY if date.day <= EARLY_LATE_THRESHOLD else LATE
+    return EARLY if d.day <= EARLY_LATE_THRESHOLD else LATE
 
 
-def projected_date(date: datetime.date, *, timeframe: int) -> datetime.date:
+def projected_date(d: date, *, timeframe: int) -> date:
     """ Return a date where day of month is set according to given timeframe. """
 
     if timeframe == EARLY:
-        return date.replace(day=EARLY_LATE_THRESHOLD)
+        return d.replace(day=EARLY_LATE_THRESHOLD)
     if timeframe == LATE:
-        return last_of_month(date)
-    return date
+        return last_of_month(d)
+    return d
 
 
 def expired_transactions(records: Iterable[Transaction],
                          *,
-                         since: datetime.date = datetime.today().date(),
+                         since: date = datetime.today().date(),
                          grace_period: int = 3) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated prior to a date.
@@ -185,7 +185,7 @@ def expired_transactions(records: Iterable[Transaction],
 
 def pending_transactions(records: Iterable[Transaction],
                          *,
-                         since: datetime.date = datetime.today().date()) \
+                         since: date = datetime.today().date()) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated later than a date. """
 
@@ -194,7 +194,7 @@ def pending_transactions(records: Iterable[Transaction],
 
 def scheduled_transactions(records: List[Transaction],
                            *,
-                           since: datetime.date = datetime.today().date()) \
+                           since: date = datetime.today().date()) \
         -> List[FutureTransaction]:
     # take a sample set of only latest 12 months
     sample_records = trailing(records, since=since, months=12)
@@ -220,7 +220,8 @@ def scheduled_transactions(records: List[Transaction],
 
         scheduled.append(record)
 
-    pending = list(pending_transactions(filter(lambda r: not r.is_special, records), since=since))
+    pending = list(pending_transactions(filter(
+        lambda r: not r.is_special, records), since=since))
 
     # bias toward pending; e.g. keep manually set transactions in the future,
     # discard projections on same date
@@ -276,7 +277,8 @@ def estimated_transactions(records: List[Transaction]) \
             continue
 
         # weed out position-only records
-        transactions = list(filter(lambda r: r.amount is not None, by_ticker(records, ticker)))
+        transactions = list(filter(
+            lambda r: r.amount is not None, by_ticker(records, ticker)))
 
         if len(transactions) == 0:
             continue

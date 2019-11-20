@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 
 from dledger.dateutil import months_between, in_months, first_of_month
 from dledger.journal import Transaction
@@ -120,7 +120,7 @@ def monthly_schedule(records: Iterable[Transaction]) \
     return sorted(set([record.date.month for record in records]))
 
 
-def trailing(records: Iterable[Transaction], since: datetime.date, *, months: int) \
+def trailing(records: Iterable[Transaction], since: date, *, months: int) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated within a number of months prior to a given date.
 
@@ -174,20 +174,20 @@ def income(records: Iterable[Transaction]) \
     return sum([record.amount.value for record in records])
 
 
-def after(records: Iterable[Transaction], date: datetime.date) \
+def after(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated later than a date. """
 
     return filter(
-        lambda r: r.date > date, records)
+        lambda r: r.date > d, records)
 
 
-def before(records: Iterable[Transaction], date: datetime.date) \
+def before(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated prior to a date. """
 
     return filter(
-        lambda r: r.date < date, records)
+        lambda r: r.date < d, records)
 
 
 def earliest(records: Iterable[Transaction]) \

@@ -8,7 +8,7 @@ from dledger.fileutil import fileencoding
 from dledger.dateutil import parse_datestamp
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, date
 
 from typing import List, Tuple, Optional
 
@@ -26,7 +26,7 @@ class Amount:
 class Transaction:
     """ Represents a transaction. """
 
-    date: datetime.date
+    date: date
     ticker: str
     position: int
     amount: Optional[Amount] = None
@@ -102,7 +102,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
     records = []
     for entry in journal_entries:
-        date, ticker, position, amount, dividend, is_special, location = entry
+        d, ticker, position, amount, dividend, is_special, location = entry
         position, position_change_direction = position
 
         if amount is not None and dividend is not None:
@@ -159,7 +159,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         if position is None:
             raise raise_parse_error(f'position could not be inferred', location=location)
 
-        records.append(Transaction(date, ticker, position, amount, dividend, is_special))
+        records.append(Transaction(d, ticker, position, amount, dividend, is_special))
 
     position_change_entries = list(filter(
         lambda r: r.amount is None and position is not None, records))
@@ -183,14 +183,15 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     if len(condensed_line) < 10:
         raise_parse_error('Invalid transaction', location)
     datestamp = condensed_line[:10]
-    date = None
+    d: Optional[date] = None
     try:
-        date = parse_datestamp(datestamp, strict=True)
+        d = parse_datestamp(datestamp, strict=True)
     except ValueError:
         raise_parse_error(f'Invalid date format (\'{datestamp}\')', location)
     condensed_line = condensed_line[10:].strip()
     break_separators = ['(', '  ', '\t']
-    break_index = min(condensed_line.index(sep) for sep in break_separators if sep in condensed_line)
+    break_index = min(condensed_line.index(sep) for sep in break_separators
+                      if sep in condensed_line)
     ticker = None
     is_special = False
     if break_index is not None:
@@ -220,7 +221,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         condensed_line = condensed_line[break_index:].strip()
 
     if len(condensed_line) == 0:
-        return date, ticker, (position, position_change_direction), None, None, is_special, location
+        return d, ticker, (position, position_change_direction), None, None, is_special, location
 
     amount_components = condensed_line.split('@')
     amount = None
@@ -236,7 +237,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         if dividend.value < 0:
             raise_parse_error(f'Invalid dividend (\'{amount}\')', location)
 
-    return date, ticker, (position, position_change_direction), amount, dividend, is_special, location
+    return d, ticker, (position, position_change_direction), amount, dividend, is_special, location
 
 
 def split_amount(amount: str, *, location: Tuple[str, int]) \
@@ -332,11 +333,11 @@ def read_native_transaction(record: List[str], *, location: Tuple[str, int]) \
     if special:
         amount_value = amount_value[:-1].strip()
 
-    date = None
+    d = None
 
     try:
         # parse date; expects format '2018-03-19'
-        date = datetime.strptime(date_value, "%Y-%m-%d").date()
+        d = datetime.strptime(date_value, "%Y-%m-%d").date()
     except ValueError:
         raise_parse_error(f'Invalid date format (\'{date_value}\')', location)
 
@@ -361,7 +362,7 @@ def read_native_transaction(record: List[str], *, location: Tuple[str, int]) \
 
     locale.setlocale(locale.LC_NUMERIC, prev_locale)
 
-    return Transaction(date, ticker, position, amount, is_special=special)
+    return Transaction(d, ticker, position, amount, is_special=special)
 
 
 def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
@@ -419,7 +420,7 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     dividend_value = dividend_value.replace('.', '')
 
     # parse date; expects format '2018-03-19'
-    date = datetime.strptime(date_value, "%Y-%m-%d").date()
+    d = datetime.strptime(date_value, "%Y-%m-%d").date()
 
     prev = locale.getlocale(locale.LC_NUMERIC)
 
@@ -436,7 +437,7 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     dividend_symbol = dividend_symbol.split(' ')[-1].split('/')[0]
 
     return Transaction(
-        date, ticker, position,
+        d, ticker, position,
         Amount(amount, symbol=amount_symbol, format=f'%s {amount_symbol}'),
         Amount(dividend, symbol=dividend_symbol, format=f'%s {dividend_symbol}'))
 
