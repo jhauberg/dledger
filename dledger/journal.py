@@ -18,8 +18,8 @@ SUPPORTED_TYPES = ['journal', 'native', 'nordnet']
 @dataclass(frozen=True)
 class Amount:
     value: float
-    symbol: Optional[str] = None
-    format: Optional[str] = None
+    symbol: str
+    format: str
 
 
 @dataclass(frozen=True, unsafe_hash=True)
@@ -53,7 +53,7 @@ def read(path: str, kind: str) \
     return []
 
 
-def raise_parse_error(error: str, location: Tuple[str, int]) -> None:
+def raise_parse_error(error: str, location: Tuple[str, int]):
     raise ValueError(f'{location[0]}:{location[1]} {error}')
 
 
@@ -71,9 +71,9 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     transaction_start = re.compile(r'[0-9]+[-/][0-9]+[-/][0-9]+')
 
     with open(path, newline='', encoding=encoding) as file:
-        starting_line_number = None
+        starting_line_number = -1
         line_number = 0
-        lines = []
+        lines: List[str] = []
         while line := file.readline():
             line_number += 1
             # remove any surrounding whitespace
@@ -100,7 +100,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     # so they must be sorted prior to inferring positions/currencies
     journal_entries = sorted(journal_entries, key=lambda r: r[0])
 
-    records = []
+    records: List[Transaction] = []
     for entry in journal_entries:
         d, ticker, position, amount, dividend, is_special, location = entry
         position, position_change_direction = position
@@ -202,20 +202,20 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         condensed_line = condensed_line[break_index:].strip()
     if ticker is None or len(ticker) == 0:
         raise_parse_error('Invalid ticker format', location)
-    position = None
+    position: Optional[int] = None
     position_change_direction = 0
     if ')' in condensed_line:
         break_index = condensed_line.index(')') + 1
-        position = condensed_line[:break_index].strip()
-        position = position[1:-1].strip()
-        if position.startswith('+'):
+        position_str = condensed_line[:break_index].strip()
+        position_str = position_str[1:-1].strip()
+        if position_str.startswith('+'):
             position_change_direction = 1
-            position = position[1:]
-        elif position.startswith('-'):
+            position_str = position_str[1:]
+        elif position_str.startswith('-'):
             position_change_direction = -1
-            position = position[1:]
+            position_str = position_str[1:]
         try:
-            position = locale.atoi(position)
+            position = locale.atoi(position_str)
         except ValueError:
             raise_parse_error(f'Invalid position (\'{position}\')', location)
         condensed_line = condensed_line[break_index:].strip()
@@ -224,16 +224,16 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         return d, ticker, (position, position_change_direction), None, None, is_special, location
 
     amount_components = condensed_line.split('@')
-    amount = None
+    amount: Optional[Amount] = None
     if len(amount_components) > 0:
-        amount = amount_components[0].strip()
-        amount = split_amount(amount, location=location)
+        amount_str = amount_components[0].strip()
+        amount = split_amount(amount_str, location=location)
         if amount.value < 0:
             raise_parse_error(f'Invalid amount (\'{amount}\')', location)
-    dividend = None
+    dividend: Optional[Amount] = None
     if len(amount_components) > 1:
-        dividend = amount_components[1].strip()
-        dividend = split_amount(dividend, location=location)
+        dividend_str = amount_components[1].strip()
+        dividend = split_amount(dividend_str, location=location)
         if dividend.value < 0:
             raise_parse_error(f'Invalid dividend (\'{amount}\')', location)
 
@@ -268,16 +268,15 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
             raise_parse_error(f'ambiguous symbol definition ({rhs.strip()})', location)
         symbol = rhs.strip()
 
-    value = None
+    value: float = 0.0
 
     try:
         value = locale.atof(amount)
     except ValueError:
         raise_parse_error(f'Invalid value (\'{amount}\')', location)
 
-    fmt = f'{lhs}%s{rhs}'
-
-    return Amount(value, symbol if symbol is not None else '', fmt)
+    return Amount(value, symbol if symbol is not None else '',
+                  f'{lhs}%s{rhs}')
 
 
 def read_native_transactions(path: str, encoding: str = 'utf-8') \
@@ -333,7 +332,7 @@ def read_native_transaction(record: List[str], *, location: Tuple[str, int]) \
     if special:
         amount_value = amount_value[:-1].strip()
 
-    d = None
+    d: date = None
 
     try:
         # parse date; expects format '2018-03-19'

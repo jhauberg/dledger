@@ -79,6 +79,7 @@ def frequency(records: Iterable[Transaction]) \
     else:
         # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
         latest_record = latest(records)
+        assert latest_record is not None
         sample_records = trailing(records, since=last_of_month(latest_record.date), months=12)
         payouts_per_year = len(list(sample_records))
         average_interval = int(12 / payouts_per_year)
@@ -270,6 +271,8 @@ def estimated_transactions(records: List[Transaction]) \
     for ticker in tickers(records):
         latest_record = latest(by_ticker(records, ticker))
 
+        assert latest_record is not None
+
         future_position = latest_record.position
 
         if not future_position > 0:
@@ -284,6 +287,8 @@ def estimated_transactions(records: List[Transaction]) \
             continue
 
         latest_transaction = latest(transactions)
+
+        assert latest_transaction is not None
 
         sched = estimated_schedule(transactions, latest_transaction)
 
@@ -350,6 +355,8 @@ def future_transactions(records: List[Transaction]) \
     for transaction in transactions:
         latest_record = latest(by_ticker(records, transaction.ticker))
 
+        assert latest_record is not None
+
         future_position = latest_record.position
 
         if not future_position > 0:
@@ -357,6 +364,8 @@ def future_transactions(records: List[Transaction]) \
             continue
 
         latest_transaction = latest(by_ticker(transactions, transaction.ticker))
+
+        assert latest_transaction is not None
 
         if transaction.amount.symbol != latest_transaction.amount.symbol:
             # don't project transactions that do not match latest recorded currency
