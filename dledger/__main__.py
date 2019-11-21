@@ -82,8 +82,8 @@ def main() -> None:
     records = []
 
     for input_path in input_paths:
-        # note that --provider defaults to 'native' for all commands
-        # (only convert supports setting provider explicitly)
+        # note that --type defaults to 'journal' for all commands
+        # (only convert supports setting type explicitly)
         if input_type not in SUPPORTED_TYPES:
             sys.exit(f'Transaction type is not supported: {input_type}')
 
