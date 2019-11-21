@@ -102,6 +102,8 @@ def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False
     """ Return a list of unique symbol components in a set of records.
 
     Optionally excluding symbols attached only to dividends.
+
+    Does not include an entry for records with no symbol attached.
     """
 
     transactions = filter(lambda r: r.amount is not None, records)
@@ -109,10 +111,10 @@ def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False
     collected_symbols: List[str] = []
 
     for record in transactions:
-        if record.amount is not None:
+        if record.amount is not None and record.amount.symbol is not None:
             collected_symbols.append(record.amount.symbol)
         if not excluding_dividends:
-            if record.dividend is not None:
+            if record.dividend is not None and record.dividend.symbol is not None:
                 collected_symbols.append(record.dividend.symbol)
 
     return sorted(set(collected_symbols))

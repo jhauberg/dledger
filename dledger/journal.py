@@ -18,8 +18,8 @@ SUPPORTED_TYPES = ['journal', 'nordnet']
 @dataclass(frozen=True)
 class Amount:
     value: float
-    symbol: str = ''
-    format: str = ''
+    symbol: Optional[str] = None
+    format: Optional[str] = None
 
 
 @dataclass(frozen=True, unsafe_hash=True)
@@ -99,6 +99,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     journal_entries = sorted(journal_entries, key=lambda r: r[0])
 
     records: List[Transaction] = []
+
     for entry in journal_entries:
         d, ticker, position, amount, dividend, is_special, location = entry
         position, position_change_direction = position
@@ -273,8 +274,7 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
     except ValueError:
         raise_parse_error(f'Invalid value (\'{amount}\')', location)
 
-    return Amount(value, symbol if symbol is not None else '',
-                  f'{lhs}%s{rhs}')
+    return Amount(value, symbol, f'{lhs}%s{rhs}')
 
 
 def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
