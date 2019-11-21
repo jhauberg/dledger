@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 
 from dledger.dateutil import months_between, in_months, first_of_month
 from dledger.journal import Transaction
@@ -10,6 +10,8 @@ def amount_per_share(record: Transaction) \
         -> float:
     """ Return the fractional amount per share. """
 
+    assert record.amount is not None
+
     return (record.amount.value / record.position
             if record.amount.value > 0 and record.position > 0
             else 0)
@@ -19,14 +21,14 @@ def amount_per_share_high(records: Iterable[Transaction]) \
         -> float:
     """ Return the highest amount per share over any period. """
 
-    highest_amount_per_share = -1
+    highest_amount_per_share: Optional[float] = None
 
     for record in records:
         reference_amount_per_share = amount_per_share(record)
-        if highest_amount_per_share == -1 or reference_amount_per_share > highest_amount_per_share:
+        if highest_amount_per_share is None or reference_amount_per_share > highest_amount_per_share:
             highest_amount_per_share = reference_amount_per_share
 
-    if highest_amount_per_share == -1:
+    if highest_amount_per_share is None:
         raise TypeError('\'records\' must contain at least one transaction')
 
     return highest_amount_per_share
@@ -36,14 +38,14 @@ def amount_per_share_low(records: Iterable[Transaction]) \
         -> float:
     """ Return the lowest amount per share over any period. """
 
-    lowest_amount_per_share = -1
+    lowest_amount_per_share: Optional[float] = None
 
     for record in records:
         reference_amount_per_share = amount_per_share(record)
-        if lowest_amount_per_share == -1 or reference_amount_per_share < lowest_amount_per_share:
+        if lowest_amount_per_share is None or reference_amount_per_share < lowest_amount_per_share:
             lowest_amount_per_share = reference_amount_per_share
 
-    if lowest_amount_per_share == -1:
+    if lowest_amount_per_share is None:
         raise TypeError('\'records\' must contain at least one transaction')
 
     return lowest_amount_per_share
@@ -63,19 +65,22 @@ def intervals(records: Iterable[Transaction]) \
 
     timespans: List[int] = []
 
-    first_record_date = None
-    previous_record_date = None
+    first_record_date: Optional[date] = None
+    previous_record_date: Optional[date] = None
 
     for record in records:
-        date = first_of_month(record.date)
+        d = first_of_month(record.date)
 
         if previous_record_date is None:
-            first_record_date = date
+            first_record_date = d
         else:
             timespans.append(
-                months_between(date, previous_record_date, ignore_years=True))
+                months_between(d, previous_record_date, ignore_years=True))
 
-        previous_record_date = date
+        previous_record_date = d
+
+    assert first_record_date is not None
+    assert previous_record_date is not None
 
     next_record_date = first_record_date.replace(year=previous_record_date.year + 1)
 
@@ -97,17 +102,19 @@ def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False
     """ Return a list of unique symbol components in a set of records.
 
     Optionally excluding symbols attached only to dividends.
+
+    Does not include an entry for records with no symbol attached.
     """
 
     transactions = filter(lambda r: r.amount is not None, records)
 
-    collected_symbols = []
+    collected_symbols: List[str] = []
 
     for record in transactions:
-        if record.amount is not None:
+        if record.amount is not None and record.amount.symbol is not None:
             collected_symbols.append(record.amount.symbol)
         if not excluding_dividends:
-            if record.dividend is not None:
+            if record.dividend is not None and record.dividend.symbol is not None:
                 collected_symbols.append(record.dividend.symbol)
 
     return sorted(set(collected_symbols))
@@ -120,7 +127,7 @@ def monthly_schedule(records: Iterable[Transaction]) \
     return sorted(set([record.date.month for record in records]))
 
 
-def trailing(records: Iterable[Transaction], since: datetime.date, *, months: int) \
+def trailing(records: Iterable[Transaction], since: date, *, months: int) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated within a number of months prior to a given date.
 
@@ -171,23 +178,23 @@ def income(records: Iterable[Transaction]) \
         -> float:
     """ Return the sum of amount components in a set of records. """
 
-    return sum([record.amount.value for record in records])
+    return sum([record.amount.value for record in records if record.amount is not None])
 
 
-def after(records: Iterable[Transaction], date: datetime.date) \
+def after(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated later than a date. """
 
     return filter(
-        lambda r: r.date > date, records)
+        lambda r: r.date > d, records)
 
 
-def before(records: Iterable[Transaction], date: datetime.date) \
+def before(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated prior to a date. """
 
     return filter(
-        lambda r: r.date < date, records)
+        lambda r: r.date < d, records)
 
 
 def earliest(records: Iterable[Transaction]) \
@@ -233,7 +240,7 @@ def pruned(records: Iterable[Transaction]) \
         -> List[Transaction]:
     """ Return a list of transactions with only the first occurence of a transaction per date. """
 
-    collected_records = []
+    collected_records: List[Transaction] = []
     for record in records:
         collected = False
         for collected_record in collected_records:

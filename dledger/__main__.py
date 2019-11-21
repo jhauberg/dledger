@@ -31,6 +31,8 @@ import sys
 import os
 import locale
 
+from datetime import date
+
 from docopt import docopt  # type: ignore
 
 from dledger import __version__
@@ -44,11 +46,15 @@ from dledger.report import (
 )
 from dledger.projection import scheduled_transactions
 from dledger.journal import (
-    write, read, SUPPORTED_TYPES
+    Transaction, write, read, SUPPORTED_TYPES
 )
 
+from typing import List, Tuple, Iterable, Optional
 
-def filter_by_period(records, interval):
+
+def filter_by_period(records: Iterable[Transaction],
+                     interval: Optional[Tuple[Optional[date], Optional[date]]]) \
+        -> Iterable[Transaction]:
     if interval is None:
         return records
 
@@ -79,11 +85,11 @@ def main() -> None:
     input_type = args['--type']
     is_verbose = args['--verbose']
 
-    records = []
+    records: List[Transaction] = []
 
     for input_path in input_paths:
-        # note that --provider defaults to 'native' for all commands
-        # (only convert supports setting provider explicitly)
+        # note that --type defaults to 'journal' for all commands
+        # (only convert supports setting type explicitly)
         if input_type not in SUPPORTED_TYPES:
             sys.exit(f'Transaction type is not supported: {input_type}')
 

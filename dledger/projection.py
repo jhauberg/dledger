@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from dataclasses import dataclass
 
-from statistics import multimode
+from statistics import multimode  # type: ignore
 
 from dledger.journal import Transaction, Amount
 from dledger.dateutil import last_of_month
@@ -59,6 +59,8 @@ def normalize_interval(interval: int) \
         if start < interval <= end:
             return normalized_interval
 
+    assert False  # we should never reach this point
+
 
 def frequency(records: Iterable[Transaction]) \
         -> int:
@@ -79,6 +81,7 @@ def frequency(records: Iterable[Transaction]) \
     else:
         # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
         latest_record = latest(records)
+        assert latest_record is not None
         sample_records = trailing(records, since=last_of_month(latest_record.date), months=12)
         payouts_per_year = len(list(sample_records))
         average_interval = int(12 / payouts_per_year)
@@ -123,8 +126,8 @@ def estimated_monthly_schedule(records: List[Transaction],
     return sorted(set(approx_schedule))
 
 
-def next_scheduled_date(date: datetime.date, months: List[int]) \
-        -> datetime.date:
+def next_scheduled_date(d: date, months: List[int]) \
+        -> date:
     """ Return the date that would follow a given date, going by a monthly schedule.
 
     For example, given a date (2019, 6, 18) and a schedule of (3, 6, 9, 12),
@@ -137,42 +140,42 @@ def next_scheduled_date(date: datetime.date, months: List[int]) \
         raise ValueError('schedule exceeds 12-month range')
     if len(months) != len(set(months)):
         raise ValueError('schedule must not contain duplicate months')
-    if date.month not in months:
-        raise ValueError('schedule does not match to given date')
+    if d.month not in months:
+        raise ValueError('schedule does not match given date')
 
-    next_month_index = months.index(date.month) + 1
-    next_year = date.year
+    next_month_index = months.index(d.month) + 1
+    next_year = d.year
 
     if next_month_index == len(months):
         next_year = next_year + 1
         next_month_index = 0
 
-    future_date = date.replace(year=next_year,
-                               month=months[next_month_index],
-                               day=1)
+    future_date = d.replace(year=next_year,
+                            month=months[next_month_index],
+                            day=1)
 
     return future_date
 
 
-def projected_timeframe(date: datetime.date) -> int:
+def projected_timeframe(d: date) -> int:
     """ Return the timeframe of a given date. """
 
-    return EARLY if date.day <= EARLY_LATE_THRESHOLD else LATE
+    return EARLY if d.day <= EARLY_LATE_THRESHOLD else LATE
 
 
-def projected_date(date: datetime.date, *, timeframe: int) -> datetime.date:
+def projected_date(d: date, *, timeframe: int) -> date:
     """ Return a date where day of month is set according to given timeframe. """
 
     if timeframe == EARLY:
-        return date.replace(day=EARLY_LATE_THRESHOLD)
+        return d.replace(day=EARLY_LATE_THRESHOLD)
     if timeframe == LATE:
-        return last_of_month(date)
-    return date
+        return last_of_month(d)
+    return d
 
 
 def expired_transactions(records: Iterable[Transaction],
                          *,
-                         since: datetime.date = datetime.today().date(),
+                         since: date = datetime.today().date(),
                          grace_period: int = 3) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated prior to a date.
@@ -185,7 +188,7 @@ def expired_transactions(records: Iterable[Transaction],
 
 def pending_transactions(records: Iterable[Transaction],
                          *,
-                         since: datetime.date = datetime.today().date()) \
+                         since: date = datetime.today().date()) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated later than a date. """
 
@@ -194,7 +197,7 @@ def pending_transactions(records: Iterable[Transaction],
 
 def scheduled_transactions(records: List[Transaction],
                            *,
-                           since: datetime.date = datetime.today().date()) \
+                           since: date = datetime.today().date()) \
         -> List[FutureTransaction]:
     # take a sample set of only latest 12 months
     sample_records = trailing(records, since=since, months=12)
@@ -209,26 +212,27 @@ def scheduled_transactions(records: List[Transaction],
     scheduled = futures
 
     # bias toward futures, leaving estimates only to fill out gaps in schedule
-    for record in estimates:
+    for future_record in estimates:
         duplicates = [r for r in scheduled
-                      if r.ticker == record.ticker
-                      and r.date.year == record.date.year
-                      and r.date.month == record.date.month]
+                      if r.ticker == future_record.ticker
+                      and r.date.year == future_record.date.year
+                      and r.date.month == future_record.date.month]
 
         if len(duplicates) > 0:
             continue
 
-        scheduled.append(record)
+        scheduled.append(future_record)
 
-    pending = list(pending_transactions(filter(lambda r: not r.is_special, records), since=since))
+    pending_records = list(pending_transactions(filter(
+        lambda r: not r.is_special, records), since=since))
 
     # bias toward pending; e.g. keep manually set transactions in the future,
     # discard projections on same date
-    for record in pending:
+    for pending_record in pending_records:
         duplicates = [r for r in scheduled
-                      if r.ticker == record.ticker
-                      and r.date.year == record.date.year
-                      and r.date.month == record.date.month]
+                      if r.ticker == pending_record.ticker
+                      and r.date.year == pending_record.date.year
+                      and r.date.month == pending_record.date.month]
 
         if len(duplicates) == 0:
             continue
@@ -238,9 +242,10 @@ def scheduled_transactions(records: List[Transaction],
 
     # exclude unrealized projections
     closed = tickers(expired_transactions(scheduled, since=since))
-    scheduled = filter(lambda r: r.ticker not in closed, scheduled)
 
-    return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
+    return sorted(filter(
+        lambda r: r.ticker not in closed, scheduled),
+        key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
 def estimated_schedule(records: List[Transaction], record: Transaction) \
@@ -269,6 +274,8 @@ def estimated_transactions(records: List[Transaction]) \
     for ticker in tickers(records):
         latest_record = latest(by_ticker(records, ticker))
 
+        assert latest_record is not None
+
         future_position = latest_record.position
 
         if not future_position > 0:
@@ -276,17 +283,21 @@ def estimated_transactions(records: List[Transaction]) \
             continue
 
         # weed out position-only records
-        transactions = list(filter(lambda r: r.amount is not None, by_ticker(records, ticker)))
+        transactions = list(filter(
+            lambda r: r.amount is not None, by_ticker(records, ticker)))
 
         if len(transactions) == 0:
             continue
 
         latest_transaction = latest(transactions)
 
+        assert latest_transaction is not None
+        assert latest_transaction.amount is not None
+
         sched = estimated_schedule(transactions, latest_transaction)
 
         scheduled_months = sched.months
-        scheduled_records = []
+        scheduled_records: List[FutureTransaction] = []
 
         future_date = latest_transaction.date
         # estimate timeframe by latest actual record
@@ -346,7 +357,11 @@ def future_transactions(records: List[Transaction]) \
     transactions = list(filter(lambda r: r.amount is not None, records))
 
     for transaction in transactions:
+        assert transaction.amount is not None
+
         latest_record = latest(by_ticker(records, transaction.ticker))
+
+        assert latest_record is not None
 
         future_position = latest_record.position
 
@@ -355,6 +370,9 @@ def future_transactions(records: List[Transaction]) \
             continue
 
         latest_transaction = latest(by_ticker(transactions, transaction.ticker))
+
+        assert latest_transaction is not None
+        assert latest_transaction.amount is not None
 
         if transaction.amount.symbol != latest_transaction.amount.symbol:
             # don't project transactions that do not match latest recorded currency
