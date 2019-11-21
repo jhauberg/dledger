@@ -18,8 +18,8 @@ SUPPORTED_TYPES = ['journal', 'native', 'nordnet']
 @dataclass(frozen=True)
 class Amount:
     value: float
-    symbol: str
-    format: str
+    symbol: str = ''
+    format: str = ''
 
 
 @dataclass(frozen=True, unsafe_hash=True)
