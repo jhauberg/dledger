@@ -1,7 +1,7 @@
 import sys
 
 
-def supports_color(stream) -> bool:
+def supports_color(stream) -> bool:  # type: ignore
     """ Determine whether an output stream (e.g. stdout/stderr) supports displaying colored text.
 
     A stream that is redirected to a file does not support color.

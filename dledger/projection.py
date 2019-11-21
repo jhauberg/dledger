@@ -314,7 +314,7 @@ def estimated_transactions(records: List[Transaction]) \
             reference_records = trailing(
                 by_ticker(transactions, ticker), since=future_date, months=12)
             reference_records = list(filter(
-                lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))  # type: ignore
+                lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))
 
             if len(reference_records) > 0:
                 highest_amount_per_share = amount_per_share_high(reference_records)

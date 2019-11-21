@@ -51,7 +51,7 @@ def read(path: str, kind: str) \
     return []
 
 
-def raise_parse_error(error: str, location: Tuple[str, int]):
+def raise_parse_error(error: str, location: Tuple[str, int]) -> None:
     raise ValueError(f'{location[0]}:{location[1]} {error}')
 
 
@@ -150,12 +150,12 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                     position = logical_position
 
                 if position != logical_position:
-                    raise raise_parse_error(f'position does not match amount/dividend '
-                                            f'({logical_position})',
-                                            location=location)
+                    raise_parse_error(f'position does not match amount/dividend '
+                                      f'({logical_position})',
+                                      location=location)
 
         if position is None:
-            raise raise_parse_error(f'position could not be inferred', location=location)
+            raise_parse_error(f'position could not be inferred', location=location)
 
         records.append(Transaction(d, ticker, position, amount, dividend, is_special))
 
@@ -354,7 +354,7 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
         Amount(dividend, symbol=dividend_symbol, format=f'%s {dividend_symbol}'))
 
 
-def write(records: List[Transaction], file, *, condensed: bool = False):
+def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
     try:
         # default to system locale, if able
         locale.setlocale(locale.LC_ALL, '')
