@@ -45,7 +45,7 @@ def normalize_interval(interval: int) \
       12: Annual    (once a year)
     """
 
-    if interval < 1 or interval > 12:
+    if 1 < interval <= 12:
         raise ValueError('interval must be within 1-12-month range')
 
     normalized_intervals = {
@@ -58,6 +58,8 @@ def normalize_interval(interval: int) \
     for normalized_interval, (start, end) in normalized_intervals.items():
         if start < interval <= end:
             return normalized_interval
+
+    assert False  # we should never reach this point
 
 
 def frequency(records: Iterable[Transaction]) \
