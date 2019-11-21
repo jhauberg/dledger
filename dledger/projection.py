@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass
 
-from statistics import multimode
+from statistics import multimode  # type: ignore
 
 from dledger.journal import Transaction, Amount
 from dledger.dateutil import last_of_month
@@ -45,7 +45,7 @@ def normalize_interval(interval: int) \
       12: Annual    (once a year)
     """
 
-    if 1 < interval <= 12:
+    if interval < 1 or interval > 12:
         raise ValueError('interval must be within 1-12-month range')
 
     normalized_intervals = {
@@ -212,27 +212,27 @@ def scheduled_transactions(records: List[Transaction],
     scheduled = futures
 
     # bias toward futures, leaving estimates only to fill out gaps in schedule
-    for record in estimates:
+    for future_record in estimates:
         duplicates = [r for r in scheduled
-                      if r.ticker == record.ticker
-                      and r.date.year == record.date.year
-                      and r.date.month == record.date.month]
+                      if r.ticker == future_record.ticker
+                      and r.date.year == future_record.date.year
+                      and r.date.month == future_record.date.month]
 
         if len(duplicates) > 0:
             continue
 
-        scheduled.append(record)
+        scheduled.append(future_record)
 
-    pending = list(pending_transactions(filter(
+    pending_records = list(pending_transactions(filter(
         lambda r: not r.is_special, records), since=since))
 
     # bias toward pending; e.g. keep manually set transactions in the future,
     # discard projections on same date
-    for record in pending:
+    for pending_record in pending_records:
         duplicates = [r for r in scheduled
-                      if r.ticker == record.ticker
-                      and r.date.year == record.date.year
-                      and r.date.month == record.date.month]
+                      if r.ticker == pending_record.ticker
+                      and r.date.year == pending_record.date.year
+                      and r.date.month == pending_record.date.month]
 
         if len(duplicates) == 0:
             continue
@@ -242,9 +242,10 @@ def scheduled_transactions(records: List[Transaction],
 
     # exclude unrealized projections
     closed = tickers(expired_transactions(scheduled, since=since))
-    scheduled = filter(lambda r: r.ticker not in closed, scheduled)
 
-    return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
+    return sorted(filter(
+        lambda r: r.ticker not in closed, scheduled),
+        key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
 def estimated_schedule(records: List[Transaction], record: Transaction) \
@@ -291,11 +292,12 @@ def estimated_transactions(records: List[Transaction]) \
         latest_transaction = latest(transactions)
 
         assert latest_transaction is not None
+        assert latest_transaction.amount is not None
 
         sched = estimated_schedule(transactions, latest_transaction)
 
         scheduled_months = sched.months
-        scheduled_records = []
+        scheduled_records: List[FutureTransaction] = []
 
         future_date = latest_transaction.date
         # estimate timeframe by latest actual record
@@ -312,7 +314,7 @@ def estimated_transactions(records: List[Transaction]) \
             reference_records = trailing(
                 by_ticker(transactions, ticker), since=future_date, months=12)
             reference_records = list(filter(
-                lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))
+                lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))  # type: ignore
 
             if len(reference_records) > 0:
                 highest_amount_per_share = amount_per_share_high(reference_records)
@@ -355,6 +357,8 @@ def future_transactions(records: List[Transaction]) \
     transactions = list(filter(lambda r: r.amount is not None, records))
 
     for transaction in transactions:
+        assert transaction.amount is not None
+
         latest_record = latest(by_ticker(records, transaction.ticker))
 
         assert latest_record is not None
@@ -368,6 +372,7 @@ def future_transactions(records: List[Transaction]) \
         latest_transaction = latest(by_ticker(transactions, transaction.ticker))
 
         assert latest_transaction is not None
+        assert latest_transaction.amount is not None
 
         if transaction.amount.symbol != latest_transaction.amount.symbol:
             # don't project transactions that do not match latest recorded currency
