@@ -12,7 +12,7 @@ from datetime import datetime, date
 
 from typing import List, Tuple, Optional
 
-SUPPORTED_TYPES = ['journal', 'native', 'nordnet']
+SUPPORTED_TYPES = ['journal', 'nordnet']
 
 
 @dataclass(frozen=True)
@@ -45,8 +45,6 @@ def read(path: str, kind: str) \
 
     if kind == 'journal':
         return read_journal_transactions(path, encoding)
-    elif kind == 'native':
-        return read_native_transactions(path, encoding)
     elif kind == 'nordnet':
         return read_nordnet_transactions(path, encoding)
 
@@ -279,91 +277,6 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
                   f'{lhs}%s{rhs}')
 
 
-def read_native_transactions(path: str, encoding: str = 'utf-8') \
-        -> List[Transaction]:
-    records = []
-
-    with open(path, newline='', encoding=encoding) as file:
-        reader = csv.reader(file, delimiter='\t')
-        line_number = 0
-
-        for row in reader:
-            line_number += 1
-
-            if len(row) == 0:
-                # skip empty rows
-                continue
-
-            row_as_str = ', '.join(row).strip()
-
-            if row_as_str.startswith('#'):
-                # skip this row
-                continue
-
-            records.append(
-                read_native_transaction(row, location=(path, line_number)))
-
-    return records
-
-
-def read_native_transaction(record: List[str], *, location: Tuple[str, int]) \
-        -> Transaction:
-    if len(record) < 4:
-        raise_parse_error(f'Unexpected number of columns ({len(record)} < 4)', location)
-
-    date_value = str(record[0]).strip()
-    ticker_value = str(record[1]).strip()
-    position_value = str(record[2]).strip()
-    amount_value = str(record[3]).strip()
-
-    if len(date_value) == 0:
-        raise_parse_error('Blank date field', location)
-    if len(ticker_value) == 0:
-        raise_parse_error('Blank ticker field', location)
-    if len(position_value) == 0:
-        raise_parse_error('Blank position field', location)
-    if len(amount_value) == 0:
-        raise_parse_error('Blank amount field', location)
-
-    ticker = ticker_value
-
-    special = amount_value.endswith('*')
-
-    if special:
-        amount_value = amount_value[:-1].strip()
-
-    d: date = None
-
-    try:
-        # parse date; expects format '2018-03-19'
-        d = datetime.strptime(date_value, "%Y-%m-%d").date()
-    except ValueError:
-        raise_parse_error(f'Invalid date format (\'{date_value}\')', location)
-
-    prev_locale = locale.getlocale(locale.LC_NUMERIC)
-
-    # parse numeric values in US locale
-    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
-
-    position = None
-
-    try:
-        position = locale.atoi(position_value)
-    except ValueError:
-        raise_parse_error(f'Invalid position (\'{position_value}\')', location)
-
-    amount = None
-
-    try:
-        amount = locale.atof(amount_value)
-    except ValueError:
-        raise_parse_error(f'Invalid amount (\'{amount_value}\')', location)
-
-    locale.setlocale(locale.LC_NUMERIC, prev_locale)
-
-    return Transaction(d, ticker, position, amount, is_special=special)
-
-
 def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
         -> List[Transaction]:
     records = []
@@ -468,59 +381,3 @@ def write(records: List[Transaction], file, *, condensed: bool = False):
             print(f'  {amount_display}', file=file)
         if record != records[-1]:
             print(file=file)
-
-
-def write_native(records: List[Transaction], filename: str = 'export.tsv', *, pretty: bool = False):
-    """ Write records to file.
-
-    Optionally formatting for humans.
-    """
-
-    with open(filename, 'w', newline='') as file:
-        writer = csv.writer(file, delimiter='\t')
-
-        prev_locale = locale.getlocale(locale.LC_NUMERIC)
-
-        trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
-
-        rows: List[Tuple[str, ...]] = []
-
-        for transaction in records:
-            date_repr = transaction.date.strftime('%Y-%m-%d')
-
-            row = (str(date_repr),
-                   str(transaction.ticker),
-                   str(transaction.position),
-                   format_amount(transaction.amount.value))
-
-            rows.append(row)
-
-        if pretty:
-            column_widths: List[int] = []
-
-            for row in rows:
-                widths = [len(str(column)) for column in row]
-
-                if len(column_widths) > 0:
-                    for i, width in enumerate(widths):
-                        if column_widths[i] < width:
-                            column_widths[i] = width
-                else:
-                    column_widths = widths
-
-            aligned_rows = [
-                # left-align columns 1-2
-                # right-align columns 3-4
-                tuple(column.ljust(column_widths[i]) if i == 0 or i == 1 else
-                      column.rjust(column_widths[i]) if i == 2 or i == 3 else
-                      column
-                      for i, column in enumerate(row))
-                for row in rows
-            ]
-
-            rows = aligned_rows
-
-        for row in rows:
-            writer.writerow(row)
-
-        locale.setlocale(locale.LC_NUMERIC, prev_locale)
