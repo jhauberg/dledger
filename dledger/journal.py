@@ -15,7 +15,7 @@ from typing import List, Tuple, Optional
 SUPPORTED_TYPES = ['journal', 'nordnet']
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, unsafe_hash=True)
 class Amount:
     value: float
     symbol: Optional[str] = None
