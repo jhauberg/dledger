@@ -10,7 +10,7 @@ def trysetlocale(category: Any, locales: List[str]) -> Optional[str]:
         try:
             locale.setlocale(category, supported_locale)
             return supported_locale
-        except locale.Error:
+        except (locale.Error, ValueError):
             continue
 
     return None

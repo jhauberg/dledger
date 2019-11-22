@@ -82,7 +82,7 @@ def main() -> None:
     try:
         # default to system locale, if able
         locale.setlocale(locale.LC_ALL, '')
-    except:
+    except (locale.Error, ValueError):
         # fallback to US locale
         trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
@@ -136,7 +136,7 @@ def main() -> None:
         try:
             lc = locale.getlocale(locale.LC_NUMERIC)
             print_stat_row('Locale', f'{lc}')
-        except:
+        except locale.Error:
             print_stat_row('Locale', 'Not configured')
         records = list(filter_by_period(records, interval))
         transactions = list(filter(lambda r: r.amount is not None, records))
