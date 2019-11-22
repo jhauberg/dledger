@@ -57,13 +57,6 @@ def raise_parse_error(error: str, location: Tuple[str, int]) -> None:
 
 def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         -> List[Transaction]:
-    try:
-        # default to system locale, if able
-        locale.setlocale(locale.LC_ALL, '')
-    except:
-        # fallback to US locale
-        trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
-
     journal_entries = []
 
     transaction_start = re.compile(r'[0-9]+[-/][0-9]+[-/][0-9]+')
@@ -355,13 +348,6 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
 
 
 def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
-    try:
-        # default to system locale, if able
-        locale.setlocale(locale.LC_ALL, '')
-    except:
-        # fallback to US locale
-        trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
-
     for record in records:
         special_indicator = '* ' if record.is_special else ''
         datestamp = record.date.strftime('%Y/%m/%d')

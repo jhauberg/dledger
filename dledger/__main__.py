@@ -38,6 +38,7 @@ from docopt import docopt  # type: ignore
 from dledger import __version__
 from dledger.record import tickers, symbols
 from dledger.dateutil import parse_period
+from dledger.localeutil import trysetlocale
 from dledger.report import (
     print_simple_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
@@ -77,6 +78,13 @@ def main() -> None:
         sys.exit('Python 3.8+ required')
 
     args = docopt(__doc__, version='dledger ' + __version__.__version__)
+
+    try:
+        # default to system locale, if able
+        locale.setlocale(locale.LC_ALL, '')
+    except:
+        # fallback to US locale
+        trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
     input_paths = (args['<file>']
                    if args['convert'] else
@@ -126,7 +134,7 @@ def main() -> None:
         for n, journal_path in enumerate(input_paths):
             print_stat_row(f'Journal {n+1}', os.path.abspath(journal_path))
         try:
-            lc = locale.getlocale(locale.LC_ALL)
+            lc = locale.getlocale(locale.LC_NUMERIC)
             print_stat_row('Locale', f'{lc}')
         except:
             print_stat_row('Locale', 'Not configured')
