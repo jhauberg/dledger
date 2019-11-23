@@ -3,7 +3,7 @@ from datetime import date
 from dledger.dateutil import months_between, in_months, first_of_month
 from dledger.journal import Transaction
 
-from typing import Iterable, Optional, List
+from typing import Iterable, Optional, List, Set
 
 
 def amount_per_share(record: Transaction) \
@@ -98,8 +98,8 @@ def tickers(records: Iterable[Transaction]) \
 
 
 def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False) \
-        -> List[str]:
-    """ Return a list of unique symbol components in a set of records.
+        -> Set[str]:
+    """ Return a set of symbol components in a set of records.
 
     Optionally excluding symbols attached only to dividends.
 
@@ -111,13 +111,13 @@ def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False
     collected_symbols: List[str] = []
 
     for record in transactions:
-        if record.amount is not None and record.amount.symbol is not None:
+        if record.amount.symbol is not None:
             collected_symbols.append(record.amount.symbol)
         if not excluding_dividends:
             if record.dividend is not None and record.dividend.symbol is not None:
                 collected_symbols.append(record.dividend.symbol)
 
-    return sorted(set(collected_symbols))
+    return set(collected_symbols)
 
 
 def monthly_schedule(records: Iterable[Transaction]) \

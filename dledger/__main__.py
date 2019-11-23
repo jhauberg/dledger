@@ -148,7 +148,7 @@ def main() -> None:
             print_stat_row('Earliest', f'{records[0].date}')
             print_stat_row('Latest', f'{records[-1].date}')
             print_stat_row('Tickers', f'{len(tickers(records))}')
-            currencies = symbols(records)
+            currencies = sorted(symbols(records))
             if len(currencies) > 0:
                 print_stat_row('Symbols', f'{currencies}')
 
