@@ -10,7 +10,7 @@ from dledger.record import (
     amount_per_share, before, after, intervals, pruned, symbols
 )
 
-from typing import Tuple, Optional, List, Iterable
+from typing import Tuple, Optional, List, Iterable, Dict
 
 EARLY = 0
 LATE = 1
@@ -270,6 +270,8 @@ def estimated_transactions(records: List[Transaction]) \
 
     approximate_records = []
 
+    conversion_factors = symbol_conversion_factors(records)
+
     for ticker in tickers(records):
         latest_record = latest(by_ticker(records, ticker))
 
@@ -302,6 +304,11 @@ def estimated_transactions(records: List[Transaction]) \
         # estimate timeframe by latest actual record
         future_timeframe = projected_timeframe(future_date)
 
+        can_convert_from_dividend = False
+        if (latest_transaction.dividend is not None and
+                latest_transaction.dividend.symbol != latest_transaction.amount.symbol):
+            can_convert_from_dividend = True
+
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
             future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
@@ -315,17 +322,35 @@ def estimated_transactions(records: List[Transaction]) \
             reference_records = list(filter(
                 lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))
 
-            if len(reference_records) > 0:
-                aps = [amount_per_share(r) for r in reference_records]
+            divs = [r.dividend.value for r in reference_records
+                    if (r.dividend is not None and
+                        r.dividend.symbol != r.amount.symbol and
+                        r.dividend.symbol == latest_transaction.dividend.symbol)]
 
-                highest_amount_per_share = max(aps)
-                lowest_amount_per_share = min(aps)
+            aps = [amount_per_share(r) for r in reference_records]
 
-                future_amount = fmean(aps) * future_position
-                future_amount_range = (Amount(lowest_amount_per_share * future_position,
+            if len(divs) > 0 and can_convert_from_dividend:
+                conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
+                                                        latest_transaction.amount.symbol)]
+                highest_dividend = max(divs) * future_position
+                lowest_dividend = min(divs) * future_position
+                mean_dividend = fmean(divs) * future_position
+                future_amount = mean_dividend * conversion_factor
+                future_amount_range = (Amount(lowest_dividend * conversion_factor,
                                               symbol=latest_transaction.amount.symbol,
                                               format=latest_transaction.amount.format),
-                                       Amount(highest_amount_per_share * future_position,
+                                       Amount(highest_dividend * conversion_factor,
+                                              symbol=latest_transaction.amount.symbol,
+                                              format=latest_transaction.amount.format))
+            elif len(aps) > 0:
+                highest_amount = max(aps) * future_position
+                lowest_amount = min(aps) * future_position
+                mean_amount = fmean(aps) * future_position
+                future_amount = mean_amount
+                future_amount_range = (Amount(lowest_amount,
+                                              symbol=latest_transaction.amount.symbol,
+                                              format=latest_transaction.amount.format),
+                                       Amount(highest_amount,
                                               symbol=latest_transaction.amount.symbol,
                                               format=latest_transaction.amount.format))
 
@@ -354,6 +379,8 @@ def future_transactions(records: List[Transaction]) \
     # weed out position-only records
     transactions = list(filter(lambda r: r.amount is not None, records))
 
+    conversion_factors = symbol_conversion_factors(transactions)
+
     for transaction in transactions:
         assert transaction.amount is not None
 
@@ -381,11 +408,42 @@ def future_transactions(records: List[Transaction]) \
         future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.date))
 
         future_amount = future_position * amount_per_share(transaction)
+
+        if transaction.dividend is not None and transaction.dividend.symbol != transaction.amount.symbol:
+            conversion_factor = conversion_factors[(transaction.dividend.symbol,
+                                                    transaction.amount.symbol)]
+            future_dividend = future_position * transaction.dividend.value
+            future_amount = future_dividend * conversion_factor
+
         future_record = FutureTransaction(future_date, transaction.ticker, future_position,
                                           amount=Amount(future_amount,
                                                         symbol=latest_transaction.amount.symbol,
-                                                        format=latest_transaction.amount.format))
+                                                        format=latest_transaction.amount.format),
+                                          dividend=transaction.dividend)
 
         future_records.append(future_record)
 
     return sorted(future_records, key=lambda r: r.date)
+
+
+def symbol_conversion_factors(records: List[Transaction]) \
+        -> Dict[Tuple[str, str], float]:
+    conversion_factors: Dict[Tuple[str, str], float] = dict()
+
+    transactions = list(filter(lambda r: r.amount is not None, records))
+
+    amount_symbols = symbols(records, excluding_dividends=True)
+    all_symbols = symbols(records)
+    dividend_symbols = all_symbols - amount_symbols
+
+    for symbol in amount_symbols:
+        for other_symbol in dividend_symbols:
+            latest_transaction = latest(filter(
+                lambda r: (r.amount.symbol == symbol and
+                           r.dividend.symbol == other_symbol), transactions))
+
+            conversion_factor = amount_per_share(latest_transaction) / latest_transaction.dividend.value
+            conversion_factors[(latest_transaction.dividend.symbol,
+                                latest_transaction.amount.symbol)] = conversion_factor
+
+    return conversion_factors

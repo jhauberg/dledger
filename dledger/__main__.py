@@ -45,7 +45,7 @@ from dledger.report import (
     print_simple_weight_by_ticker,
     print_simple_chart
 )
-from dledger.projection import scheduled_transactions
+from dledger.projection import scheduled_transactions, symbol_conversion_factors
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
 )
@@ -151,6 +151,10 @@ def main() -> None:
             currencies = sorted(symbols(records))
             if len(currencies) > 0:
                 print_stat_row('Symbols', f'{currencies}')
+                conversion_rates = symbol_conversion_factors(records)
+                for from_symbol, to_symbol in conversion_rates:
+                    conversion_rate = conversion_rates[(from_symbol, to_symbol)]
+                    print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate}')
 
         sys.exit(0)
 
