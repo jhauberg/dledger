@@ -1,14 +1,13 @@
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass
 
-from statistics import multimode  # type: ignore
+from statistics import multimode, fmean  # type: ignore
 
 from dledger.journal import Transaction, Amount
 from dledger.dateutil import last_of_month
 from dledger.record import (
     by_ticker, tickers, trailing, latest, monthly_schedule,
-    amount_per_share, amount_per_share_low, amount_per_share_high,
-    before, after, intervals, pruned
+    amount_per_share, before, after, intervals, pruned, symbols
 )
 
 from typing import Tuple, Optional, List, Iterable
@@ -317,13 +316,12 @@ def estimated_transactions(records: List[Transaction]) \
                 lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))
 
             if len(reference_records) > 0:
-                highest_amount_per_share = amount_per_share_high(reference_records)
-                lowest_amount_per_share = amount_per_share_low(reference_records)
+                aps = [amount_per_share(r) for r in reference_records]
 
-                mean_amount_per_share = (lowest_amount_per_share + highest_amount_per_share) / 2
+                highest_amount_per_share = max(aps)
+                lowest_amount_per_share = min(aps)
 
-                future_amount = mean_amount_per_share * future_position
-
+                future_amount = fmean(aps) * future_position
                 future_amount_range = (Amount(lowest_amount_per_share * future_position,
                                               symbol=latest_transaction.amount.symbol,
                                               format=latest_transaction.amount.format),
