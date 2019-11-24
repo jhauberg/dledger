@@ -45,7 +45,9 @@ from dledger.report import (
     print_simple_weight_by_ticker,
     print_simple_chart
 )
-from dledger.projection import scheduled_transactions, symbol_conversion_factors
+from dledger.projection import (
+    scheduled_transactions, symbol_conversion_factors
+)
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
 )
@@ -158,15 +160,16 @@ def main() -> None:
 
         sys.exit(0)
 
-    if args['report']:
-        transactions = list(
-            filter_by_period(filter(
-                lambda r: r.amount is not None, records), interval))
-        if not args['--without-forecast']:
-            transactions.extend(
-                filter_by_period(
-                    scheduled_transactions(records), interval))
+    transactions = list(filter(
+        lambda r: r.amount is not None, records))
 
+    if not args['--without-forecast']:
+        transactions.extend(
+            scheduled_transactions(records))
+
+    transactions = list(filter_by_period(transactions, interval))
+
+    if args['report']:
         if args['--weighted']:
             print_simple_weight_by_ticker(transactions)
         elif args['--annual']:
@@ -182,14 +185,8 @@ def main() -> None:
 
     if args['chart']:
         ticker = args['<ticker>']
-        matching_records = list(filter(
-            lambda r: r.ticker == ticker, records))
         transactions = list(filter(
-            lambda r: r.amount is not None, matching_records))
-        if not args['--without-forecast']:
-            transactions.extend(
-                scheduled_transactions(matching_records))
-        transactions = list(filter_by_period(transactions, interval))
+            lambda r: r.ticker == ticker, transactions))
 
         print_simple_chart(transactions)
 
