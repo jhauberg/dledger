@@ -228,4 +228,5 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
             conversion_keys = sorted(symbol_conversion_factors(records), key=lambda c: c[0])
             for from_symbol, to_symbol in conversion_keys:
                 conversion_rate = conversion_rates[(from_symbol, to_symbol)]
-                print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate}')
+                conversion_rate_amount = format_amount(conversion_rate)
+                print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate_amount}')
