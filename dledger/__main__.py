@@ -28,7 +28,6 @@ See https://github.com/jhauberg/dledger for additional details.
 """
 
 import sys
-import os
 import locale
 
 from datetime import date
@@ -36,17 +35,17 @@ from datetime import date
 from docopt import docopt  # type: ignore
 
 from dledger import __version__
-from dledger.record import tickers, symbols
 from dledger.dateutil import parse_period
 from dledger.localeutil import trysetlocale
 from dledger.report import (
     print_simple_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
     print_simple_weight_by_ticker,
-    print_simple_chart
+    print_simple_chart,
+    print_stats
 )
 from dledger.projection import (
-    scheduled_transactions, symbol_conversion_factors
+    scheduled_transactions
 )
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
@@ -130,33 +129,10 @@ def main() -> None:
         interval = parse_period(interval)
 
     if args['stats']:
-        def print_stat_row(name: str, text: str) -> None:
-            name = name.rjust(10)
-            print(f'{name}: {text}')
-        for n, journal_path in enumerate(input_paths):
-            print_stat_row(f'Journal {n+1}', os.path.abspath(journal_path))
-        try:
-            lc = locale.getlocale(locale.LC_NUMERIC)
-            print_stat_row('Locale', f'{lc}')
-        except locale.Error:
-            print_stat_row('Locale', 'Not configured')
+        # filter down all records by --period, not just transactions
         records = list(filter_by_period(records, interval))
-        transactions = list(filter(lambda r: r.amount is not None, records))
-        if len(transactions) > 0 and len(transactions) != len(records):
-            print_stat_row('Records', f'{len(records)} ({len(transactions)})')
-        else:
-            print_stat_row('Records', f'{len(records)}')
-        if len(records) > 0:
-            print_stat_row('Earliest', f'{records[0].date}')
-            print_stat_row('Latest', f'{records[-1].date}')
-            print_stat_row('Tickers', f'{len(tickers(records))}')
-            currencies = sorted(symbols(records))
-            if len(currencies) > 0:
-                print_stat_row('Symbols', f'{currencies}')
-                conversion_rates = symbol_conversion_factors(records)
-                for from_symbol, to_symbol in conversion_rates:
-                    conversion_rate = conversion_rates[(from_symbol, to_symbol)]
-                    print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate}')
+
+        print_stats(records, journal_paths=input_paths)
 
         sys.exit(0)
 

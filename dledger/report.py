@@ -1,6 +1,9 @@
+import locale
+import os
+
 from dledger.journal import Transaction
 from dledger.formatutil import format_amount
-from dledger.projection import FutureTransaction
+from dledger.projection import FutureTransaction, symbol_conversion_factors
 from dledger.record import (
     income, yearly, monthly, amount_per_share, symbols,
     tickers, by_ticker, latest, earliest
@@ -194,3 +197,34 @@ def print_simple_chart(records: List[Transaction]):
         line = f'{line} / {transaction.position}'
 
         print(line)
+
+
+def print_stat_row(name: str, text: str) -> None:
+    name = name.rjust(10)
+    print(f'{name}: {text}')
+
+
+def print_stats(records: List[Transaction], journal_paths: List[str]):
+    for n, journal_path in enumerate(journal_paths):
+        print_stat_row(f'Journal {n + 1}', os.path.abspath(journal_path))
+    try:
+        lc = locale.getlocale(locale.LC_NUMERIC)
+        print_stat_row('Locale', f'{lc}')
+    except locale.Error:
+        print_stat_row('Locale', 'Not configured')
+    transactions = list(filter(lambda r: r.amount is not None, records))
+    if len(transactions) > 0 and len(transactions) != len(records):
+        print_stat_row('Records', f'{len(records)} ({len(transactions)})')
+    else:
+        print_stat_row('Records', f'{len(records)}')
+    if len(records) > 0:
+        print_stat_row('Earliest', f'{records[0].date}')
+        print_stat_row('Latest', f'{records[-1].date}')
+        print_stat_row('Tickers', f'{len(tickers(records))}')
+        currencies = sorted(symbols(records))
+        if len(currencies) > 0:
+            print_stat_row('Symbols', f'{currencies}')
+            conversion_rates = symbol_conversion_factors(records)
+            for from_symbol, to_symbol in conversion_rates:
+                conversion_rate = conversion_rates[(from_symbol, to_symbol)]
+                print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate}')
