@@ -77,6 +77,8 @@ def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False
     collected_symbols: List[str] = []
 
     for record in transactions:
+        assert record.amount is not None
+
         if record.amount.symbol is not None:
             collected_symbols.append(record.amount.symbol)
         if not excluding_dividends:
