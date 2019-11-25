@@ -7,7 +7,7 @@ usage: dledger report         <journal>... [--period=<interval>] [-V]
        dledger chart <ticker> <journal>... [--period=<interval>] [-V]
                                            [--without-forecast]
        dledger stats          <journal>... [--period=<interval>] [-V]
-       dledger print          <journal>... [-V]
+       dledger print          <journal>... [--condensed] [-V]
        dledger convert        <file>...    [--type=<name>] [-V]
                                            [--output=<journal>]
 
@@ -120,7 +120,7 @@ def main() -> None:
         sys.exit(0)
 
     if args['print']:
-        write(records, file=sys.stdout)
+        write(records, file=sys.stdout, condensed=args['--condensed'])
 
         sys.exit(0)
 

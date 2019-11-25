@@ -354,7 +354,9 @@ def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
     for record in records:
         special_indicator = '* ' if record.is_special else ''
         datestamp = record.date.strftime('%Y/%m/%d')
-        print(f'{datestamp} {special_indicator}{record.ticker} ({record.position})', file=file)
+        line = f'{datestamp} {special_indicator}{record.ticker} ({record.position})'
+        if not condensed:
+            print(line, file=file)
         amount_display = ''
         if record.amount is not None:
             payout_display = format_amount(record.amount.value, trailing_zero=False)
@@ -367,6 +369,12 @@ def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
                 dividend_display = record.dividend.format % dividend_display
             amount_display += f' @ {dividend_display}'
         if len(amount_display) > 0:
-            print(f'  {amount_display}', file=file)
-        if record != records[-1]:
+            amount_line = f'  {amount_display}'
+            if not condensed:
+                print(amount_line, file=file)
+            else:
+                line += amount_line
+        if condensed:
+            print(line)
+        if record != records[-1] and not condensed:
             print(file=file)
