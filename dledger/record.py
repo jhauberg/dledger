@@ -24,7 +24,7 @@ def intervals(records: Iterable[Transaction]) \
     Does not take years and days into account.
     """
 
-    records = sorted(records, key=lambda r: r.date)
+    records = sorted(records)
 
     if len(records) == 0:
         return []
@@ -167,7 +167,7 @@ def earliest(records: Iterable[Transaction]) \
         -> Optional[Transaction]:
     """ Return the earliest dated record in a set of records. """
 
-    records = sorted(records, key=lambda r: r.date)
+    records = sorted(records)
 
     return records[0] if len(records) > 0 else None
 
@@ -176,7 +176,7 @@ def latest(records: Iterable[Transaction]) \
         -> Optional[Transaction]:
     """ Return the latest dated record in a set of records. """
 
-    records = sorted(records, key=lambda r: r.date)
+    records = sorted(records)
 
     return records[-1] if len(records) > 0 else None
 

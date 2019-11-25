@@ -33,6 +33,9 @@ class Transaction:
     dividend: Optional[Amount] = None
     is_special: bool = False
 
+    def __lt__(self, other):
+        return self.date < other.date
+
 
 def read(path: str, kind: str) \
         -> List[Transaction]:

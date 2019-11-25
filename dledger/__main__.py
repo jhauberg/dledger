@@ -105,7 +105,7 @@ def main() -> None:
 
         records.extend(read(input_path, input_type))
 
-    records = sorted(records, key=lambda r: r.date)
+    records = sorted(records)
 
     if len(records) == 0:
         if is_verbose:

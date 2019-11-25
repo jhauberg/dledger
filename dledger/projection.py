@@ -364,7 +364,7 @@ def estimated_transactions(records: List[Transaction]) \
 
         approximate_records.extend(scheduled_records)
 
-    return sorted(approximate_records, key=lambda r: r.date)
+    return sorted(approximate_records)
 
 
 def future_transactions(records: List[Transaction]) \
@@ -423,7 +423,7 @@ def future_transactions(records: List[Transaction]) \
 
         future_records.append(future_record)
 
-    return sorted(future_records, key=lambda r: r.date)
+    return sorted(future_records)
 
 
 def symbol_conversion_factors(records: List[Transaction]) \
