@@ -167,7 +167,7 @@ def main() -> None:
         transactions.extend(
             scheduled_transactions(records))
 
-    transactions = list(filter_by_period(transactions, interval))
+    transactions = sorted(filter_by_period(transactions, interval))
 
     if args['report']:
         if args['--weighted']:
