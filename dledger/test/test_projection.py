@@ -7,7 +7,8 @@ from dledger.projection import (
     next_scheduled_date,
     future_transactions,
     estimated_transactions,
-    expired_transactions
+    expired_transactions,
+    symbol_conversion_factors
 )
 
 
@@ -496,3 +497,52 @@ def test_expired_transactions():
     assert len(list(expired_transactions(records, since=date(2019, 3, 3), grace_period=3))) == 0
     assert len(list(expired_transactions(records, since=date(2019, 3, 4), grace_period=3))) == 0
     assert len(list(expired_transactions(records, since=date(2019, 3, 5), grace_period=3))) == 1
+
+
+def test_conversion_factors():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = symbol_conversion_factors(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == 1
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(675, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = symbol_conversion_factors(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == 6.75
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(10, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = symbol_conversion_factors(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == 0.1
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(1, symbol='kr'), dividend=Amount(10, symbol='$'))
+    ]
+
+    factors = symbol_conversion_factors(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == 0.001
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 6, 1), 'ABC', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 9, 1), 'ABC', 100, amount=Amount(105, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = symbol_conversion_factors(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == 1.05
