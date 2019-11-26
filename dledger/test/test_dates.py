@@ -116,10 +116,20 @@ def test_previous_next_month():
 
 
 def test_parse_datestamp():
+    assert parse_datestamp('2019/1/01') == date(2019, 1, 1)
+    assert parse_datestamp('2019/01/1') == date(2019, 1, 1)
+    assert parse_datestamp('2019/1/1') == date(2019, 1, 1)
+    assert parse_datestamp('2019/11/01') == date(2019, 11, 1)
+    assert parse_datestamp('2019/11/1') == date(2019, 11, 1)
     assert parse_datestamp('2019/11/11') == date(2019, 11, 11)
     assert parse_datestamp('2019/11') == date(2019, 11, 1)
     assert parse_datestamp('2019') == date(2019, 1, 1)
 
+    assert parse_datestamp('2019-1-01') == date(2019, 1, 1)
+    assert parse_datestamp('2019-01-1') == date(2019, 1, 1)
+    assert parse_datestamp('2019-1-1') == date(2019, 1, 1)
+    assert parse_datestamp('2019-11-01') == date(2019, 11, 1)
+    assert parse_datestamp('2019-11-1') == date(2019, 11, 1)
     assert parse_datestamp('2019-11-11') == date(2019, 11, 11)
     assert parse_datestamp('2019-11') == date(2019, 11, 1)
     assert parse_datestamp('2019') == date(2019, 1, 1)
