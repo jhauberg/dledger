@@ -6,7 +6,7 @@ In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accou
 
 ---
 
-Here's a journal that tracks a position of 100 Apple shares over 3 transactions:
+Here's a journal that tracks a position of 100 shares of Apple over 3 transactions:
 
 ```
 2019/02/14 AAPL (100)
@@ -21,10 +21,10 @@ Here's a journal that tracks a position of 100 Apple shares over 3 transactions:
 
 Running `dledger` shows all dividends received, including forecasts for the next 12 months:
 
-```
+```shell
 $ dledger report ~/.journal
 ```
-```
+```console
                 $ 73    2019/02/14 AAPL
                 $ 77    2019/05/16 AAPL
                 $ 77    2019/08/15 AAPL
@@ -36,10 +36,10 @@ $ dledger report ~/.journal
 
 Using the `--annual` flag will sum up dividends by year:
 
-```
+```shell
 $ dledger report ~/.journal --annual
 ```
-```
+```console
 ~              $ 302    2019
 ~              $ 227  < 2020/08
 ```
