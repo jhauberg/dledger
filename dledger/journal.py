@@ -229,13 +229,13 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         amount_str = amount_components[0].strip()
         amount = split_amount(amount_str, location=location)
         if amount.value < 0:
-            raise_parse_error(f'invalid amount (\'{amount}\')', location)
+            raise_parse_error(f'invalid amount (\'{amount.value}\')', location)
     dividend: Optional[Amount] = None
     if len(amount_components) > 1:
         dividend_str = amount_components[1].strip()
         dividend = split_amount(dividend_str, location=location)
         if dividend.value < 0:
-            raise_parse_error(f'invalid dividend (\'{amount}\')', location)
+            raise_parse_error(f'invalid dividend (\'{dividend.value}\')', location)
 
     return d, ticker, (position, position_change_direction), amount, dividend, is_special, location
 
@@ -246,7 +246,8 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
     lhs = ''
 
     for c in amount:
-        if c.isdigit():
+        if c.isdigit() or (c == '+' or
+                           c == '-'):
             break
         lhs += c
 
@@ -255,7 +256,8 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
     rhs = ''
 
     for c in reversed(amount):
-        if c.isdigit():
+        if c.isdigit() or (c == '+' or
+                           c == '-'):
             break
         rhs = c + rhs
 
@@ -265,7 +267,7 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
         symbol = lhs.strip()
     if len(rhs) > 0:
         if symbol is not None:
-            raise_parse_error(f'ambiguous symbol definition ({rhs.strip()})', location)
+            raise_parse_error(f'ambiguous symbol definition (\'{symbol}\' or \'{rhs.strip()}\'?)', location)
         symbol = rhs.strip()
 
     value: float = 0.0
