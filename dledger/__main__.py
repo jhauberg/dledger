@@ -7,7 +7,7 @@ usage: dledger report         <journal>... [--period=<interval>] [-V]
        dledger chart <ticker> <journal>... [--period=<interval>] [-V]
                                            [--without-forecast]
        dledger stats          <journal>... [--period=<interval>] [-V]
-       dledger print          <journal>... [-V]
+       dledger print          <journal>... [--condensed] [-V]
        dledger convert        <file>...    [--type=<name>] [-V]
                                            [--output=<journal>]
 
@@ -28,7 +28,6 @@ See https://github.com/jhauberg/dledger for additional details.
 """
 
 import sys
-import os
 import locale
 
 from datetime import date
@@ -36,15 +35,18 @@ from datetime import date
 from docopt import docopt  # type: ignore
 
 from dledger import __version__
-from dledger.record import tickers, symbols
 from dledger.dateutil import parse_period
+from dledger.localeutil import trysetlocale
 from dledger.report import (
     print_simple_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
     print_simple_weight_by_ticker,
-    print_simple_chart
+    print_simple_chart,
+    print_stats
 )
-from dledger.projection import scheduled_transactions
+from dledger.projection import (
+    scheduled_transactions
+)
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
 )
@@ -78,6 +80,13 @@ def main() -> None:
 
     args = docopt(__doc__, version='dledger ' + __version__.__version__)
 
+    try:
+        # default to system locale, if able
+        locale.setlocale(locale.LC_ALL, '')
+    except (locale.Error, ValueError):
+        # fallback to US locale
+        trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
     input_paths = (args['<file>']
                    if args['convert'] else
                    args['<journal>'])
@@ -95,7 +104,7 @@ def main() -> None:
 
         records.extend(read(input_path, input_type))
 
-    records = sorted(records, key=lambda r: r.date)
+    records = sorted(records)
 
     if len(records) == 0:
         if is_verbose:
@@ -110,7 +119,7 @@ def main() -> None:
         sys.exit(0)
 
     if args['print']:
-        write(records, file=sys.stdout)
+        write(records, file=sys.stdout, condensed=args['--condensed'])
 
         sys.exit(0)
 
@@ -120,41 +129,23 @@ def main() -> None:
         interval = parse_period(interval)
 
     if args['stats']:
-        def print_stat_row(name: str, text: str) -> None:
-            name = name.rjust(10)
-            print(f'{name}: {text}')
-        for n, journal_path in enumerate(input_paths):
-            print_stat_row(f'Journal {n+1}', os.path.abspath(journal_path))
-        try:
-            lc = locale.getlocale(locale.LC_ALL)
-            print_stat_row('Locale', f'{lc}')
-        except:
-            print_stat_row('Locale', 'Not configured')
+        # filter down all records by --period, not just transactions
         records = list(filter_by_period(records, interval))
-        transactions = list(filter(lambda r: r.amount is not None, records))
-        if len(transactions) > 0 and len(transactions) != len(records):
-            print_stat_row('Records', f'{len(records)} ({len(transactions)})')
-        else:
-            print_stat_row('Records', f'{len(records)}')
-        if len(records) > 0:
-            print_stat_row('Earliest', f'{records[0].date}')
-            print_stat_row('Latest', f'{records[-1].date}')
-            print_stat_row('Tickers', f'{len(tickers(records))}')
-            currencies = symbols(records)
-            if len(currencies) > 0:
-                print_stat_row('Symbols', f'{currencies}')
+
+        print_stats(records, journal_paths=input_paths)
 
         sys.exit(0)
 
-    if args['report']:
-        transactions = list(
-            filter_by_period(filter(
-                lambda r: r.amount is not None, records), interval))
-        if not args['--without-forecast']:
-            transactions.extend(
-                filter_by_period(
-                    scheduled_transactions(records), interval))
+    transactions = list(filter(
+        lambda r: r.amount is not None, records))
 
+    if not args['--without-forecast']:
+        transactions.extend(
+            scheduled_transactions(records))
+
+    transactions = sorted(filter_by_period(transactions, interval))
+
+    if args['report']:
         if args['--weighted']:
             print_simple_weight_by_ticker(transactions)
         elif args['--annual']:
@@ -170,14 +161,8 @@ def main() -> None:
 
     if args['chart']:
         ticker = args['<ticker>']
-        matching_records = list(filter(
-            lambda r: r.ticker == ticker, records))
         transactions = list(filter(
-            lambda r: r.amount is not None, matching_records))
-        if not args['--without-forecast']:
-            transactions.extend(
-                scheduled_transactions(matching_records))
-        transactions = list(filter_by_period(transactions, interval))
+            lambda r: r.ticker == ticker, transactions))
 
         print_simple_chart(transactions)
 

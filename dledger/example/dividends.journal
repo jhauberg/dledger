@@ -1,10 +1,10 @@
 # this file serves as an example journal for dledger
 
-2019/02/14 AAPL     # note that position can be automatically inferred because
-  $ 73 @ 0.73       # the dividend per share is set (assuming same currency)
+2019/02/14 AAPL    # note that, in this case, position can be automatically inferred because
+  $ 73 @ 0.73      # the dividend per share is set (assuming same currency)
 
 2019/05/16 AAPL
-  $ 77 @ 0.77
+  $ 77 @ 0.77      # this journal assumes a system locale using period as decimal separator
 
 2019/08/15 AAPL
   $ 77 @ 0.77

@@ -3,7 +3,7 @@ from datetime import date
 from dledger.dateutil import months_between, in_months, first_of_month
 from dledger.journal import Transaction
 
-from typing import Iterable, Optional, List
+from typing import Iterable, Optional, List, Set
 
 
 def amount_per_share(record: Transaction) \
@@ -17,40 +17,6 @@ def amount_per_share(record: Transaction) \
             else 0)
 
 
-def amount_per_share_high(records: Iterable[Transaction]) \
-        -> float:
-    """ Return the highest amount per share over any period. """
-
-    highest_amount_per_share: Optional[float] = None
-
-    for record in records:
-        reference_amount_per_share = amount_per_share(record)
-        if highest_amount_per_share is None or reference_amount_per_share > highest_amount_per_share:
-            highest_amount_per_share = reference_amount_per_share
-
-    if highest_amount_per_share is None:
-        raise TypeError('\'records\' must contain at least one transaction')
-
-    return highest_amount_per_share
-
-
-def amount_per_share_low(records: Iterable[Transaction]) \
-        -> float:
-    """ Return the lowest amount per share over any period. """
-
-    lowest_amount_per_share: Optional[float] = None
-
-    for record in records:
-        reference_amount_per_share = amount_per_share(record)
-        if lowest_amount_per_share is None or reference_amount_per_share < lowest_amount_per_share:
-            lowest_amount_per_share = reference_amount_per_share
-
-    if lowest_amount_per_share is None:
-        raise TypeError('\'records\' must contain at least one transaction')
-
-    return lowest_amount_per_share
-
-
 def intervals(records: Iterable[Transaction]) \
         -> List[int]:
     """ Return a list of month intervals between a set of records.
@@ -58,7 +24,7 @@ def intervals(records: Iterable[Transaction]) \
     Does not take years and days into account.
     """
 
-    records = sorted(records, key=lambda r: r.date)
+    records = sorted(records)
 
     if len(records) == 0:
         return []
@@ -98,8 +64,8 @@ def tickers(records: Iterable[Transaction]) \
 
 
 def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False) \
-        -> List[str]:
-    """ Return a list of unique symbol components in a set of records.
+        -> Set[str]:
+    """ Return a set of symbol components in a set of records.
 
     Optionally excluding symbols attached only to dividends.
 
@@ -111,13 +77,15 @@ def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False
     collected_symbols: List[str] = []
 
     for record in transactions:
-        if record.amount is not None and record.amount.symbol is not None:
+        assert record.amount is not None
+
+        if record.amount.symbol is not None:
             collected_symbols.append(record.amount.symbol)
         if not excluding_dividends:
             if record.dividend is not None and record.dividend.symbol is not None:
                 collected_symbols.append(record.dividend.symbol)
 
-    return sorted(set(collected_symbols))
+    return set(collected_symbols)
 
 
 def monthly_schedule(records: Iterable[Transaction]) \
@@ -201,7 +169,7 @@ def earliest(records: Iterable[Transaction]) \
         -> Optional[Transaction]:
     """ Return the earliest dated record in a set of records. """
 
-    records = sorted(records, key=lambda r: r.date)
+    records = sorted(records)
 
     return records[0] if len(records) > 0 else None
 
@@ -210,7 +178,7 @@ def latest(records: Iterable[Transaction]) \
         -> Optional[Transaction]:
     """ Return the latest dated record in a set of records. """
 
-    records = sorted(records, key=lambda r: r.date)
+    records = sorted(records)
 
     return records[-1] if len(records) > 0 else None
 
