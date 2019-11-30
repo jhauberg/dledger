@@ -6,7 +6,7 @@ from statistics import multimode, fmean  # type: ignore
 from dledger.journal import Transaction, Amount
 from dledger.dateutil import last_of_month
 from dledger.record import (
-    by_ticker, tickers, trailing, latest, monthly_schedule,
+    by_ticker, tickers, trailing, latest, monthly_schedule, dividends, deltas,
     amount_per_share, before, after, intervals, pruned, symbols
 )
 
@@ -394,7 +394,8 @@ def future_transactions(records: List[Transaction]) \
             # don't project closed positions
             continue
 
-        latest_transaction = latest(by_ticker(transactions, transaction.ticker))
+        matching_transactions = list(by_ticker(transactions, transaction.ticker))
+        latest_transaction = latest(matching_transactions)
 
         assert latest_transaction is not None
         assert latest_transaction.amount is not None
@@ -407,19 +408,34 @@ def future_transactions(records: List[Transaction]) \
         next_date = next_scheduled_date(transaction.date, [transaction.date.month])
         future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.date))
 
+        future_dividend = transaction.dividend
+
+        if latest_transaction.dividend is not None:
+            comparable_transactions: List[Transaction] = []
+            for comparable_transaction in reversed(matching_transactions):
+                if (comparable_transaction.dividend is None or
+                        comparable_transaction.dividend.symbol != latest_transaction.dividend.symbol):
+                    break
+                comparable_transactions.append(comparable_transaction)
+            comparable_transactions.reverse()
+            movements = deltas(dividends(comparable_transactions))
+
+            if -1 not in multimode(movements):
+                future_dividend = latest_transaction.dividend
+
         future_amount = future_position * amount_per_share(transaction)
 
-        if transaction.dividend is not None and transaction.dividend.symbol != transaction.amount.symbol:
-            conversion_factor = conversion_factors[(transaction.dividend.symbol,
+        if future_dividend is not None and future_dividend.symbol != transaction.amount.symbol:
+            conversion_factor = conversion_factors[(future_dividend.symbol,
                                                     transaction.amount.symbol)]
-            future_dividend = future_position * transaction.dividend.value
-            future_amount = future_dividend * conversion_factor
+            future_dividend_value = future_position * future_dividend.value
+            future_amount = future_dividend_value * conversion_factor
 
         future_record = FutureTransaction(future_date, transaction.ticker, future_position,
                                           amount=Amount(future_amount,
                                                         symbol=latest_transaction.amount.symbol,
                                                         format=latest_transaction.amount.format),
-                                          dividend=transaction.dividend)
+                                          dividend=future_dividend)
 
         future_records.append(future_record)
 

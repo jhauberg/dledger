@@ -1,8 +1,8 @@
 from datetime import date
 
-from dledger.journal import Transaction
+from dledger.journal import Transaction, Amount
 from dledger.record import (
-    monthly_schedule, intervals, trailing, pruned
+    monthly_schedule, intervals, trailing, pruned, dividends, deltas
 )
 
 
@@ -193,3 +193,40 @@ def test_pruned():
     ]
 
     assert len(pruned(records)) == 3
+
+
+def test_dividends():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, dividend=Amount(1)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, dividend=Amount(2))
+    ]
+
+    assert dividends(records) == [Amount(1), Amount(2)]
+
+
+def test_deltas():
+    amounts = [
+        Amount(1),
+        Amount(2)
+    ]
+
+    assert deltas(amounts) == [1]
+    assert deltas(amounts, normalized=False) == [1]
+
+    amounts = [
+        Amount(1),
+        Amount(2.5)
+    ]
+
+    assert deltas(amounts) == [1]
+    assert deltas(amounts, normalized=False) == [1.5]
+
+    amounts = [
+        Amount(1),
+        Amount(2.5),
+        Amount(1),
+        Amount(0.5)
+    ]
+
+    assert deltas(amounts) == [1, -1, -1]
+    assert deltas(amounts, normalized=False) == [1.5, -1.5, -0.5]

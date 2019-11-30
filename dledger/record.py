@@ -1,9 +1,9 @@
 from datetime import date
 
 from dledger.dateutil import months_between, in_months, first_of_month
-from dledger.journal import Transaction
+from dledger.journal import Transaction, Amount
 
-from typing import Iterable, Optional, List, Set
+from typing import Iterable, Optional, List, Set, Union
 
 
 def amount_per_share(record: Transaction) \
@@ -54,6 +54,29 @@ def intervals(records: Iterable[Transaction]) \
         months_between(next_record_date, previous_record_date, ignore_years=True))
 
     return timespans
+
+
+def dividends(records: Iterable[Transaction]) -> List[Amount]:
+    """ Return a list of dividend components in a set of records. """
+
+    return [record.dividend for record in records if record.dividend is not None]
+
+
+def deltas(amounts: List[Amount], *, normalized: bool = True) -> List[Union[int, float]]:
+    """ Return a list of deltas between amounts.
+
+    If normalized is True, returns deltas in integral numbers (-1, 0, 1) indicating
+    direction (down, same, up).
+    """
+    if len(amounts) < 2:
+        return []
+
+    if normalized:
+        return [-1 if d.value - amounts[i].value < 0 else
+                (0 if d.value == amounts[i].value else 1)
+                for i, d in enumerate(amounts[1:])]
+
+    return [d.value - amounts[i].value for i, d in enumerate(amounts[1:])]
 
 
 def tickers(records: Iterable[Transaction]) \
