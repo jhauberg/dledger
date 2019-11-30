@@ -2,7 +2,8 @@
 
 """
 usage: dledger report         <journal>... [--period=<interval>] [-V]
-                                           [--monthly | --quarterly | --annual | --weighted]
+                                           [--monthly | --quarterly | --annual |
+                                            --weighted | --summed]
                                            [--without-forecast]
        dledger chart <ticker> <journal>... [--period=<interval>] [-V]
                                            [--without-forecast]
@@ -19,6 +20,7 @@ OPTIONS:
   -q --quarterly          Show income by quarter
   -m --monthly            Show income by month
   -w --weighted           Show income by weight
+  -s --summed             Show income by total
      --without-forecast   Show only realized income
   -V --verbose            Show diagnostic messages
   -h --help               Show program help
@@ -40,7 +42,7 @@ from dledger.localeutil import trysetlocale
 from dledger.report import (
     print_simple_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
-    print_simple_weight_by_ticker,
+    print_simple_sum_report, print_simple_weight_by_ticker,
     print_simple_chart,
     print_stats
 )
@@ -148,6 +150,8 @@ def main() -> None:
     if args['report']:
         if args['--weighted']:
             print_simple_weight_by_ticker(transactions)
+        elif args['--summed']:
+            print_simple_sum_report(transactions)
         elif args['--annual']:
             print_simple_annual_report(transactions)
         elif args['--monthly']:

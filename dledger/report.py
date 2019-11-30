@@ -199,6 +199,33 @@ def print_simple_chart(records: List[Transaction]):
         print(line)
 
 
+def print_simple_sum_report(records: List[Transaction]) -> None:
+    transactions = list(filter(lambda r: r.amount is not None, records))
+
+    if len(transactions) == 0:
+        return
+
+    commodities = sorted(symbols(transactions, excluding_dividends=True))
+
+    for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, transactions))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+
+        total = income(matching_transactions)
+        amount = format_amount(total, trailing_zero=False)
+        amount = latest_transaction.amount.format % amount
+
+        if any(isinstance(x, FutureTransaction) for x in matching_transactions):
+            print(f'~ {amount.rjust(18)}')
+        else:
+            print(f'{amount.rjust(20)}')
+        if commodity != commodities[-1]:
+            print()
+
+
 def print_stat_row(name: str, text: str) -> None:
     name = name.rjust(10)
     print(f'{name}: {text}')
