@@ -1,12 +1,15 @@
 import locale
 import os
 
+from datetime import datetime, date
+
 from dledger.journal import Transaction
 from dledger.formatutil import format_amount
+from dledger.dateutil import next_month, previous_month
 from dledger.projection import FutureTransaction, symbol_conversion_factors
 from dledger.record import (
     income, yearly, monthly, amount_per_share, symbols,
-    tickers, by_ticker, latest, earliest
+    tickers, by_ticker, latest, earliest, before, after
 )
 
 from typing import List
@@ -237,3 +240,40 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
                 conversion_rate = conversion_rates[(from_symbol, to_symbol)]
                 conversion_rate_amount = format_amount(conversion_rate)
                 print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate_amount}')
+
+
+def print_simple_rolling_report(records: List[Transaction]):
+    years = range(earliest(records).date.year,
+                  latest(records).date.year + 1)
+
+    commodities = sorted(symbols(records, excluding_dividends=True))
+
+    for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, records))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+        for year in years:
+            for month in range(1, 12 + 1):
+                ending_date = date(year, month, 1)
+                if ending_date > datetime.today().date():
+                    continue
+                starting_date = ending_date.replace(year=ending_date.year - 1)
+                ending_date_ex = next_month(ending_date)  # exclusive of end date
+                starting_date_ex = previous_month(starting_date)  # exclusive of starting date
+                rolling_transactions = list(before(after(
+                    matching_transactions, starting_date_ex), ending_date_ex))
+                if len(rolling_transactions) == 0:
+                    continue
+                total = income(rolling_transactions)
+                amount = format_amount(total, trailing_zero=False)
+                amount = latest_transaction.amount.format % amount
+                d = ending_date.strftime('%Y/%m')
+                if any(isinstance(x, FutureTransaction) for x in rolling_transactions):
+                    print(f'~ {amount.rjust(18)}  < {d}')
+                else:
+                    print(f'{amount.rjust(20)}  < {d}')
+
+        if commodity != commodities[-1]:
+            print()
