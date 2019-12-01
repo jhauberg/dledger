@@ -13,19 +13,14 @@ from typing import List
 
 
 def print_simple_annual_report(records: List[Transaction]):
-    transactions = list(filter(lambda r: r.amount is not None, records))
+    years = range(earliest(records).date.year,
+                  latest(records).date.year + 1)
 
-    if len(transactions) == 0:
-        return
-
-    years = range(earliest(transactions).date.year,
-                  latest(transactions).date.year + 1)
-
-    commodities = sorted(symbols(transactions, excluding_dividends=True))
+    commodities = sorted(symbols(records, excluding_dividends=True))
 
     for commodity in commodities:
         matching_transactions = list(
-            filter(lambda r: r.amount.symbol == commodity, transactions))
+            filter(lambda r: r.amount.symbol == commodity, records))
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
@@ -51,19 +46,14 @@ def print_simple_annual_report(records: List[Transaction]):
 
 
 def print_simple_monthly_report(records: List[Transaction]):
-    transactions = list(filter(lambda r: r.amount is not None, records))
+    years = range(earliest(records).date.year,
+                  latest(records).date.year + 1)
 
-    if len(transactions) == 0:
-        return
-
-    years = range(earliest(transactions).date.year,
-                  latest(transactions).date.year + 1)
-
-    commodities = sorted(symbols(transactions, excluding_dividends=True))
+    commodities = sorted(symbols(records, excluding_dividends=True))
 
     for commodity in commodities:
         matching_transactions = list(
-            filter(lambda r: r.amount.symbol == commodity, transactions))
+            filter(lambda r: r.amount.symbol == commodity, records))
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
@@ -88,19 +78,14 @@ def print_simple_monthly_report(records: List[Transaction]):
 
 
 def print_simple_quarterly_report(records: List[Transaction]):
-    transactions = list(filter(lambda r: r.amount is not None, records))
+    years = range(earliest(records).date.year,
+                  latest(records).date.year + 1)
 
-    if len(transactions) == 0:
-        return
-
-    years = range(earliest(transactions).date.year,
-                  latest(transactions).date.year + 1)
-
-    commodities = sorted(symbols(transactions, excluding_dividends=True))
+    commodities = sorted(symbols(records, excluding_dividends=True))
 
     for commodity in commodities:
         matching_transactions = list(
-            filter(lambda r: r.amount.symbol == commodity, transactions))
+            filter(lambda r: r.amount.symbol == commodity, records))
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
@@ -200,16 +185,11 @@ def print_simple_chart(records: List[Transaction]):
 
 
 def print_simple_sum_report(records: List[Transaction]) -> None:
-    transactions = list(filter(lambda r: r.amount is not None, records))
-
-    if len(transactions) == 0:
-        return
-
-    commodities = sorted(symbols(transactions, excluding_dividends=True))
+    commodities = sorted(symbols(records, excluding_dividends=True))
 
     for commodity in commodities:
         matching_transactions = list(
-            filter(lambda r: r.amount.symbol == commodity, transactions))
+            filter(lambda r: r.amount.symbol == commodity, records))
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
