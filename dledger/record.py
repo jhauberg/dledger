@@ -213,20 +213,6 @@ def previous(records: Iterable[Transaction], record: Transaction) \
     return latest(before(records, record.date))
 
 
-def previous_comparable(records: Iterable[Transaction], record: Transaction) \
-        -> Optional[Transaction]:
-    """ Return the latest comparable record dated prior to a given record.
-
-    A comparable record is a record dated within same month in an earlier year.
-    """
-
-    comparables = filter(
-        lambda r: (r.date.month == record.date.month and
-                   r.date.year < record.date.year), records)
-
-    return latest(comparables)
-
-
 def pruned(records: Iterable[Transaction]) \
         -> List[Transaction]:
     """ Return a list of transactions with only the first occurence of a transaction per date. """
