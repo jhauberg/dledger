@@ -73,8 +73,8 @@ def print_simple_monthly_report(records: List[Transaction]):
                 else:
                     print(f'{amount.rjust(20)}    {d.ljust(11)}')
 
-            if commodity != commodities[-1]:
-                print()
+        if commodity != commodities[-1]:
+            print()
 
 
 def print_simple_quarterly_report(records: List[Transaction]):
@@ -110,8 +110,8 @@ def print_simple_quarterly_report(records: List[Transaction]):
                     print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
                 else:
                     print(f'{amount.rjust(20)}    {d.ljust(11)}')
-            if commodity != commodities[-1]:
-                print()
+        if commodity != commodities[-1]:
+            print()
 
 
 def print_simple_report(records: List[Transaction]):
