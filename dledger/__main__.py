@@ -33,13 +33,12 @@ See https://github.com/jhauberg/dledger for additional details.
 import sys
 import locale
 
-from datetime import date
-
 from docopt import docopt  # type: ignore
 
 from dledger import __version__
 from dledger.dateutil import parse_period
 from dledger.localeutil import trysetlocale
+from dledger.record import in_period
 from dledger.report import (
     print_simple_report,
     print_simple_rolling_report,
@@ -55,25 +54,7 @@ from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
 )
 
-from typing import List, Tuple, Iterable, Optional
-
-
-def filter_by_period(records: Iterable[Transaction],
-                     interval: Optional[Tuple[Optional[date], Optional[date]]]) \
-        -> Iterable[Transaction]:
-    if interval is None:
-        return records
-
-    starting, ending = interval
-
-    if starting is not None:
-        # inclusive of starting date
-        records = filter(lambda r: starting <= r.date, records)
-    if ending is not None:
-        # exclusive of ending date
-        records = filter(lambda r: r.date < ending, records)
-
-    return records
+from typing import List
 
 
 def main() -> None:
@@ -134,7 +115,8 @@ def main() -> None:
 
     if args['stats']:
         # filter down all records by --period, not just transactions
-        records = list(filter_by_period(records, interval))
+        if interval is not None:
+            records = list(in_period(records, interval))
 
         print_stats(records, journal_paths=input_paths)
 
@@ -147,7 +129,10 @@ def main() -> None:
         transactions.extend(
             scheduled_transactions(records))
 
-    transactions = sorted(filter_by_period(transactions, interval))
+    if interval is not None:
+        transactions = in_period(transactions, interval)
+
+    transactions = sorted(transactions)
 
     if args['report']:
         if args['--weighted']:

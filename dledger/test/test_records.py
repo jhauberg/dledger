@@ -2,7 +2,8 @@ from datetime import date
 
 from dledger.journal import Transaction, Amount
 from dledger.record import (
-    monthly_schedule, intervals, trailing, pruned, dividends, deltas
+    monthly_schedule, intervals, trailing, pruned, dividends, deltas,
+    in_period
 )
 
 
@@ -193,6 +194,26 @@ def test_pruned():
     ]
 
     assert len(pruned(records)) == 3
+
+
+def test_in_period():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 6, 1), 'ABC', 1),
+        Transaction(date(2019, 9, 1), 'ABC', 1),
+        Transaction(date(2019, 12, 1), 'ABC', 1)
+    ]
+
+    assert len(list(in_period(records, (None, None)))) == 4
+    assert len(list(in_period(records, (date(2019, 1, 1), None)))) == 4
+    assert len(list(in_period(records, (None, date(2020, 1, 1))))) == 4
+    assert len(list(in_period(records, (date(2019, 1, 1),
+                                        date(2020, 1, 1))))) == 4
+    assert len(list(in_period(records, (date(2019, 1, 1),
+                                        date(2019, 12, 1))))) == 3
+    assert len(list(in_period(records, (date(2019, 3, 1), None)))) == 4
+    assert len(list(in_period(records, (date(2019, 3, 2), None)))) == 3
+    assert len(list(in_period(records, (None, date(2019, 6, 1))))) == 1
 
 
 def test_dividends():

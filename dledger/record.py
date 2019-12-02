@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import date, timedelta
 
 from dledger.dateutil import months_between, in_months, first_of_month
 from dledger.journal import Transaction, Amount
 
-from typing import Iterable, Optional, List, Set, Union
+from typing import Iterable, Optional, List, Set, Union, Tuple
 
 
 def amount_per_share(record: Transaction) \
@@ -186,6 +186,29 @@ def before(records: Iterable[Transaction], d: date) \
 
     return filter(
         lambda r: r.date < d, records)
+
+
+def in_period(records: Iterable[Transaction],
+              interval: Tuple[Optional[date], Optional[date]]) \
+        -> Iterable[Transaction]:
+    """ Return an iterator for records dated within a period.
+
+    Exclusive of end date.
+    """
+
+    if interval is None:
+        return records
+
+    starting, ending = interval
+
+    if starting is not None:
+        # inclusive of starting date
+        records = after(records, starting - timedelta(days=1))
+    if ending is not None:
+        # exclusive of end date
+        return before(records, ending)
+
+    return records
 
 
 def earliest(records: Iterable[Transaction]) \
