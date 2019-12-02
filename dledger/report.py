@@ -127,7 +127,10 @@ def print_simple_report(records: List[Transaction]):
         if isinstance(transaction, FutureTransaction):
             print(f'~ {amount.rjust(18)}  < {d} {transaction.ticker}')
         else:
-            print(f'{amount.rjust(20)}    {d} {transaction.ticker}')
+            if transaction.is_special:
+                print(f'{amount.rjust(20)}  * {d} {transaction.ticker}')
+            else:
+                print(f'{amount.rjust(20)}    {d} {transaction.ticker}')
 
 
 def print_simple_weight_by_ticker(records: List[Transaction]):
@@ -169,7 +172,10 @@ def print_simple_chart(records: List[Transaction]):
         if isinstance(transaction, FutureTransaction):
             line = f'~ {amount.rjust(18)}  < {d}'
         else:
-            line = f'{amount.rjust(20)}    {d}'
+            if transaction.is_special:
+                line = f'{amount.rjust(20)}  * {d}'
+            else:
+                line = f'{amount.rjust(20)}    {d}'
 
         if transaction.dividend is not None:
             dividend = format_amount(transaction.dividend.value, trailing_zero=False)
