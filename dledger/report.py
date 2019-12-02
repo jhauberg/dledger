@@ -5,7 +5,7 @@ from datetime import datetime, date
 
 from dledger.journal import Transaction
 from dledger.formatutil import format_amount
-from dledger.dateutil import next_month, previous_month
+from dledger.dateutil import next_month, previous_month, last_of_month
 from dledger.projection import FutureTransaction, symbol_conversion_factors
 from dledger.record import (
     income, yearly, monthly, amount_per_share, symbols,
@@ -266,8 +266,8 @@ def print_simple_rolling_report(records: List[Transaction]):
                 if ending_date > datetime.today().date():
                     continue
                 starting_date = ending_date.replace(year=ending_date.year - 1)
-                ending_date_ex = next_month(ending_date)  # exclusive of end date
-                starting_date_ex = previous_month(starting_date)  # exclusive of starting date
+                ending_date_ex = ending_date
+                starting_date_ex = last_of_month(previous_month(starting_date))
                 rolling_transactions = list(before(after(
                     matching_transactions, starting_date_ex), ending_date_ex))
                 if len(rolling_transactions) == 0:
