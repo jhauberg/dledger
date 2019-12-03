@@ -314,6 +314,7 @@ def estimated_transactions(records: List[Transaction]) \
             future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
                                          timeframe=future_timeframe)
 
+            future_dividend = None
             future_amount = amount_per_share(latest_transaction) * future_position
             future_amount_range = None
 
@@ -334,8 +335,9 @@ def estimated_transactions(records: List[Transaction]) \
                                                         latest_transaction.amount.symbol)]
                 highest_dividend = max(divs) * future_position
                 lowest_dividend = min(divs) * future_position
-                mean_dividend = fmean(divs) * future_position
-                future_amount = mean_dividend * conversion_factor
+                future_dividend = fmean(divs)
+                future_amount = future_dividend * future_position
+                future_amount = future_amount * conversion_factor
                 future_amount_range = (Amount(lowest_dividend * conversion_factor,
                                               symbol=latest_transaction.amount.symbol,
                                               format=latest_transaction.amount.format),
@@ -358,7 +360,11 @@ def estimated_transactions(records: List[Transaction]) \
                                               amount=Amount(future_amount,
                                                             symbol=latest_transaction.amount.symbol,
                                                             format=latest_transaction.amount.format),
-                                              amount_range=future_amount_range)
+                                              amount_range=future_amount_range,
+                                              dividend=(Amount(future_dividend,
+                                                               symbol=latest_transaction.dividend.symbol,
+                                                               format=latest_transaction.dividend.format)
+                                                        if can_convert_from_dividend else None))
 
             scheduled_records.append(future_record)
 
