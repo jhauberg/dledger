@@ -254,6 +254,8 @@ def print_simple_rolling_report(records: List[Transaction]):
 
     commodities = sorted(symbols(records, excluding_dividends=True))
 
+    today = datetime.today().date()
+
     for commodity in commodities:
         matching_transactions = list(
             filter(lambda r: r.amount.symbol == commodity, records))
@@ -263,7 +265,7 @@ def print_simple_rolling_report(records: List[Transaction]):
         for year in years:
             for month in range(1, 12 + 1):
                 ending_date = date(year, month, 1)
-                if ending_date > datetime.today().date():
+                if ending_date > today:
                     continue
                 starting_date = ending_date.replace(year=ending_date.year - 1)
                 ending_date_ex = ending_date
@@ -280,6 +282,14 @@ def print_simple_rolling_report(records: List[Transaction]):
                     print(f'~ {amount.rjust(18)}  < {d}')
                 else:
                     print(f'{amount.rjust(20)}  < {d}')
+
+        future_transactions = [r for r in matching_transactions if isinstance(r, FutureTransaction) if r.date >= today]
+        if len(future_transactions) > 0:
+            total = income(future_transactions)
+            amount = format_amount(total, trailing_zero=False)
+            amount = latest_transaction.amount.format % amount
+            d1 = today.strftime('%Y/%m')
+            print(f'~ {amount.rjust(18)}    {d1} =>')
 
         if commodity != commodities[-1]:
             print()
