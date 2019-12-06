@@ -7,7 +7,6 @@ from dledger.projection import (
     next_scheduled_date,
     future_transactions,
     estimated_transactions,
-    expired_transactions,
     symbol_conversion_factors
 )
 
@@ -482,21 +481,6 @@ def test_estimated_transactions():
     assert estimations[2].amount.value == 600
     assert estimations[3].date == date(2020, 9, 15)
     assert estimations[3].amount.value == 600
-
-
-def test_expired_transactions():
-    records = [
-        Transaction(date(2019, 3, 1), 'ABC', 1),
-        Transaction(date(2019, 6, 1), 'ABC', 1),
-        Transaction(date(2019, 9, 1), 'ABC', 1),
-        Transaction(date(2019, 12, 1), 'ABC', 1)
-    ]
-
-    assert len(list(expired_transactions(records, since=date(2019, 3, 1), grace_period=3))) == 0
-    assert len(list(expired_transactions(records, since=date(2019, 3, 2), grace_period=3))) == 0
-    assert len(list(expired_transactions(records, since=date(2019, 3, 3), grace_period=3))) == 0
-    assert len(list(expired_transactions(records, since=date(2019, 3, 4), grace_period=3))) == 0
-    assert len(list(expired_transactions(records, since=date(2019, 3, 5), grace_period=3))) == 1
 
 
 def test_conversion_factors():

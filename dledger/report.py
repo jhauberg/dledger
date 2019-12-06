@@ -5,7 +5,8 @@ from datetime import datetime, date
 
 from dledger.journal import Transaction
 from dledger.formatutil import format_amount
-from dledger.dateutil import next_month, previous_month, last_of_month
+from dledger.printutil import colored, COLOR_NEGATIVE
+from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import FutureTransaction, symbol_conversion_factors
 from dledger.record import (
     income, yearly, monthly, amount_per_share, symbols,
@@ -118,6 +119,7 @@ def print_simple_quarterly_report(records: List[Transaction]):
 
 
 def print_simple_report(records: List[Transaction]):
+    today = datetime.today().date()
     for transaction in records:
         amount = format_amount(transaction.amount.value, trailing_zero=False)
         amount = transaction.amount.format % amount
@@ -125,7 +127,10 @@ def print_simple_report(records: List[Transaction]):
         d = transaction.date.strftime('%Y/%m/%d')
 
         if isinstance(transaction, FutureTransaction):
-            print(f'~ {amount.rjust(18)}  < {d} {transaction.ticker}')
+            if transaction.date < today:
+                print(colored(f'~ {amount.rjust(18)}  ! {d} {transaction.ticker}', COLOR_NEGATIVE))
+            else:
+                print(f'~ {amount.rjust(18)}  < {d} {transaction.ticker}')
         else:
             if transaction.is_special:
                 print(f'{amount.rjust(20)}  * {d} {transaction.ticker}')
@@ -163,14 +168,21 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
 
 
 def print_simple_chart(records: List[Transaction]):
+    today = datetime.today().date()
+
     for transaction in records:
         amount = format_amount(transaction.amount.value, trailing_zero=False)
         amount = transaction.amount.format % amount
 
         d = transaction.date.strftime('%Y/%m/%d')
 
+        should_colorize_expired_transaction = False
         if isinstance(transaction, FutureTransaction):
-            line = f'~ {amount.rjust(18)}  < {d}'
+            if transaction.date < today:
+                line = f'~ {amount.rjust(18)}  ! {d}'
+                should_colorize_expired_transaction = True
+            else:
+                line = f'~ {amount.rjust(18)}  < {d}'
         else:
             if transaction.is_special:
                 line = f'{amount.rjust(20)}  * {d}'
@@ -189,6 +201,9 @@ def print_simple_chart(records: List[Transaction]):
             line = f'{line} {dividend.rjust(12)}'
 
         line = f'{line} / {transaction.position}'
+
+        if should_colorize_expired_transaction:
+            line = colored(line, COLOR_NEGATIVE)
 
         print(line)
 

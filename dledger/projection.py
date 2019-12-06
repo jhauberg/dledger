@@ -172,19 +172,6 @@ def projected_date(d: date, *, timeframe: int) -> date:
     return d
 
 
-def expired_transactions(records: Iterable[Transaction],
-                         *,
-                         since: date = datetime.today().date(),
-                         grace_period: int = 3) \
-        -> Iterable[Transaction]:
-    """ Return an iterator for records dated prior to a date.
-
-    Optionally allowing for a grace period of a number of days.
-    """
-
-    return before(records, since - timedelta(days=grace_period))
-
-
 def pending_transactions(records: Iterable[Transaction],
                          *,
                          since: date = datetime.today().date()) \
@@ -239,12 +226,7 @@ def scheduled_transactions(records: List[Transaction],
         for dupe in duplicates:
             scheduled.remove(dupe)
 
-    # exclude unrealized projections
-    closed = tickers(expired_transactions(scheduled, since=since))
-
-    return sorted(filter(
-        lambda r: r.ticker not in closed, scheduled),
-        key=lambda r: (r.date, r.ticker))  # sort by date and ticker
+    return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
 
 def estimated_schedule(records: List[Transaction], record: Transaction) \
