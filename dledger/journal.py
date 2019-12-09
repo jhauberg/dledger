@@ -11,8 +11,15 @@ from dataclasses import dataclass
 from datetime import datetime, date
 
 from typing import List, Tuple, Optional
+from enum import Enum
 
 SUPPORTED_TYPES = ['journal', 'nordnet']
+
+
+class Distribution(Enum):
+    FINAL = 0
+    INTERIM = 1
+    SPECIAL = 2
 
 
 @dataclass(frozen=True, unsafe_hash=True)
@@ -31,7 +38,7 @@ class Transaction:
     position: int
     amount: Optional[Amount] = None
     dividend: Optional[Amount] = None
-    is_special: bool = False
+    kind: Distribution = Distribution.FINAL
 
     def __lt__(self, other):
         return self.date < other.date
@@ -97,7 +104,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     records: List[Transaction] = []
 
     for entry in journal_entries:
-        d, ticker, position, amount, dividend, is_special, location = entry
+        d, ticker, position, amount, dividend, kind, location = entry
         position, position_change_direction = position
 
         if amount is not None and dividend is not None:
@@ -154,7 +161,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         if position is None:
             raise_parse_error(f'position could not be inferred', location=location)
 
-        records.append(Transaction(d, ticker, position, amount, dividend, is_special))
+        records.append(Transaction(d, ticker, position, amount, dividend, kind))
 
     position_change_entries = list(filter(
         lambda r: r.amount is None and position is not None, records))
@@ -193,11 +200,14 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     except ValueError:
         raise_parse_error(f'invalid transaction', location)
     ticker = None
-    is_special = False
+    kind = Distribution.FINAL
     if break_index is not None:
         ticker = condensed_line[:break_index].strip()
         if ticker.startswith('*'):
-            is_special = True
+            kind = Distribution.SPECIAL
+            ticker = ticker[1:].strip()
+        elif ticker.startswith('^'):
+            kind = Distribution.INTERIM
             ticker = ticker[1:].strip()
         condensed_line = condensed_line[break_index:].strip()
     if ticker is None or len(ticker) == 0:
@@ -221,7 +231,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         condensed_line = condensed_line[break_index:].strip()
 
     if len(condensed_line) == 0:
-        return d, ticker, (position, position_change_direction), None, None, is_special, location
+        return d, ticker, (position, position_change_direction), None, None, kind, location
 
     amount_components = condensed_line.split('@')
     amount: Optional[Amount] = None
@@ -237,7 +247,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         if dividend.value < 0:
             raise_parse_error(f'invalid dividend (\'{dividend.value}\')', location)
 
-    return d, ticker, (position, position_change_direction), amount, dividend, is_special, location
+    return d, ticker, (position, position_change_direction), amount, dividend, kind, location
 
 
 def split_amount(amount: str, *, location: Tuple[str, int]) \
@@ -359,9 +369,13 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
 
 def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
     for record in records:
-        special_indicator = '* ' if record.is_special else ''
+        indicator = ''
+        if record.kind is Distribution.SPECIAL:
+            indicator = '* '
+        elif record.kind is Distribution.INTERIM:
+            indicator = '^ '
         datestamp = record.date.strftime('%Y/%m/%d')
-        line = f'{datestamp} {special_indicator}{record.ticker} ({record.position})'
+        line = f'{datestamp} {indicator}{record.ticker} ({record.position})'
         if not condensed:
             print(line, file=file)
         amount_display = ''

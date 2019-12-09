@@ -3,7 +3,7 @@ import os
 
 from datetime import datetime, date
 
-from dledger.journal import Transaction
+from dledger.journal import Transaction, Distribution
 from dledger.formatutil import format_amount
 from dledger.printutil import colored, COLOR_NEGATIVE
 from dledger.dateutil import previous_month, last_of_month
@@ -132,7 +132,9 @@ def print_simple_report(records: List[Transaction]):
             else:
                 print(f'~ {amount.rjust(18)}  < {d} {transaction.ticker}')
         else:
-            if transaction.is_special:
+            if transaction.kind is Distribution.INTERIM:
+                print(f'{amount.rjust(20)}  ^ {d} {transaction.ticker}')
+            elif transaction.kind is Distribution.SPECIAL:
                 print(f'{amount.rjust(20)}  * {d} {transaction.ticker}')
             else:
                 print(f'{amount.rjust(20)}    {d} {transaction.ticker}')
@@ -184,7 +186,9 @@ def print_simple_chart(records: List[Transaction]):
             else:
                 line = f'~ {amount.rjust(18)}  < {d}'
         else:
-            if transaction.is_special:
+            if transaction.kind is Distribution.INTERIM:
+                line = f'{amount.rjust(20)}  ^ {d}'
+            elif transaction.kind is Distribution.SPECIAL:
                 line = f'{amount.rjust(20)}  * {d}'
             else:
                 line = f'{amount.rjust(20)}    {d}'

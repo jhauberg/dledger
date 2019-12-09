@@ -1,13 +1,14 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
+
 from dataclasses import dataclass
 
 from statistics import multimode, fmean  # type: ignore
 
-from dledger.journal import Transaction, Amount
+from dledger.journal import Transaction, Distribution, Amount
 from dledger.dateutil import last_of_month
 from dledger.record import (
     by_ticker, tickers, trailing, latest, monthly_schedule, dividends, deltas,
-    amount_per_share, before, after, intervals, pruned, symbols
+    amount_per_share, after, intervals, pruned, symbols
 )
 
 from typing import Tuple, Optional, List, Iterable, Dict
@@ -188,7 +189,7 @@ def scheduled_transactions(records: List[Transaction],
     # take a sample set of only latest 12 months
     sample_records = trailing(records, since=since, months=12)
     # don't include special dividends
-    sample_records = list(filter(lambda r: not r.is_special, sample_records))
+    sample_records = list(filter(lambda r: r.kind is not Distribution.SPECIAL, sample_records))
 
     # project current records by 1 year into the future
     futures = future_transactions(sample_records)
@@ -210,7 +211,7 @@ def scheduled_transactions(records: List[Transaction],
         scheduled.append(future_record)
 
     pending_records = list(pending_transactions(filter(
-        lambda r: not r.is_special, records), since=since))
+        lambda r: r.kind is not Distribution.SPECIAL, records), since=since))
 
     # bias toward pending; e.g. keep manually set transactions in the future,
     # discard projections on same date
@@ -401,15 +402,19 @@ def future_transactions(records: List[Transaction]) \
         if latest_transaction.dividend is not None:
             comparable_transactions: List[Transaction] = []
             for comparable_transaction in reversed(matching_transactions):
+                if comparable_transaction.kind is Distribution.INTERIM:
+                    # don't include interim dividends as they do not necessarily follow
+                    # the same policy or pattern as final dividends
+                    continue
                 if (comparable_transaction.dividend is None or
                         comparable_transaction.dividend.symbol != latest_transaction.dividend.symbol):
                     break
                 comparable_transactions.append(comparable_transaction)
-            comparable_transactions.reverse()
-            movements = deltas(dividends(comparable_transactions))
-
-            if -1 not in multimode(movements):
-                future_dividend = latest_transaction.dividend
+            if len(comparable_transactions) > 0:
+                comparable_transactions.reverse()
+                movements = deltas(dividends(comparable_transactions))
+                if len(movements) > 0 and -1 not in multimode(movements):
+                    future_dividend = latest(comparable_transactions).dividend
 
         future_amount = future_position * amount_per_share(transaction)
 
@@ -423,7 +428,8 @@ def future_transactions(records: List[Transaction]) \
                                           amount=Amount(future_amount,
                                                         symbol=latest_transaction.amount.symbol,
                                                         format=latest_transaction.amount.format),
-                                          dividend=future_dividend)
+                                          dividend=future_dividend,
+                                          kind=transaction.kind)
 
         future_records.append(future_record)
 
