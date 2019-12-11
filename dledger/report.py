@@ -260,7 +260,7 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
         if len(currencies) > 0:
             print_stat_row('Symbols', f'{currencies}')
             conversion_rates = symbol_conversion_factors(records)
-            conversion_keys = sorted(symbol_conversion_factors(records), key=lambda c: c[0])
+            conversion_keys = sorted(conversion_rates, key=lambda c: c[0])
             for from_symbol, to_symbol in conversion_keys:
                 conversion_rate = conversion_rates[(from_symbol, to_symbol)]
                 conversion_rate_amount = format_amount(conversion_rate)
