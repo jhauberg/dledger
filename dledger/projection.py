@@ -444,13 +444,18 @@ def symbol_conversion_factors(records: List[Transaction]) \
 
     amount_symbols = symbols(records, excluding_dividends=True)
     all_symbols = symbols(records)
-    dividend_symbols = all_symbols - amount_symbols
 
     for symbol in amount_symbols:
-        for other_symbol in dividend_symbols:
+        for other_symbol in all_symbols:
+            if symbol == other_symbol:
+                continue
+
             latest_transaction = latest(filter(
                 lambda r: (r.amount.symbol == symbol and
                            r.dividend.symbol == other_symbol), transactions))
+
+            if latest_transaction is None:
+                continue
 
             conversion_factor = amount_per_share(latest_transaction) / latest_transaction.dividend.value
             conversion_factors[(latest_transaction.dividend.symbol,
