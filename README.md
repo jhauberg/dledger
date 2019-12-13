@@ -4,6 +4,8 @@
 
 In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accounting-apps) and [plain-text accounting](https://plaintextaccounting.org), `dledger` is small, portable and reliable, and operates on plain-text journals that are both easy to read and quick to edit- and most importantly, all yours.
 
+**Requires Python 3.8+**
+
 ---
 
 Here's a journal that tracks a position of 100 shares of Apple over 3 transactions:
