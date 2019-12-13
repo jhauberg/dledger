@@ -267,16 +267,16 @@ def estimated_transactions(records: List[Transaction]) \
             continue
 
         # weed out position-only records
-        transactions = list(filter(
-            lambda r: r.amount is not None, by_ticker(records, ticker)))
-
-        if len(transactions) == 0:
-            continue
+        transactions = list(r for r in by_ticker(records, ticker) if r.amount is not None)
 
         latest_transaction = latest(transactions)
 
-        assert latest_transaction is not None
-        assert latest_transaction.amount is not None
+        if latest_transaction is None:
+            continue
+
+        # todo: this assertion is only needed to satisfy mypy; it seems to me that if we've
+        #       already weeded out records with None amount, this shouldn't be necessary...
+        #assert latest_transaction.amount is not None
 
         sched = estimated_schedule(transactions, latest_transaction)
 
@@ -452,6 +452,7 @@ def symbol_conversion_factors(records: List[Transaction]) \
 
             latest_transaction = latest(filter(
                 lambda r: (r.amount.symbol == symbol and
+                           r.dividend is not None and
                            r.dividend.symbol == other_symbol), transactions))
 
             if latest_transaction is None:
