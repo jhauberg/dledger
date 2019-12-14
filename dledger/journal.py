@@ -238,14 +238,14 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     if len(amount_components) > 0:
         amount_str = amount_components[0].strip()
         amount = split_amount(amount_str, location=location)
-        if amount.value < 0:
+        if amount.value <= 0:
             raise_parse_error(f'invalid amount (\'{amount.value}\')', location)
     dividend: Optional[Amount] = None
     if len(amount_components) > 1:
         dividend_str = amount_components[1].strip()
         dividend = split_amount(dividend_str, location=location)
-        if dividend.value < 0:
-            raise_parse_error(f'invalid dividend (\'{dividend.value}\')', location)
+        if dividend.value <= 0:
+            raise_parse_error(f'negative dividend (\'{dividend.value}\')', location)
 
     return d, ticker, (position, position_change_direction), amount, dividend, kind, location
 
