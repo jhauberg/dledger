@@ -8,7 +8,7 @@ from dledger.journal import Transaction, Distribution, Amount
 from dledger.dateutil import last_of_month
 from dledger.record import (
     by_ticker, tickers, trailing, latest, monthly_schedule, dividends, deltas,
-    amount_per_share, after, intervals, pruned, symbols
+    amount_per_share, intervals, pruned, symbols
 )
 
 from typing import Tuple, Optional, List, Iterable, Dict
@@ -173,15 +173,6 @@ def projected_date(d: date, *, timeframe: int) -> date:
     return d
 
 
-def pending_transactions(records: Iterable[Transaction],
-                         *,
-                         since: date = datetime.today().date()) \
-        -> Iterable[Transaction]:
-    """ Return an iterator for records dated later than a date. """
-
-    return after(records, since)
-
-
 def scheduled_transactions(records: List[Transaction],
                            *,
                            since: date = datetime.today().date()) \
@@ -209,23 +200,6 @@ def scheduled_transactions(records: List[Transaction],
             continue
 
         scheduled.append(future_record)
-
-    pending_records = list(pending_transactions(filter(
-        lambda r: r.kind is not Distribution.SPECIAL, records), since=since))
-
-    # bias toward pending; e.g. keep manually set transactions in the future,
-    # discard projections on same date
-    for pending_record in pending_records:
-        duplicates = [r for r in scheduled
-                      if r.ticker == pending_record.ticker
-                      and r.date.year == pending_record.date.year
-                      and r.date.month == pending_record.date.month]
-
-        if len(duplicates) == 0:
-            continue
-
-        for dupe in duplicates:
-            scheduled.remove(dupe)
 
     return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
 
