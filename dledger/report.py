@@ -307,8 +307,7 @@ def print_simple_rolling_report(records: List[Transaction]):
             total = income(future_transactions)
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.format % amount
-            d1 = today.strftime('%Y/%m')
-            print(f'~ {amount.rjust(18)}    {d1} =>')
+            print(f'~ {amount.rjust(18)}    next 12 months')
 
         if commodity != commodities[-1]:
             print()
