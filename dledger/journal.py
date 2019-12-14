@@ -191,6 +191,9 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
         raise_parse_error(f'invalid date format (\'{datestamp}\')', location)
+    today = datetime.today().date()
+    if d > today:
+        raise_parse_error(f'date set in future (\'{datestamp}\')', location)
     condensed_line = condensed_line[datestamp_end_index:].strip()
     break_separators = ['(', '  ', '\t']
     break_index = None
