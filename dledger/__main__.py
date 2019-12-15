@@ -48,7 +48,7 @@ from dledger.report import (
     print_stats
 )
 from dledger.projection import (
-    scheduled_transactions
+    scheduled_transactions, convert_estimates
 )
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
@@ -121,6 +121,8 @@ def main() -> None:
         print_stats(records, journal_paths=input_paths)
 
         sys.exit(0)
+
+    records = convert_estimates(records)
 
     transactions = list(filter(
         lambda r: r.amount is not None, records))

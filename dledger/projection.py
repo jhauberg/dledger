@@ -173,6 +173,29 @@ def projected_date(d: date, *, timeframe: int) -> date:
     return d
 
 
+def convert_estimates(records: List[Transaction]) -> List[Transaction]:
+    conversion_factors = symbol_conversion_factors(records)
+    estimate_records = filter(
+        lambda r: r.amount is None and r.dividend is not None, records)
+    transactions = list(r for r in records if r.amount is not None)
+    for rec in estimate_records:
+        i = records.index(rec)
+        records.pop(i)
+        latest_transaction = latest(by_ticker(transactions, rec.ticker))
+        conversion_factor = 1.0
+        if rec.dividend.symbol != latest_transaction.amount.symbol:
+            conversion_factor = conversion_factors[(rec.dividend.symbol,
+                                                    latest_transaction.amount.symbol)]
+        estimate_amount = Amount((rec.position * rec.dividend.value) * conversion_factor,
+                                 latest_transaction.amount.symbol,
+                                 latest_transaction.amount.format)
+        estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
+                                     estimate_amount, rec.dividend, rec.kind)
+        records.insert(i, estimate)
+
+    return records
+
+
 def scheduled_transactions(records: List[Transaction],
                            *,
                            since: date = datetime.today().date()) \
