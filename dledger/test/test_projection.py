@@ -7,7 +7,8 @@ from dledger.projection import (
     next_scheduled_date,
     future_transactions,
     estimated_transactions,
-    symbol_conversion_factors
+    symbol_conversion_factors,
+    scheduled_transactions
 )
 
 
@@ -481,6 +482,34 @@ def test_estimated_transactions():
     assert estimations[2].amount.value == 600
     assert estimations[3].date == date(2020, 9, 15)
     assert estimations[3].amount.value == 600
+
+
+def test_scheduled_transactions():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100))
+    ]
+
+    # the PEP case where payouts are [3, 6, 9, 1], but until a january transaction
+    # has been recorded, january will be forecasted as a december payout
+    scheduled = scheduled_transactions(records, since=date(2020, 1, 10))
+
+    assert len(scheduled) == 4
+    assert scheduled[0].date == date(2019, 12, 15)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
+        # but once a january transaction is recorded, forecasts should be on track
+        Transaction(date(2020, 1, 1), 'ABC', 1, Amount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 1, 10))
+
+    assert len(scheduled) == 4
+    assert scheduled[0].date == date(2020, 3, 15)
 
 
 def test_conversion_factors():
