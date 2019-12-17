@@ -353,12 +353,39 @@ def estimated_transactions(records: List[Transaction]) \
     return sorted(approximate_records)
 
 
+def next_linear_dividend(records: List[Transaction]) -> Optional[Amount]:
+    """ Return the estimated next linearly projected dividend if able, None otherwise. """
+
+    transactions = list(r for r in records if r.amount is not None)
+    latest_transaction = latest(transactions)
+
+    if latest_transaction is None:
+        return None
+
+    if latest_transaction.dividend is not None:
+        comparable_transactions: List[Transaction] = []
+        for comparable_transaction in reversed(transactions):
+            if comparable_transaction.kind is Distribution.INTERIM:
+                # don't include interim dividends as they do not necessarily follow
+                # the same policy or pattern as final dividends
+                continue
+            if (comparable_transaction.dividend is None or
+                    comparable_transaction.dividend.symbol != latest_transaction.dividend.symbol):
+                break
+            comparable_transactions.append(comparable_transaction)
+        if len(comparable_transactions) > 0:
+            comparable_transactions.reverse()
+            movements = deltas(dividends(comparable_transactions))
+            # if there's a clear upwards trend, assume linear pattern
+            if len(movements) > 0 and -1 not in multimode(movements):
+                return latest(comparable_transactions).dividend
+
+    return None
+
+
 def future_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
-    """ Return a list of transactions dated 12 months into the future.
-
-    Each transaction has its amount adjusted to match the position of the latest matching record.
-    """
+    """ Return a list of transactions, each dated 12 months into the future. """
     
     future_records = []
 
@@ -394,24 +421,13 @@ def future_transactions(records: List[Transaction]) \
         next_date = next_scheduled_date(transaction.date, [transaction.date.month])
         future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.date))
 
-        future_dividend = transaction.dividend
+        if transaction.kind == Distribution.INTERIM:
+            future_dividend = transaction.dividend
+        else:
+            future_dividend = next_linear_dividend(matching_transactions)
 
-        if latest_transaction.dividend is not None:
-            comparable_transactions: List[Transaction] = []
-            for comparable_transaction in reversed(matching_transactions):
-                if comparable_transaction.kind is Distribution.INTERIM:
-                    # don't include interim dividends as they do not necessarily follow
-                    # the same policy or pattern as final dividends
-                    continue
-                if (comparable_transaction.dividend is None or
-                        comparable_transaction.dividend.symbol != latest_transaction.dividend.symbol):
-                    break
-                comparable_transactions.append(comparable_transaction)
-            if len(comparable_transactions) > 0:
-                comparable_transactions.reverse()
-                movements = deltas(dividends(comparable_transactions))
-                if len(movements) > 0 and -1 not in multimode(movements):
-                    future_dividend = latest(comparable_transactions).dividend
+            if future_dividend is None:
+                future_dividend = transaction.dividend
 
         future_amount = future_position * amount_per_share(transaction)
 
