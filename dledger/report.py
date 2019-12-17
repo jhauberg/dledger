@@ -2,6 +2,7 @@ import locale
 import os
 
 from datetime import datetime, date
+from decimal import Decimal
 
 from dledger.journal import Transaction, Distribution
 from dledger.formatutil import format_amount
@@ -13,7 +14,7 @@ from dledger.record import (
     tickers, by_ticker, latest, earliest, before, after
 )
 
-from typing import List
+from typing import List, Optional
 
 
 def print_simple_annual_report(records: List[Transaction]):
@@ -172,6 +173,16 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
 def print_simple_chart(records: List[Transaction]):
     today = datetime.today().date()
 
+    dividend_decimal_places: Optional[int] = None
+
+    for record in (r for r in records if r.dividend is not None):
+        if isinstance(record, FutureTransaction):
+            continue
+        d = Decimal(f'{record.dividend.value}')
+        places = abs(d.as_tuple().exponent)
+        if dividend_decimal_places is None or places > dividend_decimal_places:
+            dividend_decimal_places = places
+
     for transaction in records:
         amount = format_amount(transaction.amount.value, trailing_zero=False)
         amount = transaction.amount.format % amount
@@ -194,7 +205,8 @@ def print_simple_chart(records: List[Transaction]):
                 line = f'{amount.rjust(20)}    {d}'
 
         if transaction.dividend is not None:
-            dividend = format_amount(transaction.dividend.value, trailing_zero=False, rounded=False)
+            dividend = format_amount(transaction.dividend.value, trailing_zero=False,
+                                     places=dividend_decimal_places)
             dividend = transaction.dividend.format % dividend
 
             line = f'{line} {dividend.rjust(12)}'
