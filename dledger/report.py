@@ -194,7 +194,7 @@ def print_simple_chart(records: List[Transaction]):
                 line = f'{amount.rjust(20)}    {d}'
 
         if transaction.dividend is not None:
-            dividend = format_amount(transaction.dividend.value, trailing_zero=False)
+            dividend = format_amount(transaction.dividend.value, trailing_zero=False, rounded=False)
             dividend = transaction.dividend.format % dividend
 
             line = f'{line} {dividend.rjust(12)}'
