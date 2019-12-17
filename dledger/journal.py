@@ -399,12 +399,12 @@ def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
             print(line, file=file)
         amount_display = ''
         if record.amount is not None:
-            payout_display = format_amount(record.amount.value, trailing_zero=False)
+            payout_display = format_amount(record.amount.value, trailing_zero=False, rounded=False)
             if record.amount.format is not None:
                 payout_display = record.amount.format % payout_display
             amount_display += payout_display
         if record.dividend is not None:
-            dividend_display = format_amount(record.dividend.value, trailing_zero=False)
+            dividend_display = format_amount(record.dividend.value, trailing_zero=False, rounded=False)
             if record.dividend.format is not None:
                 dividend_display = record.dividend.format % dividend_display
             amount_display += f' @ {dividend_display}'

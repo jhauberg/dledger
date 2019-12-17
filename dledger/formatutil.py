@@ -47,7 +47,7 @@ def format_pct_change(pct: float) -> str:
     return f'{sign} {d:n}%'
 
 
-def format_change(amount: float, trailing_zero: bool = True) -> str:
+def format_change(amount: float, *, trailing_zero: bool = True) -> str:
     """ Return a human-readable string for a change in totals. """
 
     sign = '-' if amount < 0 else '+'
@@ -55,7 +55,7 @@ def format_change(amount: float, trailing_zero: bool = True) -> str:
     return f'{sign} {format_amount(abs(amount), trailing_zero=trailing_zero)}'
 
 
-def format_amount(amount: float, trailing_zero: bool = True) -> str:
+def format_amount(amount: float, *, trailing_zero: bool = True, rounded: bool = True, places: int = 2) -> str:
     """ Return a human-readable string for a number.
 
     Format according to current locale, for example,
@@ -66,16 +66,18 @@ def format_amount(amount: float, trailing_zero: bool = True) -> str:
         10.6 => '1,60'
         10 => '10'
 
-    Only keep 2 decimal places for fractional (non-whole) numbers.
+    Only keep X decimal places for fractional (non-whole) numbers.
     """
 
-    # convert value to str, rounding to 2 decimal places
-    s = f'{amount:.2f}'
+    # convert value to str, rounding to N decimal places
+    s = f'{amount:.{places}f}' if rounded else f'{amount}'
 
     # determine if number is fractional (assuming default point notation)
-    if not trailing_zero and s.endswith('.00'):
+    pad = '0' * places
+    if not trailing_zero and s.endswith(f'.{pad}'):
         # only keep whole number
-        s = s[:-3]
+        i = 1 + places
+        s = s[:-i]
 
     # convert str to Decimal, respecting the number of decimal places
     d = Decimal(s)
