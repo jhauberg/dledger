@@ -341,7 +341,7 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     dividend_value = str(record[9]).strip()
     amount_value = str(record[12]).strip()
     amount_symbol = str(record[13]).strip()
-    dividend_symbol = str(record[19]).strip()
+    transaction_text = str(record[19]).strip()
 
     # hack: some numbers may show as e.g. '1.500' which atof will parse as 1.5,
     #       when in fact it should be parsed as 1.500,00 as per danish locale
@@ -365,7 +365,20 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
 
     locale.setlocale(locale.LC_NUMERIC, prev)
 
-    dividend_symbol = dividend_symbol.split(' ')[-1].split('/')[0]
+    transaction_text_components = transaction_text.split(' ')
+    transaction_currency_component = transaction_text_components[-1]
+
+    dividend_symbol = transaction_currency_component.split('/')[0]
+    dividend_rate = transaction_text_components[-2]
+
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    dividend_rate = locale.atof(dividend_rate)
+
+    locale.setlocale(locale.LC_NUMERIC, prev)
+
+    if dividend != dividend_rate:
+        raise_parse_error(f'ambiguous dividend ({dividend} or {dividend_rate}?)', location)
 
     return Transaction(
         d, ticker, position,
