@@ -294,47 +294,51 @@ def estimated_transactions(records: List[Transaction]) \
             future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
                                          timeframe=future_timeframe)
 
-            future_dividend = None
-            future_amount = amount_per_share(latest_transaction) * future_position
-            future_amount_range = None
-
             reference_records = trailing(
                 by_ticker(transactions, ticker), since=future_date, months=12)
             reference_records = list(filter(
                 lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))
 
-            divs = [r.dividend.value for r in reference_records
-                    if (r.dividend is not None and
-                        r.dividend.symbol != r.amount.symbol and
-                        r.dividend.symbol == latest_transaction.dividend.symbol)]
+            future_amount = amount_per_share(latest_transaction) * future_position
+            future_amount_range = None
 
-            aps = [amount_per_share(r) for r in reference_records]
+            future_dividend = next_linear_dividend(reference_records)
 
-            if len(divs) > 0 and can_convert_from_dividend:
-                conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
-                                                        latest_transaction.amount.symbol)]
-                highest_dividend = max(divs) * future_position
-                lowest_dividend = min(divs) * future_position
-                future_dividend = fmean(divs)
-                future_amount = future_dividend * future_position
-                future_amount = future_amount * conversion_factor
-                future_amount_range = (Amount(lowest_dividend * conversion_factor,
-                                              symbol=latest_transaction.amount.symbol,
-                                              format=latest_transaction.amount.format),
-                                       Amount(highest_dividend * conversion_factor,
-                                              symbol=latest_transaction.amount.symbol,
-                                              format=latest_transaction.amount.format))
-            elif len(aps) > 0:
-                highest_amount = max(aps) * future_position
-                lowest_amount = min(aps) * future_position
-                mean_amount = fmean(aps) * future_position
-                future_amount = mean_amount
-                future_amount_range = (Amount(lowest_amount,
-                                              symbol=latest_transaction.amount.symbol,
-                                              format=latest_transaction.amount.format),
-                                       Amount(highest_amount,
-                                              symbol=latest_transaction.amount.symbol,
-                                              format=latest_transaction.amount.format))
+            if future_dividend is None:
+                divs = [r.dividend.value for r in reference_records
+                        if (r.dividend is not None and
+                            r.dividend.symbol != r.amount.symbol and
+                            r.dividend.symbol == latest_transaction.dividend.symbol)]
+
+                aps = [amount_per_share(r) for r in reference_records]
+
+                if len(divs) > 0 and can_convert_from_dividend:
+                    conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
+                                                            latest_transaction.amount.symbol)]
+                    highest_dividend = max(divs) * future_position
+                    lowest_dividend = min(divs) * future_position
+                    future_dividend = fmean(divs)
+                    future_amount = future_dividend * future_position
+                    future_amount = future_amount * conversion_factor
+                    future_amount_range = (Amount(lowest_dividend * conversion_factor,
+                                                  symbol=latest_transaction.amount.symbol,
+                                                  format=latest_transaction.amount.format),
+                                           Amount(highest_dividend * conversion_factor,
+                                                  symbol=latest_transaction.amount.symbol,
+                                                  format=latest_transaction.amount.format))
+                elif len(aps) > 0:
+                    highest_amount = max(aps) * future_position
+                    lowest_amount = min(aps) * future_position
+                    mean_amount = fmean(aps) * future_position
+                    future_amount = mean_amount
+                    future_amount_range = (Amount(lowest_amount,
+                                                  symbol=latest_transaction.amount.symbol,
+                                                  format=latest_transaction.amount.format),
+                                           Amount(highest_amount,
+                                                  symbol=latest_transaction.amount.symbol,
+                                                  format=latest_transaction.amount.format))
+            else:
+                future_dividend = future_dividend.value
 
             future_record = FutureTransaction(future_date, ticker, future_position,
                                               amount=Amount(future_amount,
