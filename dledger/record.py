@@ -8,13 +8,30 @@ from typing import Iterable, Optional, List, Set, Union, Tuple
 
 def amount_per_share(record: Transaction) \
         -> float:
-    """ Return the fractional amount per share. """
+    """ Return the amount per share. """
 
     assert record.amount is not None
 
     return (record.amount.value / record.position
             if record.amount.value > 0 and record.position > 0
             else 0)
+
+
+def amount_conversion_factor(record: Transaction) \
+        -> float:
+    """ Return the conversion factor of dividend to amount.
+
+    Return 1 if no dividend is specified, or dividend is of same symbol as amount.
+    """
+
+    assert record.amount is not None
+
+    if record.dividend is None:
+        return 1
+    if record.dividend.symbol == record.amount.symbol:
+        return 1
+
+    return amount_per_share(record) / record.dividend.value
 
 
 def intervals(records: Iterable[Transaction]) \

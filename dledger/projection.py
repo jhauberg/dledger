@@ -8,7 +8,7 @@ from dledger.journal import Transaction, Distribution, Amount
 from dledger.dateutil import last_of_month
 from dledger.record import (
     by_ticker, tickers, trailing, latest, monthly_schedule, dividends, deltas,
-    amount_per_share, intervals, pruned, symbols
+    amount_per_share, amount_conversion_factor, intervals, pruned, symbols
 )
 
 from typing import Tuple, Optional, List, Iterable, Dict
@@ -475,7 +475,7 @@ def symbol_conversion_factors(records: List[Transaction]) \
             if latest_transaction is None:
                 continue
 
-            conversion_factor = amount_per_share(latest_transaction) / latest_transaction.dividend.value
+            conversion_factor = amount_conversion_factor(latest_transaction)
             conversion_factors[(latest_transaction.dividend.symbol,
                                 latest_transaction.amount.symbol)] = conversion_factor
 
