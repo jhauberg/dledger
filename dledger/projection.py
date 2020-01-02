@@ -304,7 +304,13 @@ def estimated_transactions(records: List[Transaction]) \
 
             future_dividend = next_linear_dividend(reference_records)
 
-            if future_dividend is None:
+            if future_dividend is not None and can_convert_from_dividend:
+                conversion_factor = conversion_factors[(future_dividend.symbol,
+                                                        latest_transaction.amount.symbol)]
+                future_dividend_value = future_position * future_dividend.value
+                future_dividend = future_dividend.value
+                future_amount = future_dividend_value * conversion_factor
+            else:
                 divs = [r.dividend.value for r in reference_records
                         if (r.dividend is not None and
                             r.dividend.symbol != r.amount.symbol and
@@ -337,8 +343,6 @@ def estimated_transactions(records: List[Transaction]) \
                                            Amount(highest_amount,
                                                   symbol=latest_transaction.amount.symbol,
                                                   format=latest_transaction.amount.format))
-            else:
-                future_dividend = future_dividend.value
 
             future_record = FutureTransaction(future_date, ticker, future_position,
                                               amount=Amount(future_amount,
@@ -381,7 +385,7 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[Amount]:
             comparable_transactions.reverse()
             movements = deltas(dividends(comparable_transactions))
             # if there's a clear upwards trend, assume linear pattern
-            if len(movements) > 0 and -1 not in multimode(movements):
+            if -1 not in multimode(movements):
                 return latest(comparable_transactions).dividend
 
     return None
