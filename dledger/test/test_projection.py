@@ -1,10 +1,11 @@
 from datetime import date
 
-from dledger.journal import Transaction, Amount
+from dledger.journal import Transaction, Amount, Distribution
 from dledger.projection import (
     estimated_monthly_schedule,
     frequency, normalize_interval,
     next_scheduled_date,
+    next_linear_dividend,
     future_transactions,
     estimated_transactions,
     symbol_conversion_factors,
@@ -330,6 +331,67 @@ def test_next_scheduled_date():
     d = next_scheduled_date(date(2019, 12, 1), months=[3, 6, 9, 12])
 
     assert d.year == 2020 and d.month == 3 and d.day == 1
+
+
+def test_next_linear_dividend():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1))
+    ]
+
+    dividend = next_linear_dividend(records)
+
+    assert dividend == Amount(1)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
+    ]
+
+    dividend = next_linear_dividend(records)
+
+    assert dividend == Amount(2)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
+    ]
+
+    dividend = next_linear_dividend(records)
+
+    assert dividend == Amount(1)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1.5)),
+    ]
+
+    dividend = next_linear_dividend(records)
+
+    assert dividend is None
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
+        Transaction(date(2019, 6, 15), 'ABC', 1, amount=Amount(100), dividend=Amount(1.5),
+                    kind=Distribution.SPECIAL),
+        Transaction(date(2019, 9, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(3)),
+    ]
+
+    dividend = next_linear_dividend(records)
+
+    assert dividend == Amount(3)
+
+    records = [
+        Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
+        Transaction(date(2019, 6, 15), 'ABC', 1, amount=Amount(100), dividend=Amount(1.5),
+                    kind=Distribution.INTERIM),
+        Transaction(date(2020, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(3)),
+    ]
+
+    dividend = next_linear_dividend(records)
+
+    assert dividend == Amount(3)
 
 
 def test_future_transactions():
