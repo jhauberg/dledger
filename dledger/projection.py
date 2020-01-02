@@ -373,8 +373,8 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[Amount]:
     if latest_transaction.dividend is not None:
         comparable_transactions: List[Transaction] = []
         for comparable_transaction in reversed(transactions):
-            if comparable_transaction.kind is Distribution.INTERIM:
-                # don't include interim dividends as they do not necessarily follow
+            if comparable_transaction.kind is not Distribution.FINAL:
+                # don't include interim/special dividends as they do not necessarily follow
                 # the same policy or pattern as final dividends
                 continue
             if (comparable_transaction.dividend is None or
@@ -384,8 +384,9 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[Amount]:
         if len(comparable_transactions) > 0:
             comparable_transactions.reverse()
             movements = deltas(dividends(comparable_transactions))
-            # if there's a clear upwards trend, assume linear pattern
-            if -1 not in multimode(movements):
+            n = len(multimode(movements))
+            # if there's a clear trend, up or down, assume linear pattern
+            if n == 0 or n == 1:
                 return latest(comparable_transactions).dividend
 
     return None
