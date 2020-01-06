@@ -162,12 +162,18 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
 
             weight = income_by_ticker / total_income * 100
 
-            weights.append((ticker, amount, weight))
+            is_estimate = (True if any(isinstance(x, FutureTransaction) for x in filtered_records)
+                           else False)
+            
+            weights.append((ticker, amount, weight, is_estimate))
         weights.sort(key=lambda w: w[2], reverse=True)
         for weight in weights:
-            ticker, amount, pct = weight
+            ticker, amount, pct, is_estimate = weight
             pct = f'{format_amount(pct)}%'
-            print(f'{amount.rjust(20)}    {pct.rjust(7)}    {ticker}')
+            if is_estimate:
+                print(f'~ {amount.rjust(18)}    {pct.rjust(7)}    {ticker}')
+            else:
+                print(f'{amount.rjust(20)}    {pct.rjust(7)}    {ticker}')
 
 
 def print_simple_chart(records: List[Transaction]):
