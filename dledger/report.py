@@ -271,8 +271,10 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
     else:
         print_stat_row('Records', f'{len(records)}')
     if len(records) > 0:
-        print_stat_row('Earliest', f'{records[0].date}')
-        print_stat_row('Latest', f'{records[-1].date}')
+        earliest_datestamp = records[0].date.strftime('%Y/%m/%d')
+        latest_datestamp = records[-1].date.strftime('%Y/%m/%d')
+        print_stat_row('Earliest', earliest_datestamp)
+        print_stat_row('Latest', latest_datestamp)
         print_stat_row('Tickers', f'{len(tickers(records))}')
         currencies = sorted(symbols(records))
         if len(currencies) > 0:
