@@ -5,6 +5,7 @@ usage: dledger report         <journal>... [--period=<interval>] [-V]
                                            [--monthly | --quarterly | --annual |
                                             --rolling | --weighted | --summed]
                                            [--without-forecast]
+                                           [--in-currency=<symbol>]
        dledger chart <ticker> <journal>... [--period=<interval>] [-V]
                                            [--without-forecast]
        dledger stats          <journal>... [--period=<interval>] [-V]
@@ -13,19 +14,20 @@ usage: dledger report         <journal>... [--period=<interval>] [-V]
                                            [--output=<journal>]
 
 OPTIONS:
-     --type=<name>        Specify type of transaction data [default: journal]
-     --output=<journal>   Specify journal filename [default: ledger.journal]
-  -p --period=<interval>  Specify reporting date interval
-  -a --annual             Show income by year
-  -q --quarterly          Show income by quarter
-  -m --monthly            Show income by month
-  -r --rolling            Show income by trailing 12-month totals
-  -w --weighted           Show income by weight
-  -s --summed             Show income by totals
-     --without-forecast   Show only realized income
-  -V --verbose            Show diagnostic messages
-  -h --help               Show program help
-  -v --version            Show program version
+     --type=<name>            Specify type of transaction data [default: journal]
+     --output=<journal>       Specify journal filename [default: ledger.journal]
+  -p --period=<interval>      Specify reporting date interval
+  -c --in-currency=<symbol>   Show income as if exchanged to given currency
+  -a --annual                 Show income by year
+  -q --quarterly              Show income by quarter
+  -m --monthly                Show income by month
+  -r --rolling                Show income by trailing 12-month totals
+  -w --weighted               Show income by weight
+  -s --summed                 Show income by totals
+     --without-forecast       Show only realized income
+  -V --verbose                Show diagnostic messages
+  -h --help                   Show program help
+  -v --version                Show program version
 
 See https://github.com/jhauberg/dledger for additional details.
 """
@@ -48,7 +50,7 @@ from dledger.report import (
     print_stats
 )
 from dledger.projection import (
-    scheduled_transactions, convert_estimates
+    scheduled_transactions, convert_estimates, convert_to_currency
 )
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
@@ -132,9 +134,14 @@ def main() -> None:
             scheduled_transactions(records))
 
     if interval is not None:
-        transactions = in_period(transactions, interval)
+        transactions = list(in_period(transactions, interval))
 
     transactions = sorted(transactions)
+
+    exchange_symbol = args['--in-currency']
+
+    if exchange_symbol is not None:
+        transactions = convert_to_currency(transactions, symbol=exchange_symbol)
 
     if args['report']:
         if args['--weighted']:

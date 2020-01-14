@@ -196,6 +196,26 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
     return records
 
 
+def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Transaction]:
+    conversion_factors = symbol_conversion_factors(records)
+    convertible_records = filter(
+        lambda r: r.amount is not None and r.amount.symbol != symbol, records)
+    transactions = list(r for r in records if r.amount is not None)
+    for rec in convertible_records:
+        i = records.index(rec)
+        records.pop(i)
+        # get latest transaction that actually use this symbol and assume that is desired format
+        latest_transaction = latest(filter(lambda r: r.amount.symbol == symbol, transactions))
+        conversion_factor = conversion_factors[(rec.dividend.symbol, symbol)]
+        estimate_amount = Amount((rec.position * rec.dividend.value) * conversion_factor,
+                                 symbol,
+                                 latest_transaction.amount.format)
+        estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
+                                     estimate_amount, rec.dividend, rec.kind)
+        records.insert(i, estimate)
+    return records
+
+
 def scheduled_transactions(records: List[Transaction],
                            *,
                            since: date = datetime.today().date()) \
