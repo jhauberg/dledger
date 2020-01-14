@@ -304,12 +304,15 @@ def estimated_transactions(records: List[Transaction]) \
 
             future_dividend = next_linear_dividend(reference_records)
 
-            if future_dividend is not None and can_convert_from_dividend:
-                conversion_factor = conversion_factors[(future_dividend.symbol,
-                                                        latest_transaction.amount.symbol)]
-                future_dividend_value = future_position * future_dividend.value
-                future_dividend = future_dividend.value
-                future_amount = future_dividend_value * conversion_factor
+            if future_dividend is not None:
+                if can_convert_from_dividend:
+                    conversion_factor = conversion_factors[(future_dividend.symbol,
+                                                            latest_transaction.amount.symbol)]
+                    future_dividend_value = future_position * future_dividend.value
+                    future_dividend = future_dividend.value
+                    future_amount = future_dividend_value * conversion_factor
+                else:
+                    future_amount = future_position * future_dividend.value
             else:
                 divs = [r.dividend.value for r in reference_records
                         if (r.dividend is not None and
@@ -440,11 +443,14 @@ def future_transactions(records: List[Transaction]) \
 
         future_amount = future_position * amount_per_share(transaction)
 
-        if future_dividend is not None and future_dividend.symbol != transaction.amount.symbol:
-            conversion_factor = conversion_factors[(future_dividend.symbol,
-                                                    transaction.amount.symbol)]
-            future_dividend_value = future_position * future_dividend.value
-            future_amount = future_dividend_value * conversion_factor
+        if future_dividend is not None:
+            if future_dividend.symbol != transaction.amount.symbol:
+                conversion_factor = conversion_factors[(future_dividend.symbol,
+                                                        transaction.amount.symbol)]
+                future_dividend_value = future_position * future_dividend.value
+                future_amount = future_dividend_value * conversion_factor
+            else:
+                future_amount = future_position * future_dividend.value
 
         future_record = FutureTransaction(future_date, transaction.ticker, future_position,
                                           amount=Amount(future_amount,
