@@ -17,13 +17,13 @@ OPTIONS:
      --type=<name>            Specify type of transaction data [default: journal]
      --output=<journal>       Specify journal filename [default: ledger.journal]
   -p --period=<interval>      Specify reporting date interval
-  -c --in-currency=<symbol>   Show income as if exchanged to given currency
-  -a --annual                 Show income by year
+     --in-currency=<symbol>   Show income as if exchanged to given currency
+  -y --annual                 Show income by year
   -q --quarterly              Show income by quarter
   -m --monthly                Show income by month
-  -r --rolling                Show income by trailing 12-month totals
-  -w --weighted               Show income by weight
-  -s --summed                 Show income by totals
+     --rolling                Show income by trailing 12-month totals
+     --weighted               Show income by weight
+     --summed                 Show income by totals
      --without-forecast       Show only realized income
   -V --verbose                Show diagnostic messages
   -h --help                   Show program help
