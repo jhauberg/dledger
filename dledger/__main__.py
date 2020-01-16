@@ -126,8 +126,7 @@ def main() -> None:
 
     records = convert_estimates(records)
 
-    transactions = list(filter(
-        lambda r: r.amount is not None, records))
+    transactions = list(r for r in records if r.amount is not None)
 
     if not args['--without-forecast']:
         transactions.extend(
@@ -163,8 +162,7 @@ def main() -> None:
 
     if args['chart']:
         ticker = args['<ticker>']
-        transactions = list(filter(
-            lambda r: r.ticker == ticker, transactions))
+        transactions = list(r for r in transactions if r.ticker == ticker)
 
         print_simple_chart(transactions)
 

@@ -112,7 +112,7 @@ def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False
     Does not include an entry for records with no symbol attached.
     """
 
-    transactions = filter(lambda r: r.amount is not None, records)
+    transactions = (r for r in records if r.amount is not None)
 
     collected_symbols: List[str] = []
 
@@ -135,9 +135,8 @@ def monthly_schedule(records: Iterable[Transaction]) \
     return sorted(set([record.date.month for record in records]))
 
 
-def trailing(records: Iterable[Transaction], since: date, *, months: int) \
-        -> Iterable[Transaction]:
-    """ Return an iterator for records dated within a number of months prior to a given date.
+def trailing(records: Iterable[Transaction], since: date, *, months: int):
+    """ Return an iterator for records dated within months prior to a given date (inclusive).
 
     Does take days into account.
     """
@@ -145,8 +144,7 @@ def trailing(records: Iterable[Transaction], since: date, *, months: int) \
     begin = in_months(since, months=-months)
     end = since
 
-    return filter(
-        lambda r: end >= r.date > begin, records)
+    return (r for r in records if end >= r.date > begin)
 
 
 def monthly(records: Iterable[Transaction],
@@ -154,9 +152,8 @@ def monthly(records: Iterable[Transaction],
         -> Iterable[Transaction]:
     """ Return an iterator for records dated on a given month and year. """
 
-    return filter(
-        lambda r: (r.date.year == year and
-                   r.date.month == month), records)
+    return (r for r in records if (r.date.year == year and
+                                   r.date.month == month))
 
 
 def yearly(records: Iterable[Transaction],
@@ -169,17 +166,15 @@ def yearly(records: Iterable[Transaction],
     and May (inclusive).
     """
 
-    return filter(
-        lambda r: (r.date.year == year and
-                   r.date.month <= months), records)
+    return (r for r in records if (r.date.year == year and
+                                   r.date.month <= months))
 
 
 def by_ticker(records: Iterable[Transaction], symbol: str) \
         -> Iterable[Transaction]:
     """ Return an iterator for records with a given ticker. """
 
-    return filter(
-        lambda r: r.ticker == symbol, records)
+    return (r for r in records if r.ticker == symbol)
 
 
 def income(records: Iterable[Transaction]) \
@@ -193,16 +188,14 @@ def after(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated later than a date. """
 
-    return filter(
-        lambda r: r.date > d, records)
+    return (r for r in records if r.date > d)
 
 
 def before(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated prior to a date. """
 
-    return filter(
-        lambda r: r.date < d, records)
+    return (r for r in records if r.date < d)
 
 
 def in_period(records: Iterable[Transaction],

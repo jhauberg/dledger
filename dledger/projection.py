@@ -175,9 +175,9 @@ def projected_date(d: date, *, timeframe: int) -> date:
 
 def convert_estimates(records: List[Transaction]) -> List[Transaction]:
     conversion_factors = symbol_conversion_factors(records)
-    estimate_records = filter(
-        lambda r: r.amount is None and r.dividend is not None, records)
     transactions = list(r for r in records if r.amount is not None)
+    estimate_records = (r for r in records if (r.amount is None and
+                                               r.dividend is not None))
     for rec in estimate_records:
         i = records.index(rec)
         records.pop(i)
@@ -198,14 +198,14 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
 
 def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Transaction]:
     conversion_factors = symbol_conversion_factors(records)
-    convertible_records = filter(
-        lambda r: r.amount is not None and r.amount.symbol != symbol, records)
     transactions = list(r for r in records if r.amount is not None)
+    convertible_records = (r for r in records if (r.amount is not None and
+                                                  r.amount.symbol != symbol))
     for rec in convertible_records:
         i = records.index(rec)
         records.pop(i)
         # get latest transaction that actually use this symbol and assume that is desired format
-        latest_transaction = latest(filter(lambda r: r.amount.symbol == symbol, transactions))
+        latest_transaction = latest((r for r in transactions if r.amount.symbol == symbol))
         conversion_factor = conversion_factors[(rec.dividend.symbol, symbol)]
         estimate_amount = Amount((rec.position * rec.dividend.value) * conversion_factor,
                                  symbol,
@@ -223,7 +223,7 @@ def scheduled_transactions(records: List[Transaction],
     # take a sample set of only latest 12 months
     sample_records = trailing(records, since=since, months=12)
     # don't include special dividends
-    sample_records = list(filter(lambda r: r.kind is not Distribution.SPECIAL, sample_records))
+    sample_records = list(r for r in sample_records if r.kind is not Distribution.SPECIAL)
 
     # project current records by 1 year into the future
     futures = future_transactions(sample_records)
@@ -253,7 +253,7 @@ def estimated_schedule(records: List[Transaction], record: Transaction) \
                               since=last_of_month(record.date), months=24)
 
     # exclude closed positions
-    sample_records = filter(lambda r: r.position > 0, sample_records)
+    sample_records = (r for r in sample_records if r.position > 0)
     # exclude same-date records for more accurate frequency/schedule estimation
     sample_records = pruned(sample_records)
     # determine approximate frequency (annual, biannual, quarterly or monthly)
@@ -316,8 +316,8 @@ def estimated_transactions(records: List[Transaction]) \
 
             reference_records = trailing(
                 by_ticker(transactions, ticker), since=future_date, months=12)
-            reference_records = list(filter(
-                lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))
+            reference_records = list(r for r in reference_records if
+                                     r.amount.symbol == latest_transaction.amount.symbol)
 
             future_amount = amount_per_share(latest_transaction) * future_position
             future_amount_range = None
@@ -422,7 +422,7 @@ def future_transactions(records: List[Transaction]) \
     future_records = []
 
     # weed out position-only records
-    transactions = list(filter(lambda r: r.amount is not None, records))
+    transactions = list(r for r in records if r.amount is not None)
 
     conversion_factors = symbol_conversion_factors(transactions)
 
@@ -488,7 +488,7 @@ def symbol_conversion_factors(records: List[Transaction]) \
         -> Dict[Tuple[str, str], float]:
     conversion_factors: Dict[Tuple[str, str], float] = dict()
 
-    transactions = list(filter(lambda r: r.amount is not None, records))
+    transactions = list(r for r in records if r.amount is not None)
 
     amount_symbols = symbols(records, excluding_dividends=True)
     all_symbols = symbols(records)
@@ -498,10 +498,10 @@ def symbol_conversion_factors(records: List[Transaction]) \
             if symbol == other_symbol:
                 continue
 
-            latest_transaction = latest(filter(
-                lambda r: (r.amount.symbol == symbol and
-                           r.dividend is not None and
-                           r.dividend.symbol == other_symbol), transactions))
+            latest_transaction = latest(
+                (r for r in transactions if (r.amount.symbol == symbol and
+                                             r.dividend is not None and
+                                             r.dividend.symbol == other_symbol)))
 
             if latest_transaction is None:
                 continue
