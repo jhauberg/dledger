@@ -37,28 +37,26 @@ def test_positions_journal():
 
     records = read('../example/positions.journal', kind='journal')
 
-    assert len(records) == 5
+    assert len(records) == 4
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
                                      amount=Amount(73, '$', '$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
                                      amount=Amount(77, '$', '$ %s'))
-    assert records[2] == Transaction(date(2019, 6, 4), 'AAPL', 120)
-    assert records[3] == Transaction(date(2019, 8, 15), 'AAPL', 120,
+    assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 120,
                                      amount=Amount(92.4, '$', '$ %s'))
-    assert records[4] == Transaction(date(2019, 11, 14), 'AAPL', 140,
+    assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 140,
                                      amount=Amount(107.8, '$', '$ %s'))
 
     records = read('../example/positions-condensed.journal', kind='journal')
 
-    assert len(records) == 5
+    assert len(records) == 4
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
                                      amount=Amount(73, '$', '$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
                                      amount=Amount(77, '$', '$ %s'))
-    assert records[2] == Transaction(date(2019, 6, 4), 'AAPL', 120)
-    assert records[3] == Transaction(date(2019, 8, 15), 'AAPL', 120,
+    assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 120,
                                      amount=Amount(92.4, '$', '$ %s'))
-    assert records[4] == Transaction(date(2019, 11, 14), 'AAPL', 140,
+    assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 140,
                                      amount=Amount(107.8, '$', '$ %s'))
 
 

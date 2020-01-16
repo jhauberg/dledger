@@ -105,7 +105,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
     for entry in journal_entries:
         d, ticker, position, amount, dividend, kind, location = entry
-        position, position_change_direction = position
+        p, position_change_direction = position
 
         if amount is not None and dividend is not None:
             if amount.symbol is None and dividend.symbol is not None:
@@ -132,49 +132,47 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                                           format=previous_record.amount.format)
                     break
 
-        if position is None or position_change_direction != 0:
+        if p is None or position_change_direction != 0:
             # infer position from previous entries
             for previous_record in reversed(records):
                 if previous_record.ticker == ticker:
                     if previous_record.position is None:
                         continue
-                    if position is None:
-                        position = 0
-                    position = previous_record.position + position * position_change_direction
-                    if position < 0:
-                        raise_parse_error(f'position change to negative position ({position})',
+                    if p is None:
+                        p = 0
+                    p = previous_record.position + p * position_change_direction
+                    if p < 0:
+                        raise_parse_error(f'position change to negative position ({p})',
                                           location=location)
                     break
 
         if amount is not None and dividend is not None:
             if amount.symbol == dividend.symbol:
                 logical_position = int(round(amount.value / dividend.value))
-                if position is None:
+                if p is None:
                     # infer position from amount/dividend - if same currency
-                    position = logical_position
+                    p = logical_position
 
-                if position != logical_position:
+                if p != logical_position:
                     raise_parse_error(f'position does not match amount/dividend '
                                       f'({logical_position})',
                                       location=location)
 
-        if position is None:
+        if p is None:
             raise_parse_error(f'position could not be inferred', location=location)
 
-        records.append(Transaction(d, ticker, position, amount, dividend, kind))
+        records.append(Transaction(d, ticker, p, amount, dividend, kind))
 
-    position_change_entries = list(filter(
-        lambda r: r.amount is None and position is not None, records))
-
-    latest_position_change_entries = []
-    for ticker in set([record.ticker for record in position_change_entries]):
-        fs = list(filter(lambda r: r.ticker == ticker, position_change_entries))
-        latest_position_change_entries.append(fs[-1])
-
-    for r in position_change_entries:
-        if r in latest_position_change_entries:
-            continue
-        records.remove(r)
+    # find all entries that only record a change in position
+    position_change_entries = list(r for r in records if r.amount is None and r.dividend is None)
+    # at this point we no longer need to keep most of these around, as we have already
+    # used them to infer and determine the correct position for each transaction
+    for entry in position_change_entries:
+        other_entries = [r for r in records if entry.ticker == r.ticker]
+        latest_entry = other_entries[-1]  # assuming already sorted
+        if entry != latest_entry:
+            # remove it unless it happens to be the latest record
+            records.remove(entry)
 
     return records
 
