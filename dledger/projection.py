@@ -179,12 +179,10 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
     estimate_records = (r for r in records if (r.amount is None and
                                                r.dividend is not None))
     for rec in estimate_records:
-        i = records.index(rec)
-        records.pop(i)
-        latest_transaction = latest(by_ticker(transactions, rec.ticker))
         conversion_factor = 1.0
         estimate_symbol = rec.dividend.symbol
         estimate_format = rec.dividend.format
+        latest_transaction = latest(by_ticker(transactions, rec.ticker))
         if latest_transaction is not None:
             estimate_symbol = latest_transaction.amount.symbol
             estimate_format = latest_transaction.amount.format
@@ -195,6 +193,8 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
                                  estimate_symbol, estimate_format)
         estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
                                      estimate_amount, rec.dividend, rec.kind)
+        i = records.index(rec)
+        records.pop(i)
         records.insert(i, estimate)
 
     return records
@@ -206,17 +206,25 @@ def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Tran
     convertible_records = (r for r in records if (r.amount is not None and
                                                   r.amount.symbol != symbol))
     for rec in convertible_records:
-        i = records.index(rec)
-        records.pop(i)
-        # get latest transaction that actually use this symbol and assume that is desired format
+        conversion_factor = 1.0
+        if rec.dividend.symbol != symbol:
+            try:
+                conversion_factor = conversion_factors[(rec.dividend.symbol, symbol)]
+            except KeyError:
+                continue
         latest_transaction = latest((r for r in transactions if r.amount.symbol == symbol))
-        conversion_factor = conversion_factors[(rec.dividend.symbol, symbol)]
+        estimate_format = (latest_transaction.amount.format if
+                           latest_transaction is not None else
+                           rec.dividend.format)
         estimate_amount = Amount((rec.position * rec.dividend.value) * conversion_factor,
                                  symbol,
-                                 latest_transaction.amount.format)
+                                 estimate_format)
         estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
                                      estimate_amount, rec.dividend, rec.kind)
+        i = records.index(rec)
+        records.pop(i)
         records.insert(i, estimate)
+
     return records
 
 
