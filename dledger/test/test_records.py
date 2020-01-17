@@ -3,7 +3,7 @@ from datetime import date
 from dledger.journal import Transaction, Amount
 from dledger.record import (
     monthly_schedule, intervals, trailing, pruned, dividends, deltas,
-    in_period
+    in_period, symbols
 )
 
 
@@ -251,3 +251,26 @@ def test_deltas():
 
     assert deltas(amounts) == [1, -1, -1]
     assert deltas(amounts, normalized=False) == [1.5, -1.5, -0.5]
+
+
+def test_symbols():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(1, symbol='$')),
+        Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(2, symbol='kr'))
+    ]
+
+    s = symbols(records)
+
+    assert len(s) == 2
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(1, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    s = symbols(records)
+
+    assert len(s) == 2
+
+    s = symbols(records, excluding_dividends=True)
+
+    assert len(s) == 1
