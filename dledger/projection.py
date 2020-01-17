@@ -183,12 +183,16 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
         records.pop(i)
         latest_transaction = latest(by_ticker(transactions, rec.ticker))
         conversion_factor = 1.0
-        if rec.dividend.symbol != latest_transaction.amount.symbol:
-            conversion_factor = conversion_factors[(rec.dividend.symbol,
-                                                    latest_transaction.amount.symbol)]
+        estimate_symbol = rec.dividend.symbol
+        estimate_format = rec.dividend.format
+        if latest_transaction is not None:
+            estimate_symbol = latest_transaction.amount.symbol
+            estimate_format = latest_transaction.amount.format
+            if rec.dividend.symbol != latest_transaction.amount.symbol:
+                conversion_factor = conversion_factors[(rec.dividend.symbol,
+                                                        latest_transaction.amount.symbol)]
         estimate_amount = Amount((rec.position * rec.dividend.value) * conversion_factor,
-                                 latest_transaction.amount.symbol,
-                                 latest_transaction.amount.format)
+                                 estimate_symbol, estimate_format)
         estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
                                      estimate_amount, rec.dividend, rec.kind)
         records.insert(i, estimate)
