@@ -206,19 +206,23 @@ def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Tran
     convertible_records = (r for r in records if (r.amount is not None and
                                                   r.amount.symbol != symbol))
     for rec in convertible_records:
-        conversion_factor = 1.0
-        if rec.dividend.symbol != symbol:
+        try:
+            conversion_factor = conversion_factors[(rec.amount.symbol, symbol)]
+        except KeyError:
             try:
-                conversion_factor = conversion_factors[(rec.dividend.symbol, symbol)]
+                conversion_factor = conversion_factors[(symbol, rec.amount.symbol)]
+                conversion_factor = 1.0 / conversion_factor
             except KeyError:
                 continue
-        latest_transaction = latest((r for r in transactions if r.amount.symbol == symbol))
-        estimate_format = (latest_transaction.amount.format if
-                           latest_transaction is not None else
-                           rec.dividend.format)
-        estimate_amount = Amount((rec.position * rec.dividend.value) * conversion_factor,
-                                 symbol,
-                                 estimate_format)
+        estimate_format: Optional[str] = None
+        for t in reversed(transactions):
+            if t.amount.symbol == symbol:
+                estimate_format = t.amount.format
+            elif t.dividend is not None and t.dividend.symbol == symbol:
+                estimate_format = t.dividend.format
+            if estimate_format is not None:
+                break
+        estimate_amount = Amount(rec.amount.value * conversion_factor, symbol, estimate_format)
         estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
                                      estimate_amount, rec.dividend, rec.kind)
         i = records.index(rec)
