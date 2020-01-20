@@ -423,6 +423,9 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[Amount]:
         if len(comparable_transactions) > 0:
             comparable_transactions.reverse()
             movements = deltas(dividends(comparable_transactions))
+            # consider 'no change' same as going up
+            movements = [1 if m == 0 else m for m in movements]
+            movements = multimode(movements)
             n = len(multimode(movements))
             # if there's a clear trend, up or down, assume linear pattern
             if n == 0 or n == 1:
