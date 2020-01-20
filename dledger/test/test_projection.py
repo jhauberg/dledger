@@ -355,6 +355,16 @@ def test_next_linear_dividend():
     assert dividend == Amount(2)
 
     records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
+    ]
+
+    dividend = next_linear_dividend(records)
+
+    assert dividend == Amount(2)
+
+    records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
         Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
     ]
