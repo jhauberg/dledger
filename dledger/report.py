@@ -230,11 +230,6 @@ def print_simple_chart(records: List[Transaction]):
             dividend = transaction.dividend.format % dividend
 
             line = f'{line} {dividend.rjust(12)}'
-        else:
-            dividend = format_amount(amount_per_share(transaction), trailing_zero=False)
-            dividend = transaction.amount.format % dividend
-
-            line = f'{line} {dividend.rjust(12)}'
 
         line = f'{line} / {transaction.position}'
 

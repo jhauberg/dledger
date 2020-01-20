@@ -161,6 +161,11 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         if p is None:
             raise_parse_error(f'position could not be inferred', location=location)
 
+        if amount is not None and dividend is None:
+            dividend = Amount(amount.value / p,
+                              symbol=amount.symbol,
+                              format=amount.format)
+
         records.append(Transaction(d, ticker, p, amount, dividend, kind))
 
     # find all entries that only record a change in position
