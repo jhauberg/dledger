@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from dledger.journal import Transaction, Distribution
 from dledger.formatutil import format_amount
-from dledger.printutil import colored, COLOR_NEGATIVE
+from dledger.printutil import colored, COLOR_NEGATIVE, COLOR_MARKED
 from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import FutureTransaction, symbol_conversion_factors
 from dledger.record import (
@@ -18,6 +18,7 @@ from typing import List, Optional
 
 
 def print_simple_annual_report(records: List[Transaction]):
+    today = datetime.today().date()
     years = range(earliest(records).date.year,
                   latest(records).date.year + 1)
 
@@ -41,16 +42,21 @@ def print_simple_annual_report(records: List[Transaction]):
             if any(isinstance(x, FutureTransaction) for x in yearly_transactions):
                 if year == years[-1]:
                     d = latest_transaction.date.strftime('%Y/%m')
-                    print(f'~ {amount.rjust(18)}  < {d.ljust(11)}')
+                    line = f'~ {amount.rjust(18)}  < {d.ljust(11)}'
                 else:
-                    print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
+                    line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
             else:
-                print(f'{amount.rjust(20)}    {d.ljust(11)}')
+                line = f'{amount.rjust(20)}    {d.ljust(11)}'
+            if today.year == year:
+                print(colored(line, COLOR_MARKED))
+            else:
+                print(line)
         if commodity != commodities[-1]:
             print()
 
 
 def print_simple_monthly_report(records: List[Transaction]):
+    today = datetime.today().date()
     years = range(earliest(records).date.year,
                   latest(records).date.year + 1)
 
@@ -74,15 +80,20 @@ def print_simple_monthly_report(records: List[Transaction]):
                 month_indicator = f'{month}'.zfill(2)
                 d = f'{year}/{month_indicator}'
                 if any(isinstance(x, FutureTransaction) for x in monthly_transactions):
-                    print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
+                    line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
                 else:
-                    print(f'{amount.rjust(20)}    {d.ljust(11)}')
+                    line = f'{amount.rjust(20)}    {d.ljust(11)}'
+                if today.year == year and today.month == month:
+                    print(colored(line, COLOR_MARKED))
+                else:
+                    print(line)
 
         if commodity != commodities[-1]:
             print()
 
 
 def print_simple_quarterly_report(records: List[Transaction]):
+    today = datetime.today().date()
     years = range(earliest(records).date.year,
                   latest(records).date.year + 1)
 
@@ -109,12 +120,15 @@ def print_simple_quarterly_report(records: List[Transaction]):
                 total = income(quarterly_transactions)
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.format % amount
-
                 d = f'{year}/Q{quarter}'
                 if any(isinstance(x, FutureTransaction) for x in quarterly_transactions):
-                    print(f'~ {amount.rjust(18)}    {d.ljust(11)}')
+                    line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
                 else:
-                    print(f'{amount.rjust(20)}    {d.ljust(11)}')
+                    line = f'{amount.rjust(20)}    {d.ljust(11)}'
+                if today.year == year and ending_month > today.month >= starting_month:
+                    print(colored(line, COLOR_MARKED))
+                else:
+                    print(line)
         if commodity != commodities[-1]:
             print()
 
@@ -288,12 +302,11 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
 
 
 def print_simple_rolling_report(records: List[Transaction]):
+    today = datetime.today().date()
     years = range(earliest(records).date.year,
                   latest(records).date.year + 1)
 
     commodities = sorted(symbols(records, excluding_dividends=True))
-
-    today = datetime.today().date()
 
     for commodity in commodities:
         matching_transactions = list(
@@ -318,16 +331,20 @@ def print_simple_rolling_report(records: List[Transaction]):
                 amount = latest_transaction.amount.format % amount
                 d = ending_date.strftime('%Y/%m')
                 if any(isinstance(x, FutureTransaction) for x in rolling_transactions):
-                    print(f'~ {amount.rjust(18)}  < {d}')
+                    line = f'~ {amount.rjust(18)}  < {d.ljust(11)}'
                 else:
-                    print(f'{amount.rjust(20)}  < {d}')
+                    line = f'{amount.rjust(20)}  < {d.ljust(11)}'
+                if today.year == year and today.month == month:
+                    print(colored(line, COLOR_MARKED))
+                else:
+                    print(line)
 
         future_transactions = [r for r in matching_transactions if isinstance(r, FutureTransaction) if r.date >= today]
         if len(future_transactions) > 0:
             total = income(future_transactions)
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.format % amount
-            print(f'~ {amount.rjust(18)}    next 12 months')
+            print(f'~ {amount.rjust(18)}    next 12m')
 
         if commodity != commodities[-1]:
             print()

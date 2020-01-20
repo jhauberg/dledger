@@ -17,8 +17,9 @@ def colored(text: str, color: str) -> str:
     return f'{color}{text}{COLOR_RESET}'
 
 
-COLOR_BRIGHT_WHITE = '\x1b[1;37m'
-COLOR_POSITIVE = '\x1b[0;32m'
+#COLOR_BRIGHT_WHITE = '\x1b[1;37m'  # sometimes also looks bold
+#COLOR_MARKED = '\x1b[0;30;107m'
+COLOR_MARKED = '\x1b[0;30;47m'
+#COLOR_POSITIVE = '\x1b[0;32m'
 COLOR_NEGATIVE = '\x1b[0;33m'
-COLOR_ALTERNATIVE = '\x1b[0;36m'
 COLOR_RESET = '\x1b[0m'
