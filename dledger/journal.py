@@ -154,7 +154,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                     p = logical_position
 
                 if p != logical_position:
-                    raise_parse_error(f'position does not match amount/dividend '
+                    raise_parse_error(f'position does not equal amount divided by dividend '
                                       f'({logical_position})',
                                       location=location)
 
