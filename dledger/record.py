@@ -239,13 +239,6 @@ def latest(records: Iterable[Transaction]) \
     return records[-1] if len(records) > 0 else None
 
 
-def previous(records: Iterable[Transaction], record: Transaction) \
-        -> Optional[Transaction]:
-    """ Return the latest record dated prior to a given record. """
-
-    return latest(before(records, record.date))
-
-
 def pruned(records: Iterable[Transaction]) \
         -> List[Transaction]:
     """ Return a list of transactions with only the first occurence of a transaction per date. """
