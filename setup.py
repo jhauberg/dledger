@@ -46,7 +46,7 @@ setup(
     author='Jacob Hauberg Hansen',
     author_email='jacob.hauberg@gmail.com',
     license='MIT',
-    packages=find_packages(),
+    packages=find_packages(exclude=['dledger.test']),
     include_package_data=True,
     platforms='any',
     install_requires=[

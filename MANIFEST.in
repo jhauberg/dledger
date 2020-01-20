@@ -3,5 +3,9 @@ include README.md
 include LICENSE
 include requirements.txt
 
+# exclude example and test directories
+prune dledger/example
+prune dledger/test
+
 # exclude pesky DS_Store files and compiled python scripts
 global-exclude .DS_Store *.py[co]
