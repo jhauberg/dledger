@@ -369,14 +369,25 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     locale.setlocale(locale.LC_NUMERIC, prev)
 
     transaction_text_components = transaction_text.split(' ')
-    transaction_currency_component = transaction_text_components[-1]
 
-    dividend_symbol = transaction_currency_component.split('/')[0]
-    dividend_rate = transaction_text_components[-2]
+    if transaction_text_components[-1].startswith('/'):
+        # hack: the transaction text is sometimes split like "USD /SH"
+        dividend_symbol = transaction_text_components[-2]
+        dividend_rate = transaction_text_components[-3]
+    else:
+        dividend_symbol = transaction_text_components[-1].split('/')[0]
+        dividend_rate = transaction_text_components[-2]
+
+    # hack: for this number, it is typically represented using period for decimals
+    #       but occasionally a comma sneaks in- we assume that is an error and correct it
+    dividend_rate = dividend_rate.replace(',', '.')
 
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
-    dividend_rate = locale.atof(dividend_rate)
+    try:
+        dividend_rate = locale.atof(dividend_rate)
+    except ValueError:
+        raise_parse_error(f'unexpected transaction text', location)
 
     locale.setlocale(locale.LC_NUMERIC, prev)
 
