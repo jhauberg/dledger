@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report         <journal>... [--period=<interval>] [-V]
-                                           [--monthly | --quarterly | --annual |
-                                            --rolling | --weighted | --summed]
-                                           [--without-forecast]
-                                           [--in-currency=<symbol>]
-       dledger chart <ticker> <journal>... [--period=<interval>] [-V]
-                                           [--without-forecast]
-       dledger stats          <journal>... [--period=<interval>] [-V]
-       dledger print          <journal>... [--condensed] [-V]
-       dledger convert        <file>...    [--type=<name>] [-V]
-                                           [--output=<journal>]
+usage: dledger report  <journal>... [--period=<interval>] [-V]
+                                    [--monthly | --quarterly | --annual |
+                                     --rolling | --weighted | --summed]
+                                    [--without-forecast]
+                                    [--by-ticker=<ticker>]
+                                    [--in-currency=<symbol>]
+       dledger stats   <journal>... [--period=<interval>] [-V]
+       dledger print   <journal>... [--condensed] [-V]
+       dledger convert <file>...    [--type=<name>] [-V]
+                                    [--output=<journal>]
 
 OPTIONS:
      --type=<name>            Specify type of transaction data [default: journal]
      --output=<journal>       Specify journal filename [default: ledger.journal]
-  -p --period=<interval>      Specify reporting date interval
-     --in-currency=<symbol>   Show income as if exchanged to given currency
+  -d --period=<interval>      Specify reporting date interval
+     --by-ticker=<ticker>     Show only income by ticker
+     --in-currency=<symbol>   Show income as if exchanged to currency
   -y --annual                 Show income by year
   -q --quarterly              Show income by quarter
   -m --monthly                Show income by month
@@ -142,6 +142,11 @@ def main() -> None:
     if exchange_symbol is not None:
         transactions = convert_to_currency(transactions, symbol=exchange_symbol)
 
+    ticker = args['--by-ticker']
+
+    if ticker is not None:
+        transactions = list(r for r in transactions if r.ticker == ticker)
+
     if args['report']:
         if args['--weighted']:
             print_simple_weight_by_ticker(transactions)
@@ -157,14 +162,6 @@ def main() -> None:
             print_simple_quarterly_report(transactions)
         else:
             print_simple_report(transactions)
-
-        sys.exit(0)
-
-    if args['chart']:
-        ticker = args['<ticker>']
-        transactions = list(r for r in transactions if r.ticker == ticker)
-
-        print_simple_chart(transactions)
 
         sys.exit(0)
 
