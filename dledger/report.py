@@ -2,15 +2,14 @@ import locale
 import os
 
 from datetime import datetime, date
-from decimal import Decimal
 
 from dledger.journal import Transaction, Distribution
-from dledger.formatutil import format_amount
+from dledger.formatutil import format_amount, most_decimal_places
 from dledger.printutil import colored, COLOR_NEGATIVE, COLOR_MARKED
 from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import FutureTransaction, symbol_conversion_factors
 from dledger.record import (
-    income, yearly, monthly, amount_per_share, symbols,
+    income, yearly, monthly, symbols,
     tickers, by_ticker, latest, earliest, before, after
 )
 
@@ -193,15 +192,9 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
 def print_simple_chart(records: List[Transaction]):
     today = datetime.today().date()
 
-    dividend_decimal_places: Optional[int] = None
-
-    for record in (r for r in records if r.dividend is not None):
-        if isinstance(record, FutureTransaction):
-            continue
-        d = Decimal(f'{record.dividend.value}')
-        places = abs(d.as_tuple().exponent)
-        if dividend_decimal_places is None or places > dividend_decimal_places:
-            dividend_decimal_places = places
+    dividend_decimal_places: Optional[int] = most_decimal_places(
+        (r.dividend.value for r in records if
+         r.dividend is not None and not isinstance(r, FutureTransaction)))
 
     for transaction in records:
         amount = format_amount(transaction.amount.value, trailing_zero=False)

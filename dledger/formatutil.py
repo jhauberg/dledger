@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from typing import Optional, Iterable
+
 
 def format_amount(amount: float, *,
                   trailing_zero: bool = True,
@@ -34,3 +36,15 @@ def format_amount(amount: float, *,
 
     # finally format using 'n', providing grouping/separators matching current locale
     return f'{d:n}'
+
+
+def most_decimal_places(values: Iterable[float]) -> Optional[int]:
+    decimal_places: Optional[int] = None
+
+    for value in values:
+        d = Decimal(f'{value}')  # note wrapping as a string to truncate the float
+        places = abs(d.as_tuple().exponent)
+        if decimal_places is None or places > decimal_places:
+            decimal_places = places
+
+    return decimal_places
