@@ -2,8 +2,7 @@
 
 """
 usage: dledger report  <journal>... [--period=<interval>] [-V]
-                                    [--monthly | --quarterly | --annual |
-                                     --rolling | --weighted | --summed]
+                                    [--monthly | --quarterly | --annual | --rolling | --weighted | --summed | --charted]
                                     [--without-forecast]
                                     [--by-ticker=<ticker>]
                                     [--in-currency=<symbol>]
@@ -24,6 +23,7 @@ OPTIONS:
      --rolling                Show income by trailing 12-month totals
      --weighted               Show income by weight
      --summed                 Show income by totals
+     --charted                Show dividend and position for each transaction
      --without-forecast       Show only realized income
   -V --verbose                Show diagnostic messages
   -h --help                   Show program help
@@ -46,7 +46,6 @@ from dledger.report import (
     print_simple_rolling_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
     print_simple_sum_report, print_simple_weight_by_ticker,
-    print_simple_chart,
     print_stats
 )
 from dledger.projection import (
@@ -161,7 +160,7 @@ def main() -> None:
         elif args['--quarterly']:
             print_simple_quarterly_report(transactions)
         else:
-            print_simple_report(transactions)
+            print_simple_report(transactions, detailed=args['--charted'])
 
         sys.exit(0)
 

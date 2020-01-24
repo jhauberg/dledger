@@ -13,7 +13,7 @@ from dledger.record import (
     tickers, by_ticker, latest, earliest, before, after
 )
 
-from typing import List, Optional
+from typing import List, Dict, Optional
 
 
 def print_simple_annual_report(records: List[Transaction]):
@@ -132,9 +132,18 @@ def print_simple_quarterly_report(records: List[Transaction]):
             print()
 
 
-def print_simple_report(records: List[Transaction]):
+def print_simple_report(records: List[Transaction], *, detailed: bool = False):
     today = datetime.today().date()
+    dividend_decimal_places: Dict[str, Optional[int]] = dict()
+    if detailed:
+        for ticker in tickers(records):
+            dividend_decimal_places[ticker] = most_decimal_places(
+                (r.dividend.value for r in records if
+                 r.ticker == ticker and
+                 r.dividend is not None))
     for transaction in records:
+        should_colorize_expired_transaction = False
+
         amount = format_amount(transaction.amount.value, trailing_zero=False)
         amount = transaction.amount.format % amount
 
@@ -142,16 +151,35 @@ def print_simple_report(records: List[Transaction]):
 
         if isinstance(transaction, FutureTransaction):
             if transaction.date < today:
-                print(colored(f'~ {amount.rjust(18)}  ! {d} {transaction.ticker}', COLOR_NEGATIVE))
+                should_colorize_expired_transaction = True
+                line = f'~ {amount.rjust(18)}  ! {d} {transaction.ticker.ljust(9)}'
             else:
-                print(f'~ {amount.rjust(18)}  < {d} {transaction.ticker}')
+                line = f'~ {amount.rjust(18)}  < {d} {transaction.ticker.ljust(9)}'
         else:
             if transaction.kind is Distribution.INTERIM:
-                print(f'{amount.rjust(20)}  ^ {d} {transaction.ticker}')
+                line = f'{amount.rjust(20)}  ^ {d} {transaction.ticker.ljust(9)}'
             elif transaction.kind is Distribution.SPECIAL:
-                print(f'{amount.rjust(20)}  * {d} {transaction.ticker}')
+                line = f'{amount.rjust(20)}  * {d} {transaction.ticker.ljust(9)}'
             else:
-                print(f'{amount.rjust(20)}    {d} {transaction.ticker}')
+                line = f'{amount.rjust(20)}    {d} {transaction.ticker.ljust(9)}'
+
+        if detailed:
+            if transaction.dividend is not None:
+                dividend = format_amount(transaction.dividend.value,
+                                         trailing_zero=False,
+                                         places=dividend_decimal_places[transaction.ticker])
+                dividend = transaction.dividend.format % dividend
+
+                line = f'{line} {dividend.rjust(12)}'
+
+            position = f'({transaction.position})'.rjust(10)
+
+            line = f'{line} {position}'
+
+        if should_colorize_expired_transaction:
+            line = colored(line, COLOR_NEGATIVE)
+
+        print(line)
 
 
 def print_simple_weight_by_ticker(records: List[Transaction]):
@@ -187,49 +215,6 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
                 print(f'~ {amount.rjust(18)}    {pct.rjust(7)}    {ticker}')
             else:
                 print(f'{amount.rjust(20)}    {pct.rjust(7)}    {ticker}')
-
-
-def print_simple_chart(records: List[Transaction]):
-    today = datetime.today().date()
-
-    dividend_decimal_places: Optional[int] = most_decimal_places(
-        (r.dividend.value for r in records if
-         r.dividend is not None and not isinstance(r, FutureTransaction)))
-
-    for transaction in records:
-        amount = format_amount(transaction.amount.value, trailing_zero=False)
-        amount = transaction.amount.format % amount
-
-        d = transaction.date.strftime('%Y/%m/%d')
-
-        should_colorize_expired_transaction = False
-        if isinstance(transaction, FutureTransaction):
-            if transaction.date < today:
-                line = f'~ {amount.rjust(18)}  ! {d}'
-                should_colorize_expired_transaction = True
-            else:
-                line = f'~ {amount.rjust(18)}  < {d}'
-        else:
-            if transaction.kind is Distribution.INTERIM:
-                line = f'{amount.rjust(20)}  ^ {d}'
-            elif transaction.kind is Distribution.SPECIAL:
-                line = f'{amount.rjust(20)}  * {d}'
-            else:
-                line = f'{amount.rjust(20)}    {d}'
-
-        if transaction.dividend is not None:
-            dividend = format_amount(transaction.dividend.value, trailing_zero=False,
-                                     places=dividend_decimal_places)
-            dividend = transaction.dividend.format % dividend
-
-            line = f'{line} {dividend.rjust(12)}'
-
-        line = f'{line} / {transaction.position}'
-
-        if should_colorize_expired_transaction:
-            line = colored(line, COLOR_NEGATIVE)
-
-        print(line)
 
 
 def print_simple_sum_report(records: List[Transaction]) -> None:
@@ -327,7 +312,8 @@ def print_simple_rolling_report(records: List[Transaction]):
                 else:
                     print(line)
 
-        future_transactions = [r for r in matching_transactions if isinstance(r, FutureTransaction) if r.date >= today]
+        future_transactions = [r for r in matching_transactions if
+                               isinstance(r, FutureTransaction) and r.date >= today]
         if len(future_transactions) > 0:
             total = income(future_transactions)
             amount = format_amount(total, trailing_zero=False)
