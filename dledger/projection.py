@@ -6,6 +6,7 @@ from statistics import multimode, fmean  # type: ignore
 
 from dledger.journal import Transaction, Distribution, Amount
 from dledger.dateutil import last_of_month
+from dledger.formatutil import most_decimal_places
 from dledger.record import (
     by_ticker, tickers, trailing, latest, monthly_schedule, dividends, deltas,
     amount_per_share, amount_conversion_factor, intervals, pruned, symbols
@@ -363,6 +364,11 @@ def estimated_transactions(records: List[Transaction]) \
                     highest_dividend = max(divs) * future_position
                     lowest_dividend = min(divs) * future_position
                     future_dividend = fmean(divs)
+                    decimal_places = most_decimal_places(divs)
+                    # truncate/round off to fit longest decimal place count observed
+                    # in all of the real transactions
+                    s = f'{future_dividend:.{decimal_places}f}'
+                    future_dividend = float(s)
                     future_amount = future_dividend * future_position
                     future_amount = future_amount * conversion_factor
                     future_amount_range = (Amount(lowest_dividend * conversion_factor,

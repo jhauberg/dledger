@@ -152,16 +152,16 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         if isinstance(transaction, FutureTransaction):
             if transaction.date < today:
                 should_colorize_expired_transaction = True
-                line = f'~ {amount.rjust(18)}  ! {d} {transaction.ticker.ljust(9)}'
+                line = f'~ {amount.rjust(18)}  ! {d} {transaction.ticker.ljust(8)}'
             else:
-                line = f'~ {amount.rjust(18)}  < {d} {transaction.ticker.ljust(9)}'
+                line = f'~ {amount.rjust(18)}  < {d} {transaction.ticker.ljust(8)}'
         else:
             if transaction.kind is Distribution.INTERIM:
-                line = f'{amount.rjust(20)}  ^ {d} {transaction.ticker.ljust(9)}'
+                line = f'{amount.rjust(20)}  ^ {d} {transaction.ticker.ljust(8)}'
             elif transaction.kind is Distribution.SPECIAL:
-                line = f'{amount.rjust(20)}  * {d} {transaction.ticker.ljust(9)}'
+                line = f'{amount.rjust(20)}  * {d} {transaction.ticker.ljust(8)}'
             else:
-                line = f'{amount.rjust(20)}    {d} {transaction.ticker.ljust(9)}'
+                line = f'{amount.rjust(20)}    {d} {transaction.ticker.ljust(8)}'
 
         if detailed:
             if transaction.dividend is not None:
@@ -172,7 +172,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
 
                 line = f'{line} {dividend.rjust(12)}'
 
-            position = f'({transaction.position})'.rjust(10)
+            position = f'({transaction.position})'.rjust(8)
 
             line = f'{line} {position}'
 
