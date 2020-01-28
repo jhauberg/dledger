@@ -15,6 +15,8 @@ from enum import Enum
 
 SUPPORTED_TYPES = ['journal', 'nordnet']
 
+IMPORT_EX_DATE = False  # whether to import ex- or payout date when reading non-journal transactions
+
 
 class Distribution(Enum):
     FINAL = 0
@@ -338,7 +340,7 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     if len(record) < 12:
         raise_parse_error(f'unexpected number of columns ({len(record)} > 12)', location)
 
-    date_value = str(record[3]).strip()
+    date_value = str(record[2 if IMPORT_EX_DATE else 3]).strip()
     ticker = str(record[5]).strip()
     position_value = str(record[8]).strip()
     dividend_value = str(record[9]).strip()
