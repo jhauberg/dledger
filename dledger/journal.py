@@ -35,12 +35,13 @@ class Amount:
 class Transaction:
     """ Represents a transaction. """
 
-    date: date
+    date: date  # for order and display; no assumption on whether this is payout, ex-date or other
     ticker: str
     position: int
     amount: Optional[Amount] = None
     dividend: Optional[Amount] = None
     kind: Distribution = Distribution.FINAL
+    payout_date: Optional[date] = None  # to determine exchange rate if transaction date is earlier
 
     def __lt__(self, other):
         return self.date < other.date
@@ -71,12 +72,19 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         -> List[Transaction]:
     journal_entries = []
 
+    # note that this pattern will initially let inconsistent formatting pass (e.g. 2019/12-1)
+    # but will eventually raise a formatting error later on (it is faster to skip validation
+    # through parse_datestamp at this point)
     transaction_start = re.compile(r'[0-9]+[-/][0-9]+[-/][0-9]+')
 
     with open(path, newline='', encoding=encoding) as file:
-        starting_line_number = -1
+        starting_line_number = -1  # todo: why -1?
         line_number = 0
         lines: List[str] = []
+        # start reading, line by line; each line read representing part of the current transaction
+        # once we encounter a line starting with what looks like a date, we take that to indicate
+        # the beginning of next transaction and parse all lines read up to this point (excluding
+        # that line), and then repeat until end of file
         while line := file.readline():
             line_number += 1
             # remove any surrounding whitespace
@@ -84,17 +92,16 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
             # strip any comment
             if '#' in line:
                 line = line[:line.index('#')]
-            # determine start of transaction
+            # determine start of next transaction
             if transaction_start.match(line) is not None:
                 if len(lines) > 0:
-                    # parse all lines read up to this point
+                    # parse all lines read up to this point (e.g. parse previous transaction)
                     journal_entries.append(read_journal_transaction(
                         lines, location=(path, starting_line_number)))
                     lines.clear()
                 starting_line_number = line_number
             if len(line) > 0:
                 lines.append(line)
-
         if len(lines) > 0:
             journal_entries.append(read_journal_transaction(
                 lines, location=(path, starting_line_number)))
@@ -106,8 +113,13 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     records: List[Transaction] = []
 
     for entry in journal_entries:
-        d, ticker, position, amount, dividend, kind, location = entry
+        d, d2, ticker, position, amount, dividend, kind, location = entry
         p, position_change_direction = position
+
+        if d2 is not None:
+            if d2 < d:
+                raise_parse_error(f'payout earlier than transaction ({d2} < {d})',
+                                  location=location)
 
         if amount is not None and dividend is not None:
             if amount.symbol is None and dividend.symbol is not None:
@@ -168,7 +180,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                               symbol=amount.symbol,
                               format=amount.format)
 
-        records.append(Transaction(d, ticker, p, amount, dividend, kind))
+        records.append(Transaction(d, ticker, p, amount, dividend, kind, payout_date=d2))
 
     # find all entries that only record a change in position
     position_change_entries = list(r for r in records if r.amount is None and r.dividend is None)
@@ -200,9 +212,21 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     if d > today:
         raise_parse_error(f'date set in future (\'{datestamp}\')', location)
     condensed_line = condensed_line[datestamp_end_index:].strip()
-    break_separators = ['(', '  ', '\t']
+    break_separators = ['(',   # position opener
+                        '[',   # secondary date opener
+                        '  ',  # manually spaced (or automatically spaced by newline)
+                        '\t']  # manually tabbed
     break_index = None
     try:
+        # note that by including [ as a breaker, we allow additional formatting options
+        # but it also requires any position () to always be the next component after ticker
+        # e.g. this format is allowed:
+        #   "2019/12/31 ABC [2020/01/15]"
+        # but this is not:
+        #   "2019/12/31 ABC [2020/01/15] (10)"
+        # it must instead be:
+        #   "2019/12/31 ABC (10) [2020/01/15]"
+        # (the secondary date is like a tag attached to the cash amount)
         break_index = min([condensed_line.index(sep) for sep in break_separators
                            if sep in condensed_line])
     except ValueError:
@@ -239,18 +263,21 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         condensed_line = condensed_line[break_index:].strip()
 
     if len(condensed_line) == 0:
-        return d, ticker, (position, position_change_direction), None, None, kind, location
+        return d, None, ticker, (position, position_change_direction), None, None, kind, location
 
     amount_components = condensed_line.split('@')
     dividend: Optional[Amount] = None
     if len(amount_components) > 1:
-        dividend_str = amount_components[1].strip()
+        dividend_str, dividend_date = split_secondary_date(amount_components[1].strip())
+        if dividend_date is not None:
+            raise_parse_error(f'secondary date applied to dividend', location)
         dividend = split_amount(dividend_str, location=location)
         if dividend.value <= 0:
             raise_parse_error(f'negative or zero dividend (\'{dividend.value}\')', location)
     amount: Optional[Amount] = None
+    d2: Optional[date] = None
     if len(amount_components) > 0:
-        amount_str = amount_components[0].strip()
+        amount_str, amount_datestamp = split_secondary_date(amount_components[0].strip())
         if len(amount_str) > 0:
             amount = split_amount(amount_str, location=location)
             if amount.value <= 0:
@@ -258,7 +285,22 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         else:
             if dividend is None:
                 raise_parse_error(f'missing amount', location)
-    return d, ticker, (position, position_change_direction), amount, dividend, kind, location
+        if amount_datestamp is not None:
+            try:
+                d2 = parse_datestamp(amount_datestamp, strict=True)
+            except ValueError:
+                raise_parse_error(f'invalid date format (\'{amount_datestamp}\')', location)
+    return d, d2, ticker, (position, position_change_direction), amount, dividend, kind, location
+
+
+def split_secondary_date(text: str) \
+        -> Tuple[str, Optional[str]]:
+    m = re.search(r'\[(.*)\]', text)  # match anything encapsulated by []
+    if m is None:
+        return text, None
+    d = m.group(1).strip()
+    text = text[:m.start()] + text[m.end():]
+    return text.strip(), d
 
 
 def split_amount(amount: str, *, location: Tuple[str, int]) \

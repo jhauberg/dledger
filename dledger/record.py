@@ -230,11 +230,15 @@ def earliest(records: Iterable[Transaction]) \
     return records[0] if len(records) > 0 else None
 
 
-def latest(records: Iterable[Transaction]) \
+def latest(records: Iterable[Transaction], *, by_payout: bool = False) \
         -> Optional[Transaction]:
     """ Return the latest dated record in a set of records. """
 
-    records = sorted(records)
+    if by_payout:
+        records = sorted(records, key=lambda r: (r.payout_date if r.payout_date is not None else
+                                                 r.date))
+    else:
+        records = sorted(records)
 
     return records[-1] if len(records) > 0 else None
 

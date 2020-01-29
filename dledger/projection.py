@@ -526,7 +526,7 @@ def symbol_conversion_factors(records: List[Transaction]) \
             latest_transaction = latest(
                 (r for r in transactions if (r.amount.symbol == symbol and
                                              r.dividend is not None and
-                                             r.dividend.symbol == other_symbol)))
+                                             r.dividend.symbol == other_symbol)), by_payout=True)
 
             if latest_transaction is None:
                 continue

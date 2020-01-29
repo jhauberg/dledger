@@ -12,3 +12,12 @@
                          # the estimate record by putting in the amount received
 
                          # this transforms the record from estimate to concrete transaction
+
+# if receiving cash in a different currency, this process has one issue:
+# the exchange rate will be determined from the day you earned the cash (ex-date),
+# rather than the day you actually received the cash (and likely had an exchange happen)
+# to solve this problem, the cash component of the transaction can be augmented
+# with a date that represents the payout date, like so:
+
+# 2019/02/08 AAPL (100)
+#   490.33 kr [2019/02/14] @ $ 0.73    # note the currency and the date encapsulated by []
