@@ -178,6 +178,8 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
 
         if should_colorize_expired_transaction:
             line = colored(line, COLOR_NEGATIVE)
+        elif transaction.date == today:
+            line = colored(line, COLOR_MARKED)
 
         print(line)
 
