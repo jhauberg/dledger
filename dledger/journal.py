@@ -182,16 +182,30 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
         records.append(Transaction(d, ticker, p, amount, dividend, kind, payout_date=d2))
 
+    records = remove_redundant_journal_transactions(records)
+
+    return records
+
+
+def remove_redundant_journal_transactions(records: List[Transaction]) \
+        -> List[Transaction]:
     # find all entries that only record a change in position
-    position_change_entries = list(r for r in records if r.amount is None and r.dividend is None)
-    # at this point we no longer need to keep most of these around, as we have already
-    # used them to infer and determine the correct position for each transaction
-    for entry in position_change_entries:
-        other_entries = [r for r in records if entry.ticker == r.ticker]
-        latest_entry = other_entries[-1]  # assuming already sorted
-        if entry != latest_entry:
-            # remove it unless it happens to be the latest record
-            records.remove(entry)
+    position_entries = list(r for r in records if r.amount is None and r.dividend is None)
+
+    if len(position_entries) == 0:
+        return records
+
+    # find all realized transactions (e.g. cash received or earned)
+    realized_entries = list(r for r in records if r.amount is not None or r.dividend is not None)
+
+    if len(realized_entries) > 0:
+        latest_entry = realized_entries[-1]
+        # at this point we no longer need to keep most of the position entries around, as we have
+        # already used them to infer and determine the correct position for each realized entry
+        for entry in position_entries:
+            # so each position entry dated prior to a realized entry is redundant and can be removed
+            if entry.date < latest_entry.date:
+                records.remove(entry)
 
     return records
 
