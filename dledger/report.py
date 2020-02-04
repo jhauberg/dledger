@@ -171,6 +171,8 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                 dividend = transaction.dividend.format % dividend
 
                 line = f'{line} {dividend.rjust(12)}'
+            else:
+                line = f'{line} ' + (' ' * 12)
 
             position = f'({transaction.position})'.rjust(8)
 
