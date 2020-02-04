@@ -8,7 +8,7 @@ from dledger.journal import Transaction, Distribution, Amount
 from dledger.dateutil import last_of_month
 from dledger.formatutil import most_decimal_places
 from dledger.record import (
-    by_ticker, tickers, trailing, latest, monthly_schedule, dividends, deltas,
+    by_ticker, tickers, trailing, latest, before, monthly_schedule, dividends, deltas,
     amount_per_share, amount_conversion_factor, intervals, pruned, symbols
 )
 
@@ -308,10 +308,6 @@ def estimated_transactions(records: List[Transaction]) \
         if latest_transaction is None:
             continue
 
-        # todo: this assertion is only needed to satisfy mypy; it seems to me that if we've
-        #       already weeded out records with None amount, this shouldn't be necessary...
-        #assert latest_transaction.amount is not None
-
         sched = estimated_schedule(transactions, latest_transaction)
 
         scheduled_months = sched.months
@@ -330,6 +326,17 @@ def estimated_transactions(records: List[Transaction]) \
         while len(scheduled_records) < len(scheduled_months):
             future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
                                          timeframe=future_timeframe)
+
+            # double-check that position is not closed in timeframe leading up to future_date
+            latest_record = latest(before(by_ticker(records, ticker), future_date))
+
+            assert latest_record is not None
+
+            future_position = latest_record.position
+
+            if not future_position > 0:
+                # don't project closed positions
+                continue
 
             reference_records = trailing(
                 by_ticker(transactions, ticker), since=future_date, months=12)
@@ -478,7 +485,27 @@ def future_transactions(records: List[Transaction]) \
         next_date = next_scheduled_date(transaction.date, [transaction.date.month])
         future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.date))
 
+        # we must double-check that the position has not been closed in the timeframe leading
+        # up to the projected date; for example, this sequence of transactions should not
+        # result in a forecasted transaction:
+        #    2019/01/20 ABC (10)  $ 1
+        #    2020/01/19 ABC (0)
+        #    -- no forecasted transaction here, because position was closed
+        #    2020/02/01 ABC (10)
+        # note that the final buy transaction has to be dated later than projected_date()
+        # (in this case 2020/01/31)
+        latest_record = latest(before(by_ticker(records, transaction.ticker), future_date))
+
+        assert latest_record is not None
+
+        future_position = latest_record.position
+
+        if not future_position > 0:
+            # don't project closed positions
+            continue
+
         if transaction.kind == Distribution.INTERIM:
+            # todo: still ramp, but using past interim dividends
             future_dividend = transaction.dividend
         else:
             future_dividend = next_linear_dividend(matching_transactions)
