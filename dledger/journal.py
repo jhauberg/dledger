@@ -44,7 +44,14 @@ class Transaction:
     payout_date: Optional[date] = None  # to determine exchange rate if transaction date is earlier
 
     def __lt__(self, other):
-        return self.date < other.date
+        # sort by primary date and always put buy/sell transactions later if on same date
+        # e.g.  2019/01/01 ABC (+10)
+        #       2019/01/01 ABC (10)  $ 1
+        #   =>
+        #       2019/01/01 ABC (10)  $ 1
+        #       2019/01/01 ABC (+10)
+        return (self.date, self.amount is None and self.dividend is None) < \
+               (other.date, other.amount is None and other.dividend is None)
 
 
 def read(path: str, kind: str) \
@@ -108,7 +115,9 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
     # transactions are not necessarily ordered by date in a journal
     # so they must be sorted prior to inferring positions/currencies
-    journal_entries = sorted(journal_entries, key=lambda r: r[0])
+    # note that position change entries are always sorted to occur *after*
+    # any realized transaction on the same date (see Transaction.__lt__)
+    journal_entries = sorted(journal_entries, key=lambda r: (r[0], r[4] is None and r[5] is None))
 
     records: List[Transaction] = []
 
