@@ -189,23 +189,33 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
 def remove_redundant_journal_transactions(records: List[Transaction]) \
         -> List[Transaction]:
-    # find all entries that only record a change in position
-    position_entries = list(r for r in records if r.amount is None and r.dividend is None)
+    for ticker in set([record.ticker for record in records]):
+        recs = list(r for r in records if r.ticker == ticker)
+        # find all entries that only record a change in position
+        position_entries = list(r for r in recs if r.amount is None and r.dividend is None)
 
-    if len(position_entries) == 0:
-        return records
+        if len(position_entries) == 0:
+            continue
 
-    # find all realized transactions (e.g. cash received or earned)
-    realized_entries = list(r for r in records if r.amount is not None or r.dividend is not None)
+        # find all realized transactions (e.g. cash received or earned)
+        realized_entries = list(r for r in recs if r.amount is not None or r.dividend is not None)
 
-    if len(realized_entries) > 0:
-        latest_entry = realized_entries[-1]
-        # at this point we no longer need to keep most of the position entries around, as we have
-        # already used them to infer and determine the correct position for each realized entry
-        for entry in position_entries:
-            # so each position entry dated prior to a realized entry is redundant and can be removed
-            if entry.date < latest_entry.date:
-                records.remove(entry)
+        if len(realized_entries) > 0:
+            latest_entry = realized_entries[-1]
+            latest_pos_entry = position_entries[-1]
+            # at this point we no longer need to keep most of the position entries around, as we
+            # have already used them to infer and determine position for each realized entry
+            for entry in position_entries:
+                # so each position entry dated prior to a realized entry is basically redundant
+                is_redundant = False
+                if entry.date < latest_entry.date:
+                    is_redundant = True
+                elif entry.date == latest_entry.date and entry.position == latest_entry.position:
+                    is_redundant = True
+                elif entry == latest_pos_entry and entry.position == latest_entry.position:
+                    is_redundant = True
+                if is_redundant:
+                    records.remove(entry)
 
     return records
 
