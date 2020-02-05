@@ -125,11 +125,6 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         d, d2, ticker, position, amount, dividend, kind, location = entry
         p, position_change_direction = position
 
-        if d2 is not None:
-            if d2 < d:
-                raise_parse_error(f'payout earlier than transaction ({d2} < {d})',
-                                  location=location)
-
         if amount is not None and dividend is not None:
             if amount.symbol is None and dividend.symbol is not None:
                 amount = Amount(amount.value,
