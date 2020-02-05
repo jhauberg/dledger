@@ -163,6 +163,12 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             else:
                 line = f'{amount.rjust(20)}    {d} {transaction.ticker.ljust(8)}'
 
+        if transaction.payout_date is not None:
+            pd = transaction.payout_date.strftime('%Y/%m/%d')
+            line = f'{line} [{pd}]'
+        else:
+            line = f'{line} ' + (' ' * 12)
+
         if detailed:
             if transaction.dividend is not None:
                 dividend = format_amount(transaction.dividend.value,
