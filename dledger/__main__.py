@@ -2,7 +2,7 @@
 
 """
 usage: dledger report  <journal>... [--period=<interval>] [-V]
-                                    [--monthly | --quarterly | --annual | --rolling | --weighted | --summed]
+                                    [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
                                     [--without-forecast]
                                     [--by-ticker=<ticker>]
                                     [--in-currency=<symbol>]
@@ -15,15 +15,15 @@ OPTIONS:
      --type=<name>            Specify type of transaction data [default: journal]
      --output=<journal>       Specify journal filename [default: ledger.journal]
   -d --period=<interval>      Specify reporting date interval
-     --by-ticker=<ticker>     Show only income by ticker
+     --without-forecast       Don't include forecasted transactions
+     --by-ticker=<ticker>     Show income by ticker (exclusively)
      --in-currency=<symbol>   Show income as if exchanged to currency
   -y --annual                 Show income by year
   -q --quarterly              Show income by quarter
   -m --monthly                Show income by month
-     --rolling                Show income by trailing 12-month totals
-     --weighted               Show income by weight
-     --summed                 Show income by totals
-     --without-forecast       Show only realized income
+     --trailing               Show income by rolling trailing 12-month totals
+     --weight                 Show income by weight (per ticker)
+     --sum                    Show income by totals
   -V --verbose                Show diagnostic messages
   -h --help                   Show program help
   -v --version                Show program version
@@ -146,11 +146,11 @@ def main() -> None:
         transactions = list(r for r in transactions if r.ticker == ticker)
 
     if args['report']:
-        if args['--weighted']:
+        if args['--weight']:
             print_simple_weight_by_ticker(transactions)
-        elif args['--summed']:
+        elif args['--sum']:
             print_simple_sum_report(transactions)
-        elif args['--rolling']:
+        elif args['--trailing']:
             print_simple_rolling_report(transactions)
         elif args['--annual']:
             print_simple_annual_report(transactions)
