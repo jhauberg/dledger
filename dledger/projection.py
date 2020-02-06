@@ -261,7 +261,7 @@ def scheduled_transactions(records: List[Transaction],
 
         scheduled.append(future_record)
 
-    return sorted(scheduled, key=lambda r: (r.date, r.ticker))  # sort by date and ticker
+    return sorted(scheduled)
 
 
 def estimated_schedule(records: List[Transaction], record: Transaction) \
