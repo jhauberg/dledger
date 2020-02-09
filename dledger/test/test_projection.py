@@ -453,6 +453,8 @@ def test_future_transactions():
 
     futures = future_transactions(records)
 
+    # only transactions that match in currency will be projected
+    # because of that we only expect 1 in this case
     assert len(futures) == 1
     assert futures[0].date == date(2020, 7, 15)
 
@@ -494,6 +496,24 @@ def test_estimated_transactions():
     assert len(estimations) == 2
     assert estimations[0].date == date(2021, 3, 31)
     assert estimations[1].date == date(2021, 12, 31)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100, symbol='$')),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100, symbol='$')),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100, symbol='kr'))
+    ]
+
+    estimations = estimated_transactions(records)
+
+    # varying currencies should not have an effect on the resulting number of projections
+    # (e.g. it's not limiting like future_transactions())
+    # it does affect the estimated amount, however, as that will only ever be based upon
+    # the latest transaction (and all previous transactions of matching symbols)
+    assert len(estimations) == 4
+    assert estimations[0].date == date(2019, 12, 15)
+    assert estimations[1].date == date(2020, 3, 15)
+    assert estimations[2].date == date(2020, 6, 15)
+    assert estimations[3].date == date(2020, 9, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -568,7 +588,7 @@ def test_scheduled_transactions():
 
     # the PEP case where payouts are [3, 6, 9, 1], but until a january transaction
     # has been recorded, january will be forecasted as a december payout
-    scheduled = scheduled_transactions(records, since=date(2020, 1, 10))
+    scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
 
     assert len(scheduled) == 4
     assert scheduled[0].date == date(2019, 12, 15)
@@ -585,6 +605,70 @@ def test_scheduled_transactions():
 
     assert len(scheduled) == 4
     assert scheduled[0].date == date(2020, 3, 15)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 12, 1), 'ABC', 1)  # dated in the future
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
+
+    # todo:
+    # in this case we'd probably expect the forecast guess at 2019/12/15
+    # to be filtered out because that "slot" has been filled manually?
+    # (2019/12/15 <- e.g. this one
+    #  2020/03/15,
+    #  2020/09/15,
+    #  2020/12/15)
+    assert len(scheduled) == 3
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 12, 1), 'ABC', 1),  # dated in the future
+        Transaction(date(2020, 3, 1), 'ABC', 1),  # dated in the future
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
+
+    assert len(scheduled) == 2
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 11, 1), 'ABC', 1)  # dated in the future
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
+
+    # todo: estimates transaction for 2019/12, which we probably don't want?
+    assert len(scheduled) == 3
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 12, 1), 'ABC', 1, Amount(100)),
+        # note february instead of march; i.e. less than 12m between
+        Transaction(date(2020, 2, 28), 'ABC', 1, Amount(100)),  # dated today
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 2, 28))
+
+    # todo:
+    # in this case, 12 months have not passed since the record in march
+    # so we end up with 5 projections- this is probably not what we'd expect
+    # (we would probably expect 4 projections:
+    #  2020/03/15 <- e.g. without this one
+    #  2020/06/15,
+    #  2020/09/15,
+    #  2020/12/15,
+    #  2021/02/15)
+    assert len(scheduled) == 4
 
 
 def test_conversion_factors():
