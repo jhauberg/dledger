@@ -1,11 +1,10 @@
 from datetime import datetime, date
-
 from dataclasses import dataclass
 
 from statistics import multimode, fmean  # type: ignore
 
 from dledger.journal import Transaction, Distribution, Amount
-from dledger.dateutil import last_of_month
+from dledger.dateutil import last_of_month, months_between
 from dledger.formatutil import most_decimal_places
 from dledger.record import (
     by_ticker, tickers, trailing, latest, before, monthly_schedule, dividends, deltas,
@@ -237,30 +236,52 @@ def scheduled_transactions(records: List[Transaction],
                            *,
                            since: date = datetime.today().date()) \
         -> List[FutureTransaction]:
-    # take a sample set of only latest 12 months
-    sample_records = trailing(records, since=since, months=12)
-    # don't include special dividends
-    sample_records = list(r for r in sample_records if r.kind is not Distribution.SPECIAL)
-
-    # project current records by 1 year into the future
+    # take a sample set of latest 12 months on a per ticker basis
+    sample_records: List[Transaction] = []
+    for ticker in tickers(records):
+        # note that we sample all records, not just transactions
+        # as future_transactions/estimated_transactions require more knowledge
+        # todo: we can look into improving that so we do all the filtering in this function instead
+        recs = list(by_ticker(records, ticker))
+        # find the latest record and base trailing period from its date
+        latest_record = latest(recs)
+        assert latest_record is not None
+        future_position = latest_record.position
+        if not future_position > 0:
+            # don't project closed positions
+            continue
+        if months_between(latest_record.date, since) > 12:
+            # skip projections for this ticker entirely,
+            # as latest transaction is dated more than 12 months ago
+            continue
+        # otherwise, add the trailing 12 months of transactions by this ticker
+        sample_records.extend(
+            # todo: 11 months might be correct to avoid some difficult scenarios
+            trailing(records, since=latest_record.date, months=11))
+    # don't include special dividend transactions
+    sample_records = [r for r in sample_records if r.kind is not Distribution.SPECIAL]
+    # project sample records 1 year into the future
     futures = future_transactions(sample_records)
-    # project current records by 12-month schedule and frequency
+    # project sample records by 12-month schedule and frequency
     estimates = estimated_transactions(sample_records)
-
+    # base projections primarily on futures
     scheduled = futures
-
-    # bias toward futures, leaving estimates only to fill out gaps in schedule
+    # use estimates to fill out gaps in schedule
     for future_record in estimates:
+        # determine whether to use estimate to fill out gap by checking
+        # if a future already "occupies" this month
         duplicates = [r for r in scheduled
                       if r.ticker == future_record.ticker
                       and r.date.year == future_record.date.year
                       and r.date.month == future_record.date.month]
-
         if len(duplicates) > 0:
+            # it does, so skip this estimate
             continue
-
+        # it does not, so use this estimate to fill out gap
         scheduled.append(future_record)
-
+    # weed out projections in the past or later than 12 months into the future
+    scheduled = [r for r in scheduled if r.date >= since and months_between(r.date, since) <= 12]
+    # finally sort them by default transaction sorting rules
     return sorted(scheduled)
 
 
@@ -290,16 +311,6 @@ def estimated_transactions(records: List[Transaction]) \
     conversion_factors = symbol_conversion_factors(records)
 
     for ticker in tickers(records):
-        latest_record = latest(by_ticker(records, ticker))
-
-        assert latest_record is not None
-
-        future_position = latest_record.position
-
-        if not future_position > 0:
-            # don't project closed positions
-            continue
-
         # weed out position-only records
         transactions = list(r for r in by_ticker(records, ticker) if r.amount is not None)
 
@@ -460,16 +471,6 @@ def future_transactions(records: List[Transaction]) \
 
     for transaction in transactions:
         assert transaction.amount is not None
-
-        latest_record = latest(by_ticker(records, transaction.ticker))
-
-        assert latest_record is not None
-
-        future_position = latest_record.position
-
-        if not future_position > 0:
-            # don't project closed positions
-            continue
 
         matching_transactions = list(by_ticker(transactions, transaction.ticker))
         latest_transaction = latest(matching_transactions)

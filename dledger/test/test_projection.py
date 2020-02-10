@@ -581,6 +581,79 @@ def test_estimated_transactions():
 
 def test_scheduled_transactions():
     records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 9, 1), 'ABC', 1, Amount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
+
+    assert len(scheduled) == 0
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 8, 1))
+
+    assert len(scheduled) == 1
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 9, 1))
+
+    assert len(scheduled) == 1
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 2), 'ABC', 1, Amount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 9, 1))
+
+    assert len(scheduled) == 1
+
+    records = [
+        Transaction(date(2018, 1, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 2, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 4, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 5, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 7, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 8, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 9, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 10, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 11, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 12, 1), 'ABC', 1, Amount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 1, 1))
+
+    assert len(scheduled) == 12
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),  # dated in future
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),  # dated in future
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100))  # dated in future
+    ]
+
+    # here, the trailing date range will be from 2018/09/01-2019/09/01
+    # which should result in only 1 forecast within the forward 12month
+    # range from the `since` date at 2019/01/01
+    scheduled = scheduled_transactions(records, since=date(2019, 1, 1))
+
+    assert len(scheduled) == 1
+    assert scheduled[0].date == date(2019, 12, 15)
+
+    records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
         Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
         Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100))
@@ -610,43 +683,87 @@ def test_scheduled_transactions():
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
         Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
         Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
-        Transaction(date(2019, 12, 1), 'ABC', 1)  # dated in the future
+        Transaction(date(2019, 12, 1), 'ABC', 1, Amount(100))  # dated in the future
     ]
 
     scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
 
-    # todo:
-    # in this case we'd probably expect the forecast guess at 2019/12/15
-    # to be filtered out because that "slot" has been filled manually?
-    # (2019/12/15 <- e.g. this one
-    #  2020/03/15,
-    #  2020/09/15,
-    #  2020/12/15)
     assert len(scheduled) == 3
+    assert scheduled[0].date == date(2020, 3, 15)  # because we have one prelim record for dec
+    assert scheduled[1].date == date(2020, 6, 15)
+    assert scheduled[2].date == date(2020, 9, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
         Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
         Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
-        Transaction(date(2019, 12, 1), 'ABC', 1),  # dated in the future
-        Transaction(date(2020, 3, 1), 'ABC', 1),  # dated in the future
+        Transaction(date(2019, 12, 1), 'ABC', 1, Amount(100)),  # dated in the future
+        Transaction(date(2020, 3, 1), 'ABC', 1, Amount(100)),  # dated in the future
     ]
 
     scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
 
     assert len(scheduled) == 2
+    assert scheduled[0].date == date(2020, 6, 15)
+    assert scheduled[1].date == date(2020, 9, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
         Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
         Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
-        Transaction(date(2019, 11, 1), 'ABC', 1)  # dated in the future
+        Transaction(date(2019, 11, 1), 'ABC', 1, Amount(100))  # dated in the future
     ]
 
     scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
 
-    # todo: estimates transaction for 2019/12, which we probably don't want?
     assert len(scheduled) == 3
+    assert scheduled[0].date == date(2020, 3, 15)
+    assert scheduled[1].date == date(2020, 6, 15)
+    assert scheduled[2].date == date(2020, 9, 15)
+
+    records = [
+        Transaction(date(2019, 3, 10), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 12, 1), 'ABC', 1, Amount(100)),
+        # note 5 days earlier than in the past; this leads to an additional projection
+        # since there's not more than 12m between; e.g. records sampled will range from:
+        #  2019/03/05 - 2020/03/05
+        Transaction(date(2020, 3, 5), 'ABC', 1, Amount(100)),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 3, 12))
+
+    assert len(scheduled) == 4
+
+    records = [
+        Transaction(date(2019, 3, 5), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 12, 1), 'ABC', 1, Amount(100)),
+        # if it was 5 days later, however, then it would be more than 12m and prove no issue
+        # e.g. records sampled will range from:
+        #  2019/03/10 - 2020/03/10
+        Transaction(date(2020, 3, 10), 'ABC', 1, Amount(100)),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 3, 12))
+
+    assert len(scheduled) == 4
+
+    records = [
+        Transaction(date(2019, 3, 10), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 12, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 3, 5), 'ABC', 1, Amount(100)),
+    ]
+
+    # no issue whether earliest record was dated later,
+    # because the earliest record is now out of the 12m period entirely
+    scheduled = scheduled_transactions(records, since=date(2020, 4, 1))
+
+    assert len(scheduled) == 4
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -659,16 +776,27 @@ def test_scheduled_transactions():
 
     scheduled = scheduled_transactions(records, since=date(2020, 2, 28))
 
-    # todo:
-    # in this case, 12 months have not passed since the record in march
-    # so we end up with 5 projections- this is probably not what we'd expect
-    # (we would probably expect 4 projections:
-    #  2020/03/15 <- e.g. without this one
-    #  2020/06/15,
-    #  2020/09/15,
-    #  2020/12/15,
-    #  2021/02/15)
     assert len(scheduled) == 4
+    assert scheduled[0].date == date(2020, 6, 15)
+
+    records = [
+        Transaction(date(2019, 1, 20), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 1, 19), 'ABC', 0)
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 1, 20))
+
+    assert len(scheduled) == 0
+
+    records = [
+        Transaction(date(2019, 1, 20), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 1, 19), 'ABC', 0),
+        Transaction(date(2020, 2, 1), 'ABC', 1)
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 1, 20))
+
+    assert len(scheduled) == 0
 
 
 def test_conversion_factors():
