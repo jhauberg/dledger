@@ -638,6 +638,15 @@ def test_scheduled_transactions():
     scheduled = scheduled_transactions(records, since=date(2019, 1, 1))
 
     assert len(scheduled) == 12
+    assert scheduled[0].date == date(2019, 1, 15)
+    # todo: unless scheduled_transactions use full trailing 12 months, the earliest record here
+    #       will be estimated instead of directly projected
+    #       this could be an acceptable compromise, but it is not the correct solution
+    assert scheduled[0].amount_range is None  # to verify that this is not projected by estimate
+    assert scheduled[1].date == date(2019, 2, 15)
+    assert scheduled[1].amount_range is None
+    # ...
+    assert scheduled[11].date == date(2019, 12, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),  # dated in future
