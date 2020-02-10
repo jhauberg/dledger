@@ -257,7 +257,7 @@ def scheduled_transactions(records: List[Transaction],
         # otherwise, add the trailing 12 months of transactions by this ticker
         sample_records.extend(
             # todo: 11 months might be correct to avoid some difficult scenarios
-            trailing(records, since=latest_record.date, months=11))
+            trailing(recs, since=latest_record.date, months=11))
     # don't include special dividend transactions
     sample_records = [r for r in sample_records if r.kind is not Distribution.SPECIAL]
     # project sample records 1 year into the future
@@ -335,8 +335,8 @@ def estimated_transactions(records: List[Transaction]) \
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
-            future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
-                                         timeframe=future_timeframe)
+            next_date = next_scheduled_date(future_date, scheduled_months)
+            future_date = projected_date(next_date, timeframe=future_timeframe)
 
             # double-check that position is not closed in timeframe leading up to future_date
             latest_record = latest(before(by_ticker(records, ticker), future_date))
