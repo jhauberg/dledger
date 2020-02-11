@@ -225,6 +225,36 @@ def test_quarterly_frequency():
 
     assert frequency(records) == 3
 
+    records = [
+        Transaction(date(2019, 8, 29), 'ABC', 1),
+        Transaction(date(2019, 10, 31), 'ABC', 1),
+        Transaction(date(2020, 2, 6), 'ABC', 1)
+    ]
+
+    #assert frequency(records) == 3
+    # todo: note that this is a false-positive, we expect quarterly here
+    #       requires an additional transaction; see next
+    assert frequency(records) == 6
+
+    records = [
+        Transaction(date(2019, 5, 9), 'ABC', 1),  # additional
+        Transaction(date(2019, 8, 29), 'ABC', 1),
+        Transaction(date(2019, 10, 31), 'ABC', 1),
+        Transaction(date(2020, 2, 6), 'ABC', 1)
+    ]
+
+    assert frequency(records) == 3
+
+    records = [
+        Transaction(date(2019, 2, 7), 'ABC', 1),
+        Transaction(date(2019, 5, 9), 'ABC', 1),
+        Transaction(date(2019, 8, 29), 'ABC', 1),
+        Transaction(date(2019, 10, 31), 'ABC', 1),
+        Transaction(date(2020, 2, 6), 'ABC', 1)
+    ]
+
+    assert frequency(records) == 3
+
 
 def test_monthly_frequency():
     records = [
