@@ -256,8 +256,7 @@ def scheduled_transactions(records: List[Transaction],
             continue
         # otherwise, add the trailing 12 months of transactions by this ticker
         sample_records.extend(
-            # todo: 11 months might be correct to avoid some difficult scenarios
-            trailing(recs, since=latest_record.date, months=11))
+            trailing(recs, since=latest_record.date, months=12))
     # don't include special dividend transactions
     sample_records = [r for r in sample_records if r.kind is not Distribution.SPECIAL]
     # project sample records 1 year into the future
@@ -281,12 +280,23 @@ def scheduled_transactions(records: List[Transaction],
         scheduled.append(future_record)
     # weed out projections in the past or later than 12 months into the future
     scheduled = [r for r in scheduled if r.date >= since and months_between(r.date, since) <= 12]
+    for sample_record in sample_records:
+        # look for projections dated same month, or less than 15 days between a realized transaction
+        discards = [r for r in scheduled if r.ticker == sample_record.ticker and
+                    ((r.date.year == sample_record.date.year and r.date.month == sample_record.date.month) or
+                     (abs((r.date - sample_record.date).days) <= EARLY_LATE_THRESHOLD))]
+        # assuming these projections are incorrect, we discard them
+        # note that this method does have false-positive scenarios (see tests),
+        # but prefer less projections (pessimistic) over too many projections (optimistic)
+        for discarded_record in discards:
+            scheduled.remove(discarded_record)
     # finally sort them by default transaction sorting rules
     return sorted(scheduled)
 
 
 def estimated_schedule(records: List[Transaction], record: Transaction) \
         -> Schedule:
+    # todo: we should clean this up- don't filter out by period, caller can do that
     sample_records = trailing(by_ticker(records, record.ticker),
                               since=last_of_month(record.date), months=24)
 
