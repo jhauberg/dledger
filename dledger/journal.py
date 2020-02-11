@@ -236,29 +236,6 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
         raise_parse_error(f'invalid date format (\'{datestamp}\')', location)
-    today = datetime.today().date()
-    if d > today:
-        # a transaction dated in the future is not a problem per-se, but can cause projections
-        # to go out of whack. for example, assuming today=2019/02/01:
-        #     2018/03/01 ABC  $ 1
-        #     2018/06/01 ABC  $ 1
-        #     2018/09/01 ABC  $ 1
-        #     2018/12/01 ABC  $ 1
-        #     2019/02/30 ABC  @ $ 0.1  <- preliminary record (could be declared ex-date or whatever)
-        # projections/report:
-        #     ~ 2019/02/30 ABC  $ 1    <- not a projection, but the preliminary transaction
-        #     ~ 2019/03/15 ABC  $ 1
-        #     ~ 2019/06/15 ABC  $ 1
-        #     ~ 2019/09/15 ABC  $ 1
-        #     ~ 2019/12/15 ABC  $ 1
-        # note that in this case, i think the result we'd prefer is to "override" the
-        # projection dated 2019/03/15, because we've "filled out" that slot manually
-        # this is difficult to determine though (e.g. how do we know which projection to replace?)
-        # so, for now, this is simply just not allowed!
-        # note that even if a preliminary record is dated same month/day as the projection
-        # it would still not be filtered out (this could be done easily, but it doesn't solve the
-        # issue in more than that specific case)
-        raise_parse_error(f'date set in future (\'{datestamp}\')', location)
     condensed_line = condensed_line[datestamp_end_index:].strip()
     break_separators = ['(',   # position opener
                         '[',   # secondary date opener
