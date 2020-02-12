@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from statistics import multimode, fmean  # type: ignore
 
 from dledger.journal import Transaction, Distribution, Amount
-from dledger.dateutil import last_of_month, months_between
+from dledger.dateutil import last_of_month, months_between, in_months
 from dledger.formatutil import most_decimal_places
 from dledger.record import (
     by_ticker, tickers, trailing, latest, before, monthly_schedule, dividends, deltas,
@@ -279,7 +279,8 @@ def scheduled_transactions(records: List[Transaction],
         # it does not, so use this estimate to fill out gap
         scheduled.append(future_record)
     # weed out projections in the past or later than 12 months into the future
-    scheduled = [r for r in scheduled if r.date >= since and months_between(r.date, since) <= 12]
+    cutoff_date = in_months(since, months=12)
+    scheduled = [r for r in scheduled if cutoff_date >= r.date >= since]
     for sample_record in sample_records:
         if sample_record.amount is None:
             # skip buy/sell transactions; they should not have any effect on this bit of filtering

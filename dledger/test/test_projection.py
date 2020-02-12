@@ -685,7 +685,7 @@ def test_scheduled_transactions():
         Transaction(date(2020, 1, 1), 'ABC', 1, Amount(100))
     ]
 
-    scheduled = scheduled_transactions(records, since=date(2020, 1, 10))
+    scheduled = scheduled_transactions(records, since=date(2020, 1, 15))
 
     assert len(scheduled) == 4
     assert scheduled[0].date == date(2020, 3, 15)
@@ -768,7 +768,7 @@ def test_scheduled_transactions_sampling():
 
     scheduled = scheduled_transactions(records, since=date(2020, 3, 12))
 
-    assert len(scheduled) == 4
+    assert len(scheduled) == 3
     assert scheduled[0].date == date(2020, 6, 15)
 
     records = [
@@ -782,7 +782,7 @@ def test_scheduled_transactions_sampling():
         Transaction(date(2020, 3, 10), 'ABC', 1, Amount(100)),
     ]
 
-    scheduled = scheduled_transactions(records, since=date(2020, 3, 12))
+    scheduled = scheduled_transactions(records, since=date(2020, 3, 15))
 
     assert len(scheduled) == 4
     assert scheduled[0].date == date(2020, 6, 15)
@@ -878,7 +878,7 @@ def test_scheduled_transactions_sampling():
 
     scheduled = scheduled_transactions(records, since=date(2019, 1, 3))
 
-    assert len(scheduled) == 12
+    assert len(scheduled) == 11
     assert scheduled[0].date == date(2019, 2, 15)
 
     records = [
@@ -954,7 +954,7 @@ def test_scheduled_transactions_in_leap_year():
         Transaction(date(2020, 2, 1), 'ABC', 1, Amount(100)),
     ]
 
-    scheduled = scheduled_transactions(records, since=date(2020, 2, 3))
+    scheduled = scheduled_transactions(records, since=date(2020, 2, 15))
 
     assert len(scheduled) == 1
     assert scheduled[0].date == date(2021, 2, 15)
@@ -974,7 +974,7 @@ def test_scheduled_transactions_in_leap_year():
         Transaction(date(2021, 2, 1), 'ABC', 1, Amount(100)),
     ]
 
-    scheduled = scheduled_transactions(records, since=date(2021, 2, 3))
+    scheduled = scheduled_transactions(records, since=date(2021, 2, 15))
 
     assert len(scheduled) == 1
     assert scheduled[0].date == date(2022, 2, 15)
