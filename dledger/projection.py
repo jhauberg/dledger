@@ -281,9 +281,13 @@ def scheduled_transactions(records: List[Transaction],
     # weed out projections in the past or later than 12 months into the future
     scheduled = [r for r in scheduled if r.date >= since and months_between(r.date, since) <= 12]
     for sample_record in sample_records:
+        if sample_record.amount is None:
+            # skip buy/sell transactions; they should not have any effect on this bit of filtering
+            continue
         # look for projections dated same month, or less than 15 days between a realized transaction
         discards = [r for r in scheduled if r.ticker == sample_record.ticker and
-                    ((r.date.year == sample_record.date.year and r.date.month == sample_record.date.month) or
+                    ((r.date.year == sample_record.date.year and
+                      r.date.month == sample_record.date.month) or
                      (abs((r.date - sample_record.date).days) <= EARLY_LATE_THRESHOLD))]
         # assuming these projections are incorrect, we discard them
         # note that this method does have false-positive scenarios (see tests),
