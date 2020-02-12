@@ -753,6 +753,27 @@ def test_scheduled_transactions_closed_position():
 
     assert len(scheduled) == 0
 
+    # see example/strategic.journal
+    records = [
+        Transaction(date(2019, 1, 20), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 4, 20), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 7, 20), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 10, 20), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 1, 19), 'ABC', 0),
+        Transaction(date(2020, 2, 1), 'ABC', 1),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 2, 20))
+
+    assert len(scheduled) == 4
+    assert scheduled[0].date == date(2020, 4, 30)
+    assert scheduled[0].position == 1
+    assert scheduled[0].amount == Amount(100)
+    # ...
+    assert scheduled[3].date == date(2021, 1, 31)
+    assert scheduled[3].position == 1
+    assert scheduled[3].amount == Amount(100)
+
 
 def test_scheduled_transactions_sampling():
     records = [

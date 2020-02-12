@@ -201,22 +201,23 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
         if len(position_entries) == 0:
             continue
 
-        # find all realized transactions (e.g. cash received or earned)
+        # find all dividend transactions (e.g. cash received or earned)
         realized_entries = list(r for r in recs if r.amount is not None or r.dividend is not None)
 
         if len(realized_entries) > 0:
             latest_entry = realized_entries[-1]
-            latest_pos_entry = position_entries[-1]
-            # at this point we no longer need to keep most of the position entries around, as we
-            # have already used them to infer and determine position for each realized entry
+            # at this point we no longer need to keep some of the position entries around,
+            # as we have already used them to infer and determine position for each realized entry
             for entry in position_entries:
-                # so each position entry dated prior to a realized entry is basically redundant
+                # so each position entry dated prior to a dividend entry is basically redundant
+                if entry.position == 0:
+                    # unless it's a closer, in which case we have to keep it around in any case
+                    # (e.g. see example/strategic.journal)
+                    continue
                 is_redundant = False
                 if entry.date < latest_entry.date:
                     is_redundant = True
                 elif entry.date == latest_entry.date and entry.position == latest_entry.position:
-                    is_redundant = True
-                elif entry == latest_pos_entry and entry.position == latest_entry.position:
                     is_redundant = True
                 if is_redundant:
                     records.remove(entry)

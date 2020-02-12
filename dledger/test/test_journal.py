@@ -140,6 +140,28 @@ def test_nativedividends_journal():
                                      dividend=Amount(0.77, '$', '$ %s'))
 
 
+def test_strategic_journal():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    records = read('../example/strategic.journal', kind='journal')
+
+    assert len(records) == 6
+    assert records[0] == Transaction(date(2019, 1, 20), 'ABC', 10,
+                                     amount=Amount(1, '$', '$ %s'),
+                                     dividend=Amount(0.1, '$', '$ %s'))
+    assert records[1] == Transaction(date(2019, 4, 20), 'ABC', 10,
+                                     amount=Amount(2, '$', '$ %s'),
+                                     dividend=Amount(0.2, '$', '$ %s'))
+    assert records[2] == Transaction(date(2019, 7, 20), 'ABC', 10,
+                                     amount=Amount(2, '$', '$ %s'),
+                                     dividend=Amount(0.2, '$', '$ %s'))
+    assert records[3] == Transaction(date(2019, 10, 20), 'ABC', 10,
+                                     amount=Amount(2, '$', '$ %s'),
+                                     dividend=Amount(0.2, '$', '$ %s'))
+    assert records[4] == Transaction(date(2020, 1, 19), 'ABC', 0)
+    assert records[5] == Transaction(date(2020, 2, 1), 'ABC', 10)
+
+
 def test_remove_redundant_entries():
     records = [
         Transaction(date(2019, 1, 1), 'ABC', 10)
