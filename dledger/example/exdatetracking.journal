@@ -1,0 +1,23 @@
+# this file serves as an example journal for dledger to illustrate the
+# strategy of tracking transactions by ex-date using estimate records
+
+2019/02/08 AAPL (100)    # note that this is the ex-date; not the paydate
+  @ $ 0.73               # note that only the dividend is put in, because at this
+                         # point the cash has only been earned, not received
+                         # and thus can only be an estimate until received (cash
+                         # received can be subject to exchange rates)
+
+# 2019/02/08 AAPL (100)  # once the paydate arrives and the cash is received
+#   $ 73 @ $ 0.73        # we do not make a new transaction, but instead update
+                         # the estimate record by putting in the amount received
+
+                         # this transforms the record from estimate to concrete transaction
+
+# if receiving cash in a different currency, this process has one issue:
+# the exchange rate will be determined from the day you earned the cash (ex-date),
+# rather than the day you actually received the cash (and likely had an exchange happen)
+# to solve this problem, the cash component of the transaction can be augmented
+# with a date that represents the payout date, like so:
+
+# 2019/02/08 AAPL (100)
+#   490.33 kr [2019/02/14] @ $ 0.73    # note the currency and the date encapsulated by []

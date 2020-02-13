@@ -1,30 +1,32 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report         <journal>... [--period=<interval>] [-V]
-                                           [--monthly | --quarterly | --annual |
-                                            --weighted | --summed]
-                                           [--without-forecast]
-       dledger chart <ticker> <journal>... [--period=<interval>] [-V]
-                                           [--without-forecast]
-       dledger stats          <journal>... [--period=<interval>] [-V]
-       dledger print          <journal>... [--condensed] [-V]
-       dledger convert        <file>...    [--type=<name>] [-V]
-                                           [--output=<journal>]
+usage: dledger report  <journal>... [--period=<interval>] [-V]
+                                    [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
+                                    [--without-forecast]
+                                    [--by-ticker=<ticker>]
+                                    [--in-currency=<symbol>]
+       dledger stats   <journal>... [--period=<interval>] [-V]
+       dledger print   <journal>... [--condensed] [-V]
+       dledger convert <file>...    [--type=<name>] [-V]
+                                    [--output=<journal>]
 
 OPTIONS:
-     --type=<name>        Specify type of transaction data [default: journal]
-     --output=<journal>   Specify journal filename [default: ledger.journal]
-  -p --period=<interval>  Specify reporting date interval
-  -a --annual             Show income by year
-  -q --quarterly          Show income by quarter
-  -m --monthly            Show income by month
-  -w --weighted           Show income by weight
-  -s --summed             Show income by total
-     --without-forecast   Show only realized income
-  -V --verbose            Show diagnostic messages
-  -h --help               Show program help
-  -v --version            Show program version
+     --type=<name>            Specify type of transaction data [default: journal]
+     --output=<journal>       Specify journal filename [default: ledger.journal]
+  -d --period=<interval>      Specify reporting date interval
+     --without-forecast       Don't include forecasted transactions
+     --by-ticker=<ticker>     Show income by ticker (exclusively)
+     --in-currency=<symbol>   Show income as if exchanged to currency
+  -y --annual                 Show income by year
+  -q --quarterly              Show income by quarter
+  -m --monthly                Show income by month
+     --trailing               Show income by rolling trailing 12-month totals
+     --weight                 Show income by weight (per ticker)
+     --sum                    Show income by totals
+  -V --verbose                Show diagnostic messages
+  -h --help                   Show program help
+  -v --version                Show program version
 
 See https://github.com/jhauberg/dledger for additional details.
 """
@@ -32,46 +34,28 @@ See https://github.com/jhauberg/dledger for additional details.
 import sys
 import locale
 
-from datetime import date
-
 from docopt import docopt  # type: ignore
 
 from dledger import __version__
 from dledger.dateutil import parse_period
 from dledger.localeutil import trysetlocale
+from dledger.printutil import enable_color_escapes
+from dledger.record import in_period
 from dledger.report import (
     print_simple_report,
+    print_simple_rolling_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
     print_simple_sum_report, print_simple_weight_by_ticker,
-    print_simple_chart,
     print_stats
 )
 from dledger.projection import (
-    scheduled_transactions
+    scheduled_transactions, convert_estimates, convert_to_currency
 )
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
 )
 
-from typing import List, Tuple, Iterable, Optional
-
-
-def filter_by_period(records: Iterable[Transaction],
-                     interval: Optional[Tuple[Optional[date], Optional[date]]]) \
-        -> Iterable[Transaction]:
-    if interval is None:
-        return records
-
-    starting, ending = interval
-
-    if starting is not None:
-        # inclusive of starting date
-        records = filter(lambda r: starting <= r.date, records)
-    if ending is not None:
-        # exclusive of ending date
-        records = filter(lambda r: r.date < ending, records)
-
-    return records
+from typing import List
 
 
 def main() -> None:
@@ -81,6 +65,8 @@ def main() -> None:
         sys.exit('Python 3.8+ required')
 
     args = docopt(__doc__, version='dledger ' + __version__.__version__)
+
+    enable_color_escapes()
 
     try:
         # default to system locale, if able
@@ -132,26 +118,43 @@ def main() -> None:
 
     if args['stats']:
         # filter down all records by --period, not just transactions
-        records = list(filter_by_period(records, interval))
+        if interval is not None:
+            records = list(in_period(records, interval))
 
         print_stats(records, journal_paths=input_paths)
 
         sys.exit(0)
 
-    transactions = list(filter(
-        lambda r: r.amount is not None, records))
+    records = convert_estimates(records)
+
+    transactions = list(r for r in records if r.amount is not None)
 
     if not args['--without-forecast']:
         transactions.extend(
             scheduled_transactions(records))
 
-    transactions = sorted(filter_by_period(transactions, interval))
+    if interval is not None:
+        transactions = list(in_period(transactions, interval))
+
+    transactions = sorted(transactions)
+
+    exchange_symbol = args['--in-currency']
+
+    if exchange_symbol is not None:
+        transactions = convert_to_currency(transactions, symbol=exchange_symbol)
+
+    ticker = args['--by-ticker']
+
+    if ticker is not None:
+        transactions = list(r for r in transactions if r.ticker == ticker)
 
     if args['report']:
-        if args['--weighted']:
+        if args['--weight']:
             print_simple_weight_by_ticker(transactions)
-        elif args['--summed']:
+        elif args['--sum']:
             print_simple_sum_report(transactions)
+        elif args['--trailing']:
+            print_simple_rolling_report(transactions)
         elif args['--annual']:
             print_simple_annual_report(transactions)
         elif args['--monthly']:
@@ -159,16 +162,7 @@ def main() -> None:
         elif args['--quarterly']:
             print_simple_quarterly_report(transactions)
         else:
-            print_simple_report(transactions)
-
-        sys.exit(0)
-
-    if args['chart']:
-        ticker = args['<ticker>']
-        transactions = list(filter(
-            lambda r: r.ticker == ticker, transactions))
-
-        print_simple_chart(transactions)
+            print_simple_report(transactions, detailed=ticker is not None)
 
         sys.exit(0)
 

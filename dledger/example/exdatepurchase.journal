@@ -14,6 +14,6 @@
   $ 77
 
 # this problem can be solved by either:
-#  1) explicitly setting position to 100 on the dividend transaction
-#      (effectively nullifying the additional 20 shares)
-#  2) pushing the purchase transaction (at least) 1 day ahead (in this case, 2019/05/17)
+#  1) tracking income by ex-date instead of paydate
+#  2) registering purchase transaction *after* paydate
+#  3) not registering purchase at all (setting position explicitly on next paydate)

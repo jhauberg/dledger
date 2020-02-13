@@ -1,20 +1,37 @@
-from datetime import date
+from datetime import date, timedelta
 
 from dledger.dateutil import months_between, in_months, first_of_month
-from dledger.journal import Transaction
+from dledger.journal import Transaction, Amount
 
-from typing import Iterable, Optional, List, Set
+from typing import Iterable, Optional, List, Set, Union, Tuple
 
 
 def amount_per_share(record: Transaction) \
         -> float:
-    """ Return the fractional amount per share. """
+    """ Return the amount per share. """
 
     assert record.amount is not None
 
     return (record.amount.value / record.position
             if record.amount.value > 0 and record.position > 0
             else 0)
+
+
+def amount_conversion_factor(record: Transaction) \
+        -> float:
+    """ Return the conversion factor of dividend to amount.
+
+    Return 1 if no dividend is specified, or dividend is of same symbol as amount.
+    """
+
+    assert record.amount is not None
+
+    if record.dividend is None:
+        return 1
+    if record.dividend.symbol == record.amount.symbol:
+        return 1
+
+    return amount_per_share(record) / record.dividend.value
 
 
 def intervals(records: Iterable[Transaction]) \
@@ -56,6 +73,29 @@ def intervals(records: Iterable[Transaction]) \
     return timespans
 
 
+def dividends(records: Iterable[Transaction]) -> List[Amount]:
+    """ Return a list of dividend components in a set of records. """
+
+    return [record.dividend for record in records if record.dividend is not None]
+
+
+def deltas(amounts: List[Amount], *, normalized: bool = True) -> List[Union[int, float]]:
+    """ Return a list of deltas between amounts.
+
+    If normalized is True, returns deltas in integral numbers (-1, 0, 1) indicating
+    direction (down, same, up).
+    """
+    if len(amounts) < 2:
+        return []
+
+    if normalized:
+        return [-1 if d.value - amounts[i].value < 0 else
+                (0 if d.value == amounts[i].value else 1)
+                for i, d in enumerate(amounts[1:])]
+
+    return [d.value - amounts[i].value for i, d in enumerate(amounts[1:])]
+
+
 def tickers(records: Iterable[Transaction]) \
         -> List[str]:
     """ Return a list of unique ticker components in a set of records. """
@@ -72,7 +112,7 @@ def symbols(records: Iterable[Transaction], *, excluding_dividends: bool = False
     Does not include an entry for records with no symbol attached.
     """
 
-    transactions = filter(lambda r: r.amount is not None, records)
+    transactions = (r for r in records if r.amount is not None)
 
     collected_symbols: List[str] = []
 
@@ -95,9 +135,8 @@ def monthly_schedule(records: Iterable[Transaction]) \
     return sorted(set([record.date.month for record in records]))
 
 
-def trailing(records: Iterable[Transaction], since: date, *, months: int) \
-        -> Iterable[Transaction]:
-    """ Return an iterator for records dated within a number of months prior to a given date.
+def trailing(records: Iterable[Transaction], since: date, *, months: int):
+    """ Return an iterator for records dated within months prior to a given date (inclusive).
 
     Does take days into account.
     """
@@ -105,8 +144,7 @@ def trailing(records: Iterable[Transaction], since: date, *, months: int) \
     begin = in_months(since, months=-months)
     end = since
 
-    return filter(
-        lambda r: end >= r.date > begin, records)
+    return (r for r in records if end >= r.date > begin)
 
 
 def monthly(records: Iterable[Transaction],
@@ -114,9 +152,8 @@ def monthly(records: Iterable[Transaction],
         -> Iterable[Transaction]:
     """ Return an iterator for records dated on a given month and year. """
 
-    return filter(
-        lambda r: (r.date.year == year and
-                   r.date.month == month), records)
+    return (r for r in records if (r.date.year == year and
+                                   r.date.month == month))
 
 
 def yearly(records: Iterable[Transaction],
@@ -129,17 +166,15 @@ def yearly(records: Iterable[Transaction],
     and May (inclusive).
     """
 
-    return filter(
-        lambda r: (r.date.year == year and
-                   r.date.month <= months), records)
+    return (r for r in records if (r.date.year == year and
+                                   r.date.month <= months))
 
 
 def by_ticker(records: Iterable[Transaction], symbol: str) \
         -> Iterable[Transaction]:
     """ Return an iterator for records with a given ticker. """
 
-    return filter(
-        lambda r: r.ticker == symbol, records)
+    return (r for r in records if r.ticker == symbol)
 
 
 def income(records: Iterable[Transaction]) \
@@ -153,16 +188,37 @@ def after(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated later than a date. """
 
-    return filter(
-        lambda r: r.date > d, records)
+    return (r for r in records if r.date > d)
 
 
 def before(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated prior to a date. """
 
-    return filter(
-        lambda r: r.date < d, records)
+    return (r for r in records if r.date < d)
+
+
+def in_period(records: Iterable[Transaction],
+              interval: Tuple[Optional[date], Optional[date]]) \
+        -> Iterable[Transaction]:
+    """ Return an iterator for records dated within a period.
+
+    Exclusive of end date.
+    """
+
+    if interval is None:
+        return records
+
+    starting, ending = interval
+
+    if starting is not None:
+        # inclusive of starting date
+        records = after(records, starting - timedelta(days=1))
+    if ending is not None:
+        # exclusive of end date
+        return before(records, ending)
+
+    return records
 
 
 def earliest(records: Iterable[Transaction]) \
@@ -174,34 +230,17 @@ def earliest(records: Iterable[Transaction]) \
     return records[0] if len(records) > 0 else None
 
 
-def latest(records: Iterable[Transaction]) \
+def latest(records: Iterable[Transaction], *, by_payout: bool = False) \
         -> Optional[Transaction]:
     """ Return the latest dated record in a set of records. """
 
-    records = sorted(records)
+    if by_payout:
+        records = sorted(records, key=lambda r: (r.payout_date if r.payout_date is not None else
+                                                 r.date))
+    else:
+        records = sorted(records)
 
     return records[-1] if len(records) > 0 else None
-
-
-def previous(records: Iterable[Transaction], record: Transaction) \
-        -> Optional[Transaction]:
-    """ Return the latest record dated prior to a given record. """
-
-    return latest(before(records, record.date))
-
-
-def previous_comparable(records: Iterable[Transaction], record: Transaction) \
-        -> Optional[Transaction]:
-    """ Return the latest comparable record dated prior to a given record.
-
-    A comparable record is a record dated within same month in an earlier year.
-    """
-
-    comparables = filter(
-        lambda r: (r.date.month == record.date.month and
-                   r.date.year < record.date.year), records)
-
-    return latest(comparables)
 
 
 def pruned(records: Iterable[Transaction]) \

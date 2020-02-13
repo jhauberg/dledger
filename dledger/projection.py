@@ -1,13 +1,14 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from dataclasses import dataclass
 
 from statistics import multimode, fmean  # type: ignore
 
-from dledger.journal import Transaction, Amount
-from dledger.dateutil import last_of_month
+from dledger.journal import Transaction, Distribution, Amount
+from dledger.dateutil import last_of_month, months_between, in_months
+from dledger.formatutil import most_decimal_places
 from dledger.record import (
-    by_ticker, tickers, trailing, latest, monthly_schedule,
-    amount_per_share, before, after, intervals, pruned, symbols
+    by_ticker, tickers, trailing, latest, before, monthly_schedule, dividends, deltas,
+    amount_per_share, amount_conversion_factor, intervals, pruned, symbols
 )
 
 from typing import Tuple, Optional, List, Iterable, Dict
@@ -172,88 +173,140 @@ def projected_date(d: date, *, timeframe: int) -> date:
     return d
 
 
-def expired_transactions(records: Iterable[Transaction],
-                         *,
-                         since: date = datetime.today().date(),
-                         grace_period: int = 3) \
-        -> Iterable[Transaction]:
-    """ Return an iterator for records dated prior to a date.
+def convert_estimates(records: List[Transaction]) -> List[Transaction]:
+    conversion_factors = symbol_conversion_factors(records)
+    transactions = list(r for r in records if r.amount is not None)
+    estimate_records = (r for r in records if (r.amount is None and
+                                               r.dividend is not None))
+    for rec in estimate_records:
+        conversion_factor = 1.0
+        estimate_symbol = rec.dividend.symbol
+        estimate_format = rec.dividend.format
+        latest_transaction = latest(by_ticker(transactions, rec.ticker))
+        if latest_transaction is not None:
+            estimate_symbol = latest_transaction.amount.symbol
+            estimate_format = latest_transaction.amount.format
+            if rec.dividend.symbol != latest_transaction.amount.symbol:
+                conversion_factor = conversion_factors[(rec.dividend.symbol,
+                                                        latest_transaction.amount.symbol)]
+        estimate_amount = Amount((rec.position * rec.dividend.value) * conversion_factor,
+                                 estimate_symbol, estimate_format)
+        estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
+                                     estimate_amount, rec.dividend, rec.kind)
+        i = records.index(rec)
+        records.pop(i)
+        records.insert(i, estimate)
 
-    Optionally allowing for a grace period of a number of days.
-    """
-
-    return before(records, since - timedelta(days=grace_period))
+    return records
 
 
-def pending_transactions(records: Iterable[Transaction],
-                         *,
-                         since: date = datetime.today().date()) \
-        -> Iterable[Transaction]:
-    """ Return an iterator for records dated later than a date. """
+def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Transaction]:
+    conversion_factors = symbol_conversion_factors(records)
+    transactions = list(r for r in records if r.amount is not None)
+    convertible_records = (r for r in records if (r.amount is not None and
+                                                  r.amount.symbol != symbol))
+    for rec in convertible_records:
+        try:
+            conversion_factor = conversion_factors[(rec.amount.symbol, symbol)]
+        except KeyError:
+            try:
+                conversion_factor = conversion_factors[(symbol, rec.amount.symbol)]
+                conversion_factor = 1.0 / conversion_factor
+            except KeyError:
+                continue
+        estimate_format: Optional[str] = None
+        for t in reversed(transactions):
+            if t.amount.symbol == symbol:
+                estimate_format = t.amount.format
+            elif t.dividend is not None and t.dividend.symbol == symbol:
+                estimate_format = t.dividend.format
+            if estimate_format is not None:
+                break
+        estimate_amount = Amount(rec.amount.value * conversion_factor, symbol, estimate_format)
+        estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
+                                     estimate_amount, rec.dividend, rec.kind)
+        i = records.index(rec)
+        records.pop(i)
+        records.insert(i, estimate)
 
-    return after(records, since)
+    return records
 
 
 def scheduled_transactions(records: List[Transaction],
                            *,
                            since: date = datetime.today().date()) \
         -> List[FutureTransaction]:
-    # take a sample set of only latest 12 months
-    sample_records = trailing(records, since=since, months=12)
-    # don't include special dividends
-    sample_records = list(filter(lambda r: not r.is_special, sample_records))
-
-    # project current records by 1 year into the future
+    # take a sample set of latest 12 months on a per ticker basis
+    sample_records: List[Transaction] = []
+    for ticker in tickers(records):
+        # note that we sample all records, not just transactions
+        # as future_transactions/estimated_transactions require more knowledge
+        # todo: we can look into improving that so we do all the filtering in this function instead
+        recs = list(by_ticker(records, ticker))
+        # find the latest record and base trailing period from its date
+        latest_record = latest(recs)
+        assert latest_record is not None
+        future_position = latest_record.position
+        if not future_position > 0:
+            # don't project closed positions
+            continue
+        if months_between(latest_record.date, since) > 12:
+            # skip projections for this ticker entirely,
+            # as latest transaction is dated more than 12 months ago
+            continue
+        # otherwise, add the trailing 12 months of transactions by this ticker
+        sample_records.extend(
+            trailing(recs, since=latest_record.date, months=12))
+    # don't include special dividend transactions
+    sample_records = [r for r in sample_records if r.kind is not Distribution.SPECIAL]
+    # project sample records 1 year into the future
     futures = future_transactions(sample_records)
-    # project current records by 12-month schedule and frequency
+    # project sample records by 12-month schedule and frequency
     estimates = estimated_transactions(sample_records)
-
+    # base projections primarily on futures
     scheduled = futures
-
-    # bias toward futures, leaving estimates only to fill out gaps in schedule
+    # use estimates to fill out gaps in schedule
     for future_record in estimates:
+        # determine whether to use estimate to fill out gap by checking
+        # if a future already "occupies" this month
         duplicates = [r for r in scheduled
                       if r.ticker == future_record.ticker
                       and r.date.year == future_record.date.year
                       and r.date.month == future_record.date.month]
-
         if len(duplicates) > 0:
+            # it does, so skip this estimate
             continue
-
+        # it does not, so use this estimate to fill out gap
         scheduled.append(future_record)
-
-    pending_records = list(pending_transactions(filter(
-        lambda r: not r.is_special, records), since=since))
-
-    # bias toward pending; e.g. keep manually set transactions in the future,
-    # discard projections on same date
-    for pending_record in pending_records:
-        duplicates = [r for r in scheduled
-                      if r.ticker == pending_record.ticker
-                      and r.date.year == pending_record.date.year
-                      and r.date.month == pending_record.date.month]
-
-        if len(duplicates) == 0:
+    # weed out projections in the past or later than 12 months into the future
+    cutoff_date = in_months(since, months=12)
+    scheduled = [r for r in scheduled if cutoff_date >= r.date >= since]
+    for sample_record in sample_records:
+        if sample_record.amount is None:
+            # skip buy/sell transactions; they should not have any effect on this bit of filtering
             continue
-
-        for dupe in duplicates:
-            scheduled.remove(dupe)
-
-    # exclude unrealized projections
-    closed = tickers(expired_transactions(scheduled, since=since))
-
-    return sorted(filter(
-        lambda r: r.ticker not in closed, scheduled),
-        key=lambda r: (r.date, r.ticker))  # sort by date and ticker
+        # look for projections dated same month, or less than 15 days between a realized transaction
+        discards = [r for r in scheduled if r.ticker == sample_record.ticker and
+                    ((r.date.year == sample_record.date.year and
+                      r.date.month == sample_record.date.month) or
+                     (abs((r.date - sample_record.date).days) <= EARLY_LATE_THRESHOLD))]
+        # assuming these projections are incorrect, we discard them
+        # note that this method does have false-positive scenarios (see tests),
+        # but prefer less projections (pessimistic) over too many projections (optimistic)
+        for discarded_record in discards:
+            scheduled.remove(discarded_record)
+    # finally sort them by default transaction sorting rules
+    return sorted(scheduled)
 
 
 def estimated_schedule(records: List[Transaction], record: Transaction) \
         -> Schedule:
+    # todo: we should clean this up- don't filter out by period, caller can do that
     sample_records = trailing(by_ticker(records, record.ticker),
                               since=last_of_month(record.date), months=24)
 
     # exclude closed positions
-    sample_records = filter(lambda r: r.position > 0, sample_records)
+    sample_records = (r for r in sample_records if r.position > 0)
     # exclude same-date records for more accurate frequency/schedule estimation
     sample_records = pruned(sample_records)
     # determine approximate frequency (annual, biannual, quarterly or monthly)
@@ -273,27 +326,13 @@ def estimated_transactions(records: List[Transaction]) \
     conversion_factors = symbol_conversion_factors(records)
 
     for ticker in tickers(records):
-        latest_record = latest(by_ticker(records, ticker))
-
-        assert latest_record is not None
-
-        future_position = latest_record.position
-
-        if not future_position > 0:
-            # don't project closed positions
-            continue
-
         # weed out position-only records
-        transactions = list(filter(
-            lambda r: r.amount is not None, by_ticker(records, ticker)))
-
-        if len(transactions) == 0:
-            continue
+        transactions = list(r for r in by_ticker(records, ticker) if r.amount is not None)
 
         latest_transaction = latest(transactions)
 
-        assert latest_transaction is not None
-        assert latest_transaction.amount is not None
+        if latest_transaction is None:
+            continue
 
         sched = estimated_schedule(transactions, latest_transaction)
 
@@ -311,54 +350,87 @@ def estimated_transactions(records: List[Transaction]) \
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
-            future_date = projected_date(next_scheduled_date(future_date, scheduled_months),
-                                         timeframe=future_timeframe)
+            next_date = next_scheduled_date(future_date, scheduled_months)
+            future_date = projected_date(next_date, timeframe=future_timeframe)
+
+            # double-check that position is not closed in timeframe leading up to future_date
+            latest_record = latest(before(by_ticker(records, ticker), future_date))
+
+            assert latest_record is not None
+
+            future_position = latest_record.position
+
+            if not future_position > 0:
+                # don't project closed positions
+                continue
+
+            reference_records = trailing(
+                by_ticker(transactions, ticker), since=future_date, months=12)
+            reference_records = list(r for r in reference_records if
+                                     r.amount.symbol == latest_transaction.amount.symbol)
 
             future_amount = amount_per_share(latest_transaction) * future_position
             future_amount_range = None
 
-            reference_records = trailing(
-                by_ticker(transactions, ticker), since=future_date, months=12)
-            reference_records = list(filter(
-                lambda r: r.amount.symbol == latest_transaction.amount.symbol, reference_records))
+            future_dividend = next_linear_dividend(reference_records)
 
-            divs = [r.dividend.value for r in reference_records
-                    if (r.dividend is not None and
-                        r.dividend.symbol != r.amount.symbol and
-                        r.dividend.symbol == latest_transaction.dividend.symbol)]
+            if future_dividend is not None:
+                if can_convert_from_dividend:
+                    conversion_factor = conversion_factors[(future_dividend.symbol,
+                                                            latest_transaction.amount.symbol)]
+                    future_dividend_value = future_position * future_dividend.value
+                    future_dividend = future_dividend.value
+                    future_amount = future_dividend_value * conversion_factor
+                else:
+                    future_amount = future_position * future_dividend.value
+            else:
+                divs = [r.dividend.value for r in reference_records
+                        if (r.dividend is not None and
+                            r.dividend.symbol != r.amount.symbol and
+                            r.dividend.symbol == latest_transaction.dividend.symbol)]
 
-            aps = [amount_per_share(r) for r in reference_records]
+                aps = [amount_per_share(r) for r in reference_records]
 
-            if len(divs) > 0 and can_convert_from_dividend:
-                conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
-                                                        latest_transaction.amount.symbol)]
-                highest_dividend = max(divs) * future_position
-                lowest_dividend = min(divs) * future_position
-                mean_dividend = fmean(divs) * future_position
-                future_amount = mean_dividend * conversion_factor
-                future_amount_range = (Amount(lowest_dividend * conversion_factor,
-                                              symbol=latest_transaction.amount.symbol,
-                                              format=latest_transaction.amount.format),
-                                       Amount(highest_dividend * conversion_factor,
-                                              symbol=latest_transaction.amount.symbol,
-                                              format=latest_transaction.amount.format))
-            elif len(aps) > 0:
-                highest_amount = max(aps) * future_position
-                lowest_amount = min(aps) * future_position
-                mean_amount = fmean(aps) * future_position
-                future_amount = mean_amount
-                future_amount_range = (Amount(lowest_amount,
-                                              symbol=latest_transaction.amount.symbol,
-                                              format=latest_transaction.amount.format),
-                                       Amount(highest_amount,
-                                              symbol=latest_transaction.amount.symbol,
-                                              format=latest_transaction.amount.format))
+                if len(divs) > 0 and can_convert_from_dividend:
+                    conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
+                                                            latest_transaction.amount.symbol)]
+                    highest_dividend = max(divs) * future_position
+                    lowest_dividend = min(divs) * future_position
+                    future_dividend = fmean(divs)
+                    decimal_places = most_decimal_places(divs)
+                    # truncate/round off to fit longest decimal place count observed
+                    # in all of the real transactions
+                    s = f'{future_dividend:.{decimal_places}f}'
+                    future_dividend = float(s)
+                    future_amount = future_dividend * future_position
+                    future_amount = future_amount * conversion_factor
+                    future_amount_range = (Amount(lowest_dividend * conversion_factor,
+                                                  symbol=latest_transaction.amount.symbol,
+                                                  format=latest_transaction.amount.format),
+                                           Amount(highest_dividend * conversion_factor,
+                                                  symbol=latest_transaction.amount.symbol,
+                                                  format=latest_transaction.amount.format))
+                elif len(aps) > 0:
+                    highest_amount = max(aps) * future_position
+                    lowest_amount = min(aps) * future_position
+                    mean_amount = fmean(aps) * future_position
+                    future_amount = mean_amount
+                    future_amount_range = (Amount(lowest_amount,
+                                                  symbol=latest_transaction.amount.symbol,
+                                                  format=latest_transaction.amount.format),
+                                           Amount(highest_amount,
+                                                  symbol=latest_transaction.amount.symbol,
+                                                  format=latest_transaction.amount.format))
 
             future_record = FutureTransaction(future_date, ticker, future_position,
                                               amount=Amount(future_amount,
                                                             symbol=latest_transaction.amount.symbol,
                                                             format=latest_transaction.amount.format),
-                                              amount_range=future_amount_range)
+                                              amount_range=future_amount_range,
+                                              dividend=(Amount(future_dividend,
+                                                               symbol=latest_transaction.dividend.symbol,
+                                                               format=latest_transaction.dividend.format)
+                                                        if can_convert_from_dividend else None))
 
             scheduled_records.append(future_record)
 
@@ -367,34 +439,56 @@ def estimated_transactions(records: List[Transaction]) \
     return sorted(approximate_records)
 
 
+def next_linear_dividend(records: List[Transaction]) -> Optional[Amount]:
+    """ Return the estimated next linearly projected dividend if able, None otherwise. """
+
+    transactions = list(r for r in records if r.amount is not None)
+    latest_transaction = latest(transactions)
+
+    if latest_transaction is None:
+        return None
+
+    if latest_transaction.dividend is not None:
+        comparable_transactions: List[Transaction] = []
+        for comparable_transaction in reversed(transactions):
+            if comparable_transaction.kind is not Distribution.FINAL:
+                # don't include interim/special dividends as they do not necessarily follow
+                # the same policy or pattern as final dividends
+                continue
+            if (comparable_transaction.dividend is None or
+                    comparable_transaction.dividend.symbol != latest_transaction.dividend.symbol):
+                break
+            comparable_transactions.append(comparable_transaction)
+        if len(comparable_transactions) > 0:
+            comparable_transactions.reverse()
+            movements = deltas(dividends(comparable_transactions))
+            # consider 'no change' same as going up
+            movements = [1 if m == 0 else m for m in movements]
+            movements = multimode(movements)
+            n = len(multimode(movements))
+            # if there's a clear trend, up or down, assume linear pattern
+            if n == 0 or n == 1:
+                return latest(comparable_transactions).dividend
+
+    return None
+
+
 def future_transactions(records: List[Transaction]) \
         -> List[FutureTransaction]:
-    """ Return a list of transactions dated 12 months into the future.
-
-    Each transaction has its amount adjusted to match the position of the latest matching record.
-    """
+    """ Return a list of transactions, each dated 12 months into the future. """
     
     future_records = []
 
     # weed out position-only records
-    transactions = list(filter(lambda r: r.amount is not None, records))
+    transactions = list(r for r in records if r.amount is not None)
 
     conversion_factors = symbol_conversion_factors(transactions)
 
     for transaction in transactions:
         assert transaction.amount is not None
 
-        latest_record = latest(by_ticker(records, transaction.ticker))
-
-        assert latest_record is not None
-
-        future_position = latest_record.position
-
-        if not future_position > 0:
-            # don't project closed positions
-            continue
-
-        latest_transaction = latest(by_ticker(transactions, transaction.ticker))
+        matching_transactions = list(by_ticker(transactions, transaction.ticker))
+        latest_transaction = latest(matching_transactions)
 
         assert latest_transaction is not None
         assert latest_transaction.amount is not None
@@ -406,20 +500,59 @@ def future_transactions(records: List[Transaction]) \
         # offset 12 months into the future by assuming an annual schedule
         next_date = next_scheduled_date(transaction.date, [transaction.date.month])
         future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.date))
+        future_payout_date: Optional[date] = None
+        if transaction.payout_date is not None:
+            next_payout_date = next_scheduled_date(
+                transaction.payout_date, [transaction.payout_date.month])
+            future_payout_date = projected_date(
+                next_payout_date, timeframe=projected_timeframe(transaction.payout_date))
+
+        # we must double-check that the position has not been closed in the timeframe leading
+        # up to the projected date; for example, this sequence of transactions should not
+        # result in a forecasted transaction:
+        #    2019/01/20 ABC (10)  $ 1
+        #    2020/01/19 ABC (0)
+        #    -- no forecasted transaction here, because position was closed
+        #    2020/02/01 ABC (10)
+        # note that the final buy transaction has to be dated later than projected_date()
+        # (in this case 2020/01/31)
+        latest_record = latest(before(by_ticker(records, transaction.ticker), future_date))
+
+        assert latest_record is not None
+
+        future_position = latest_record.position
+
+        if not future_position > 0:
+            # don't project closed positions
+            continue
+
+        if transaction.kind == Distribution.INTERIM:
+            # todo: still ramp, but using past interim dividends
+            future_dividend = transaction.dividend
+        else:
+            future_dividend = next_linear_dividend(matching_transactions)
+
+            if future_dividend is None:
+                future_dividend = transaction.dividend
 
         future_amount = future_position * amount_per_share(transaction)
 
-        if transaction.dividend is not None and transaction.dividend.symbol != transaction.amount.symbol:
-            conversion_factor = conversion_factors[(transaction.dividend.symbol,
-                                                    transaction.amount.symbol)]
-            future_dividend = future_position * transaction.dividend.value
-            future_amount = future_dividend * conversion_factor
+        if future_dividend is not None:
+            if future_dividend.symbol != transaction.amount.symbol:
+                conversion_factor = conversion_factors[(future_dividend.symbol,
+                                                        transaction.amount.symbol)]
+                future_dividend_value = future_position * future_dividend.value
+                future_amount = future_dividend_value * conversion_factor
+            else:
+                future_amount = future_position * future_dividend.value
 
         future_record = FutureTransaction(future_date, transaction.ticker, future_position,
                                           amount=Amount(future_amount,
                                                         symbol=latest_transaction.amount.symbol,
                                                         format=latest_transaction.amount.format),
-                                          dividend=transaction.dividend)
+                                          dividend=future_dividend,
+                                          kind=transaction.kind,
+                                          payout_date=future_payout_date)
 
         future_records.append(future_record)
 
@@ -430,19 +563,25 @@ def symbol_conversion_factors(records: List[Transaction]) \
         -> Dict[Tuple[str, str], float]:
     conversion_factors: Dict[Tuple[str, str], float] = dict()
 
-    transactions = list(filter(lambda r: r.amount is not None, records))
+    transactions = list(r for r in records if r.amount is not None)
 
     amount_symbols = symbols(records, excluding_dividends=True)
     all_symbols = symbols(records)
-    dividend_symbols = all_symbols - amount_symbols
 
     for symbol in amount_symbols:
-        for other_symbol in dividend_symbols:
-            latest_transaction = latest(filter(
-                lambda r: (r.amount.symbol == symbol and
-                           r.dividend.symbol == other_symbol), transactions))
+        for other_symbol in all_symbols:
+            if symbol == other_symbol:
+                continue
 
-            conversion_factor = amount_per_share(latest_transaction) / latest_transaction.dividend.value
+            latest_transaction = latest(
+                (r for r in transactions if (r.amount.symbol == symbol and
+                                             r.dividend is not None and
+                                             r.dividend.symbol == other_symbol)), by_payout=True)
+
+            if latest_transaction is None:
+                continue
+
+            conversion_factor = amount_conversion_factor(latest_transaction)
             conversion_factors[(latest_transaction.dividend.symbol,
                                 latest_transaction.amount.symbol)] = conversion_factor
 

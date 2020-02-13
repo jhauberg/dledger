@@ -1,61 +1,13 @@
 from decimal import Decimal
 
-
-def change(a: float, b: float) -> float:
-    """ Return the difference from A, to B. """
-
-    return a - b
+from typing import Optional, Iterable
 
 
-def pct_change(a: float, b: float) -> float:
-    """ Return the %-change from A, to B. """
-
-    if not (b > 0 or b < 0):
-        raise TypeError('\'b\' must be a negative or positive value')
-
-    diff = a - b
-    pct = (diff / b) * 100
-
-    return pct
-
-
-def format_pct(pct: float) -> str:
-    """ Return a human-readable string for a percentage value. """
-
-    return f'{format_amount(pct, trailing_zero=False)}%'
-
-
-def format_pct_change(pct: float) -> str:
-    """ Return a human-readable string for a percentage value (change).
-
-    Format according to current locale, for example,
-
-      Danish locale:
-        1000.6 => '+ 1.000,60%'
-        10.6 => '+ 10,60%'
-
-    Always keep 2 decimal places.
-    """
-
-    sign = '-' if pct < 0 else '+'
-    # convert value to str, rounding to 2 decimal places
-    s = f'{abs(pct):.2f}'
-    # convert str to Decimal, keeping decimal precision intact
-    d = Decimal(s)
-
-    # finally format using 'n', providing grouping/separators matching current locale
-    return f'{sign} {d:n}%'
-
-
-def format_change(amount: float, trailing_zero: bool = True) -> str:
-    """ Return a human-readable string for a change in totals. """
-
-    sign = '-' if amount < 0 else '+'
-
-    return f'{sign} {format_amount(abs(amount), trailing_zero=trailing_zero)}'
-
-
-def format_amount(amount: float, trailing_zero: bool = True) -> str:
+def format_amount(amount: float, *,
+                  trailing_zero: bool = True,
+                  rounded: bool = True,
+                  places: int = 2) \
+        -> str:
     """ Return a human-readable string for a number.
 
     Format according to current locale, for example,
@@ -66,19 +18,33 @@ def format_amount(amount: float, trailing_zero: bool = True) -> str:
         10.6 => '1,60'
         10 => '10'
 
-    Only keep 2 decimal places for fractional (non-whole) numbers.
+    Only keep X decimal places for fractional (non-whole) numbers.
     """
 
-    # convert value to str, rounding to 2 decimal places
-    s = f'{amount:.2f}'
+    # convert value to str, rounding to N decimal places
+    s = f'{amount:.{places}f}' if rounded else f'{amount}'
 
     # determine if number is fractional (assuming default point notation)
-    if not trailing_zero and s.endswith('.00'):
+    pad = '0' * places
+    if not trailing_zero and s.endswith(f'.{pad}'):
         # only keep whole number
-        s = s[:-3]
+        i = 1 + places
+        s = s[:-i]
 
     # convert str to Decimal, respecting the number of decimal places
     d = Decimal(s)
 
     # finally format using 'n', providing grouping/separators matching current locale
     return f'{d:n}'
+
+
+def most_decimal_places(values: Iterable[float]) -> Optional[int]:
+    decimal_places: Optional[int] = None
+
+    for value in values:
+        d = Decimal(f'{value}')  # note wrapping as a string to truncate the float
+        places = abs(d.as_tuple().exponent)
+        if decimal_places is None or places > decimal_places:
+            decimal_places = places
+
+    return decimal_places
