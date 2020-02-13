@@ -1,5 +1,6 @@
 # include additional files
 include README.md
+include MANUAL.md
 include LICENSE
 include requirements.txt
 
