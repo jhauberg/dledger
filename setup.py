@@ -42,7 +42,7 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/jhauberg/dledger',
-    download_url='https://github.com/jhauberg/dividendledger/archive/master.zip',
+    download_url='https://github.com/jhauberg/dledger/archive/master.zip',
     author='Jacob Hauberg Hansen',
     author_email='jacob.hauberg@gmail.com',
     license='MIT',
