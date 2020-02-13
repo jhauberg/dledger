@@ -14,7 +14,7 @@ In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accou
 
 The `dledger` program is built in Python and is supported on most major operating systems, including: macOS, Linux and Windows.
 
-#### Install
+### Install
 
 ```shell
 $ python3 setup.py install
@@ -24,21 +24,21 @@ $ python3 setup.py install
 | ---------------------------- | -------------------------------------------- | ------- | ------- |
 | [docopt](http://docopt.org/) | Describe and parse a command-line interface. | 0.6.2   | MIT     |
 
-#### Usage
+### Usage
 
 ```shell
 $ dledger --help
 ```
 
-## Journals
+# Journals
 
 In the ledger-like universe, a journal is a simple plain-text file that you edit and format manually- by hand.
 
-The journal is where you keep all your transactions. Each transaction is recorded in a compatible format (see [formatting](#format-and-syntax)) and `dledger` is simply a tool to produce reports on these transactions.
+The journal is where you keep all your transactions. Each transaction is recorded in a compatible format and `dledger` is simply a tool to produce reports on these transactions.
 
 There are no requirements on how you name your journal files, nor which extension to use. A common practice is to apply the `.journal` extension.
 
-### Transactions
+## Transactions
 
 A `dledger` compatible transaction consist of the following elements:
 
@@ -87,7 +87,7 @@ Here's an example of a transaction where the distributed dividend is in a differ
 
 This particular example establishes an [exchange rate](#exchange-rates) between DKK/$ that is applied in forecasted transactions involving these currencies.
 
-#### Buy/sell transactions
+### Buy/sell transactions
 
 A diligent investor will not only record their dividend transactions, but also their buy and sell transactions.
 
@@ -120,7 +120,7 @@ Alternatively, to avoid any confusion, the total new number of shares can be put
 
 This is a matter of preference as both methods are equally valid.
 
-#### Special dividends
+### Special dividends
 
 A company may occasionally choose to distribute additional cash through what is commonly referred to as a *special dividend*, or *extra dividend*. This is a non-recurring disitribution that is not considered part of the normal dividend schedule and frequency.
 
@@ -133,7 +133,7 @@ To record a special dividend transaction, you record the transaction like you no
 
 This lets `dledger` know that this transaction is a one-time thing and should not be accounted for in forecasts.
 
-#### Interim dividends
+### Interim dividends
 
 Recording an interim dividend transaction is similar to [recording a special dividend](#special-dividends), except you mark it with a carat (`^`) instead.
 
@@ -144,7 +144,7 @@ Recording an interim dividend transaction is similar to [recording a special div
 
 This indicates that the transaction *is* part of the schedule and *should* be accounted for in forecasts, but the dividend projection should be independent of the regular (final) dividend.
 
-### Locale
+## Locale
 
 For the best results, `dledger` requires a reasonably well-configured environment. This includes an expectation of a configured system locale.
 
@@ -156,7 +156,7 @@ In a case where no locale has been configured (or is incorrectly configured), `d
 
 You can run the [`stats`](#stats) command to see which locale `dledger` is using.
 
-### Importing transactions
+## Importing transactions
 
 `dledger` supports importing transactions from Nordnet (a Swedish bank).
 
@@ -223,11 +223,11 @@ In this particular example, the payout date only adds value to you, the reader o
 
 However, if the cash was a different currency than the dividend, adding the date would also improve forecasted payout estimates based on the exchange rate (assuming that the cash was exchanged at payout, rather than at ex-date).
 
-## Reports
+# Reports
 
 The `report` command will show a chronological list of all dividend transactions. This includes both past, pending and [future transactions](#forecasts).
 
-### Periods
+## Periods
 
 The flag `--period` can be used to drill down and limit transactions within a date interval.
 
@@ -245,11 +245,11 @@ You can use `:` with *only* an ending, or starting, date. In this case, the peri
 
 You can format dates using dashes (`-`) if you prefer, e.g. `2019-01-01` is identical to `2019/01/01`.
 
-### Grouping
+## Grouping
 
 There are several flags that can be used to control the appearance and grouping of transactions through the `report` command.
 
-#### Annually
+### Annually
 
 The flag `--annual` can be used to show you total income over the course of every year passed since the first recorded transaction.
 
@@ -268,7 +268,7 @@ Taking a look at the last row, we might also notice that the date stands out fro
 
 If a journal contains income of multiple currencies, the report is split in a section for each currency (unless `--in-currency` is specified, see [consolidating income reports](#consolidating-income-reports)).
 
-#### Monthly
+### Monthly
 
 Similar to [`--annual`](#annually), the `--monthly` flag groups income received by month.
 
@@ -287,7 +287,7 @@ $ dledger report example/simple.journal --monthly
 ~               $ 77    2020/11
 ```
 
-#### Quarterly
+### Quarterly
 
 Similar to [`--annual`](#annually), the `--quarterly` flag groups income received by quarter.
 
@@ -306,7 +306,7 @@ $ dledger report example/simple.journal --quarterly
 ~               $ 77    2020/Q4
 ```
 
-#### Trailing
+### Trailing
 
 The flag `--trailing` can be used to show you the total income rolling over trailing 12-month periods. This total is listed for every month passed since the very first transaction, through today.
 
@@ -339,8 +339,7 @@ The report will include forecasted transactions unless `--without-forecast` is s
 
 The last row stands out, as it does not correspond to a trailing 12-month period, but instead represent the forecasted and future 12-month period, starting from today (inclusive).
 
-
-#### Weight
+### Weight
 
 The flag `--weight` can be used to weigh your income sources by ticker.
 
@@ -368,7 +367,7 @@ $ dledger report example/simple.journal --weight --period=tomorrow:
 ~              $ 308    100.00%    AAPL
 ```
 
-#### Sum
+### Sum
 
 The flag `--sum` can be used to calculate the total (sum) of all income.
 
@@ -382,7 +381,7 @@ $ dledger report example/simple.journal --sum --without-forecast
                $ 304
 ```
 
-### Detailed transactions
+## Detailed transactions
 
 The flag `--by-ticker` can be used to filter a report to only show transactions with a specific ticker. It also adds more details to each transaction (dividend and position).
 
@@ -409,7 +408,7 @@ For example, to filter by ticker "NOVO B", you must wrap it in quotes:
 $ dledger report ~/.journal --by-ticker="NOVO B"
 ```
 
-### Forecasts
+## Forecasts
 
 In addition to listing all past or pending transactions, reports also include forecasts (or projections).
 
@@ -417,7 +416,7 @@ These forecasts can provide you with an overview of future cashflow, based on pa
 
 You can set `--without-forecast` to exclude forecasted transactions from a report entirely.
 
-### Exchange rates
+## Exchange rates
 
 If you track any income in a currency other than the native currency for the distributing company, then an exchange rate will be determined and automatically applied to all forecasted transactions.
 
@@ -425,7 +424,7 @@ To determine and apply an exchange rate, a dividend must be recorded.
 
 The exchange rate is always based on the latest recorded transaction and is *not* guaranteed to be current (i.e. `dledger` does not fetch external data).
 
-#### Consolidating income reports
+### Consolidating income reports
 
 The flag `--in-currency` can be used to report all income in a specific currency. This can be particularly useful when you track and receive income in currency other than your domestic currency, but want to consolidate all reports into a single one.
 
@@ -433,9 +432,9 @@ This works by estimating how much the amount of cash received previously would b
 
 Income is not converted if an exchange rate is not available for a given currency pairing.
 
-### Common/useful reports
+## Common/useful reports
 
-#### Report only forecasted transactions
+### Report only forecasted transactions
 
 This can be achieved simply by using the [`--period`](#periods) flag. If you specify a period that only includes future dates, then the report will, by definition, only include forecasted transactions.
 
@@ -447,7 +446,7 @@ $ dledger report ~/.journal --period=tomorrow:
 
 In this example, the period will stretch from tomorrow (inclusive) through the last forecasted transaction.
 
-#### Report forecasted income weights
+### Report forecasted income weights
 
 Building on the [previous tip](#report-only-forecasted-transactions), you can apply a future period to weigh your forecasted income sources:
 
@@ -457,7 +456,7 @@ $ dledger report ~/.journal --period=tomorrow: --weight
 
 *Replace "tomorrow" with the date a day after today.*
 
-#### Next expected payouts
+### Next expected payouts
 
 > This tip only applies to macOS/Linux
 
@@ -473,7 +472,7 @@ $ dledger report ~/.journal --period=tomorrow: | head -n 5
 
 *Replace "tomorrow" with the date a day after today.*
 
-#### Most recent payouts
+### Most recent payouts
 
 Similarly, the tool `tail` can be used for the same purpose, but instead of reading from the top, it reads from the bottom. This can be used to list the 5 most recent payouts:
 
@@ -483,7 +482,7 @@ dledger report ~/.journal --without-forecast | tail -n 5
 
 *Note the use of `--without-forecast` to exclude any forecasted transactions.*
 
-## Stats
+# Stats
 
 The nifty little command `stats` will show you information on one or more journals.
 
@@ -503,9 +502,9 @@ $ dledger stats example/simple.journal
 
 This reveals some statistics and information on symbol/exchange rate and how `dledger` reads and expects numbers to be formatted (see [locale](#locale)).
 
-## FAQ
+# FAQ
 
-#### I have a position in the same stock in multiple portfolios. How do I track this?
+## I have a position in the same stock in multiple portfolios. How do I track this?
 
 This is not supported. You can still track both in a single journal, but to avoid unexpected reports, you should combine each position and treat it as a single position. You can do this by consolidating the transactions.
 
