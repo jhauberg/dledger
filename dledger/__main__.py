@@ -39,6 +39,7 @@ from docopt import docopt  # type: ignore
 from dledger import __version__
 from dledger.dateutil import parse_period
 from dledger.localeutil import trysetlocale
+from dledger.printutil import enable_color_escapes
 from dledger.record import in_period
 from dledger.report import (
     print_simple_report,
@@ -64,6 +65,8 @@ def main() -> None:
         sys.exit('Python 3.8+ required')
 
     args = docopt(__doc__, version='dledger ' + __version__.__version__)
+
+    enable_color_escapes()
 
     try:
         # default to system locale, if able
