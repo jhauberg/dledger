@@ -303,6 +303,7 @@ def print_simple_rolling_report(records: List[Transaction]):
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
+        should_breakline = False
         for year in years:
             for month in range(1, 12 + 1):
                 ending_date = date(year, month, 1)
@@ -327,6 +328,7 @@ def print_simple_rolling_report(records: List[Transaction]):
                     print(colored(line, COLOR_MARKED))
                 else:
                     print(line)
+                should_breakline = True
 
         future_transactions = [r for r in matching_transactions if
                                isinstance(r, FutureTransaction) and r.date >= today]
@@ -336,5 +338,5 @@ def print_simple_rolling_report(records: List[Transaction]):
             amount = latest_transaction.amount.format % amount
             print(f'~ {amount.rjust(18)}    next 12m')
 
-        if commodity != commodities[-1]:
+        if commodity != commodities[-1] and should_breakline:
             print()
