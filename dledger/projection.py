@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from dataclasses import dataclass
 
 from statistics import multimode, fmean  # type: ignore
@@ -280,7 +280,9 @@ def scheduled_transactions(records: List[Transaction],
         scheduled.append(future_record)
     # weed out projections in the past or later than 12 months into the future
     cutoff_date = in_months(since, months=12)
-    scheduled = [r for r in scheduled if cutoff_date >= r.date >= since]
+    # add a grace period
+    earliest_date = since + timedelta(days=-EARLY_LATE_THRESHOLD)
+    scheduled = [r for r in scheduled if cutoff_date >= r.date >= earliest_date]
     for sample_record in sample_records:
         if sample_record.amount is None:
             # skip buy/sell transactions; they should not have any effect on this bit of filtering
@@ -352,7 +354,6 @@ def estimated_transactions(records: List[Transaction]) \
         while len(scheduled_records) < len(scheduled_months):
             next_date = next_scheduled_date(future_date, scheduled_months)
             future_date = projected_date(next_date, timeframe=future_timeframe)
-
             # double-check that position is not closed in timeframe leading up to future_date
             latest_record = latest(before(by_ticker(records, ticker), future_date))
 

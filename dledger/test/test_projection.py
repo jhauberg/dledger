@@ -733,6 +733,38 @@ def test_scheduled_transactions():
     assert scheduled[2].date == date(2020, 9, 15)
 
 
+def test_scheduled_grace_period():
+    records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 9, 1), 'ABC', 1, Amount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 9, 16))
+
+    assert len(scheduled) == 1
+
+    records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 9, 1), 'ABC', 1, Amount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 9, 30))
+
+    assert len(scheduled) == 1
+
+    records = [
+        Transaction(date(2018, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 9, 1), 'ABC', 1, Amount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
+
+    assert len(scheduled) == 0
+
+
 def test_scheduled_transactions_closed_position():
     records = [
         Transaction(date(2019, 1, 20), 'ABC', 1, Amount(100)),
