@@ -19,6 +19,12 @@ LATE = 1
 EARLY_LATE_THRESHOLD = 15  # early before or at this day of month, late after
 
 
+class GeneratedDate(date):
+    """ Represents an estimated/generated date. """
+    def __new__(cls, year, month=None, day=None):
+        return super(GeneratedDate, cls).__new__(cls, year, month, day)
+
+
 @dataclass(frozen=True)
 class FutureTransaction(Transaction):
     """ Represents an unrealized transaction; a projection. """
@@ -127,7 +133,7 @@ def estimated_monthly_schedule(records: List[Transaction],
 
 
 def next_scheduled_date(d: date, months: List[int]) \
-        -> date:
+        -> GeneratedDate:
     """ Return the date that would follow a given date, going by a monthly schedule.
 
     For example, given a date (2019, 6, 18) and a schedule of (3, 6, 9, 12),
@@ -150,11 +156,7 @@ def next_scheduled_date(d: date, months: List[int]) \
         next_year = next_year + 1
         next_month_index = 0
 
-    future_date = d.replace(year=next_year,
-                            month=months[next_month_index],
-                            day=1)
-
-    return future_date
+    return GeneratedDate(next_year, month=months[next_month_index], day=1)
 
 
 def projected_timeframe(d: date) -> int:
@@ -163,14 +165,16 @@ def projected_timeframe(d: date) -> int:
     return EARLY if d.day <= EARLY_LATE_THRESHOLD else LATE
 
 
-def projected_date(d: date, *, timeframe: int) -> date:
+def projected_date(d: date, *, timeframe: int) -> GeneratedDate:
     """ Return a date where day of month is set according to given timeframe. """
 
     if timeframe == EARLY:
-        return d.replace(day=EARLY_LATE_THRESHOLD)
+        return GeneratedDate(d.year, d.month, day=EARLY_LATE_THRESHOLD)
     if timeframe == LATE:
-        return last_of_month(d)
-    return d
+        d = last_of_month(d)
+        return GeneratedDate(d.year, d.month, d.day)
+
+    raise ValueError(f'invalid timeframe')
 
 
 def convert_estimates(records: List[Transaction]) -> List[Transaction]:

@@ -7,7 +7,7 @@ from dledger.journal import Transaction, Distribution
 from dledger.formatutil import format_amount, most_decimal_places
 from dledger.printutil import colored, COLOR_NEGATIVE, COLOR_MARKED
 from dledger.dateutil import previous_month, last_of_month
-from dledger.projection import FutureTransaction, symbol_conversion_factors
+from dledger.projection import FutureTransaction, GeneratedDate, symbol_conversion_factors
 from dledger.record import (
     income, yearly, monthly, symbols,
     tickers, by_ticker, latest, earliest, before, after
@@ -150,11 +150,17 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         d = transaction.date.strftime('%Y/%m/%d')
 
         if isinstance(transaction, FutureTransaction):
-            if transaction.date < today:
-                should_colorize_expired_transaction = True
-                line = f'~ {amount.rjust(18)}  ! {d} {transaction.ticker.ljust(8)}'
+            if isinstance(transaction.date, GeneratedDate):
+                if transaction.date < today:
+                    should_colorize_expired_transaction = True
+                    # call attention as it may be a payout about to happen, or a closed position
+                    line = f'~ {amount.rjust(18)}  ! {d} {transaction.ticker.ljust(8)}'
+                else:
+                    line = f'~ {amount.rjust(18)}  < {d} {transaction.ticker.ljust(8)}'
             else:
-                line = f'~ {amount.rjust(18)}  < {d} {transaction.ticker.ljust(8)}'
+                should_colorize_expired_transaction = True
+                # call attention as it is a preliminary record, not completed yet
+                line = f'~ {amount.rjust(18)}  ! {d} {transaction.ticker.ljust(8)}'
         else:
             if transaction.kind is Distribution.INTERIM:
                 line = f'{amount.rjust(20)}  ^ {d} {transaction.ticker.ljust(8)}'
