@@ -28,7 +28,7 @@ class Distribution(Enum):
 class Amount:
     value: float
     symbol: Optional[str] = None
-    format: Optional[str] = None
+    fmt: Optional[str] = None
 
 
 @dataclass(frozen=True, unsafe_hash=True)
@@ -129,11 +129,11 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
             if amount.symbol is None and dividend.symbol is not None:
                 amount = Amount(amount.value,
                                 symbol=dividend.symbol,
-                                format=dividend.format)
+                                fmt=dividend.fmt)
             elif dividend.symbol is None and amount.symbol is not None:
                 dividend = Amount(dividend.value,
                                   symbol=amount.symbol,
-                                  format=amount.format)
+                                  fmt=amount.fmt)
 
         if amount is not None and amount.symbol is None:
             # infer symbol/format from previous entries
@@ -143,11 +143,11 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                         continue
                     amount = Amount(amount.value,
                                     symbol=previous_record.amount.symbol,
-                                    format=previous_record.amount.format)
+                                    fmt=previous_record.amount.fmt)
                     if dividend is not None:
                         dividend = Amount(dividend.value,
                                           symbol=previous_record.amount.symbol,
-                                          format=previous_record.amount.format)
+                                          fmt=previous_record.amount.fmt)
                     break
 
         if p is None or position_change_direction != 0:
@@ -182,7 +182,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         if amount is not None and dividend is None:
             dividend = Amount(amount.value / p,
                               symbol=amount.symbol,
-                              format=amount.format)
+                              fmt=amount.fmt)
 
         records.append(Transaction(d, ticker, p, amount, dividend, kind, payout_date=d2))
 
@@ -466,8 +466,8 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
 
     return Transaction(
         d, ticker, position,
-        Amount(amount, symbol=amount_symbol, format=f'%s {amount_symbol}'),
-        Amount(dividend, symbol=dividend_symbol, format=f'%s {dividend_symbol}'))
+        Amount(amount, symbol=amount_symbol, fmt=f'%s {amount_symbol}'),
+        Amount(dividend, symbol=dividend_symbol, fmt=f'%s {dividend_symbol}'))
 
 
 def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
@@ -484,13 +484,13 @@ def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
         amount_display = ''
         if record.amount is not None:
             payout_display = format_amount(record.amount.value, trailing_zero=False, rounded=False)
-            if record.amount.format is not None:
-                payout_display = record.amount.format % payout_display
+            if record.amount.fmt is not None:
+                payout_display = record.amount.fmt % payout_display
             amount_display += payout_display
         if record.dividend is not None:
             dividend_display = format_amount(record.dividend.value, trailing_zero=False, rounded=False)
-            if record.dividend.format is not None:
-                dividend_display = record.dividend.format % dividend_display
+            if record.dividend.fmt is not None:
+                dividend_display = record.dividend.fmt % dividend_display
             amount_display += f' @ {dividend_display}'
         if len(amount_display) > 0:
             amount_line = f'  {amount_display}'

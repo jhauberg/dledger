@@ -3,6 +3,7 @@ from datetime import date
 from dledger.journal import Transaction, Amount, Distribution
 from dledger.projection import (
     FutureTransaction,
+    GeneratedAmount, GeneratedDate,
     estimated_monthly_schedule,
     frequency, normalize_interval,
     next_scheduled_date,
@@ -373,7 +374,7 @@ def test_next_linear_dividend():
 
     dividend = next_linear_dividend(records)
 
-    assert dividend == Amount(1)
+    assert dividend == GeneratedAmount(1)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
@@ -382,7 +383,7 @@ def test_next_linear_dividend():
 
     dividend = next_linear_dividend(records)
 
-    assert dividend == Amount(2)
+    assert dividend == GeneratedAmount(2)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
@@ -392,7 +393,7 @@ def test_next_linear_dividend():
 
     dividend = next_linear_dividend(records)
 
-    assert dividend == Amount(2)
+    assert dividend == GeneratedAmount(2)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
@@ -401,7 +402,7 @@ def test_next_linear_dividend():
 
     dividend = next_linear_dividend(records)
 
-    assert dividend == Amount(1)
+    assert dividend == GeneratedAmount(1)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
@@ -423,7 +424,7 @@ def test_next_linear_dividend():
 
     dividend = next_linear_dividend(records)
 
-    assert dividend == Amount(3)
+    assert dividend == GeneratedAmount(3)
 
     records = [
         Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
@@ -434,7 +435,7 @@ def test_next_linear_dividend():
 
     dividend = next_linear_dividend(records)
 
-    assert dividend == Amount(3)
+    assert dividend == GeneratedAmount(3)
 
 
 def test_future_transactions():
@@ -453,7 +454,7 @@ def test_future_transactions():
     futures = future_transactions(records)
 
     assert len(futures) == 1
-    assert futures[0].date == date(2020, 3, 15)
+    assert futures[0].date == GeneratedDate(2020, 3, 15)
 
     records = [
         Transaction(date(2019, 3, 16), 'ABC', 1, Amount(100))
@@ -462,7 +463,7 @@ def test_future_transactions():
     futures = future_transactions(records)
 
     assert len(futures) == 1
-    assert futures[0].date == date(2020, 3, 31)
+    assert futures[0].date == GeneratedDate(2020, 3, 31)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -472,8 +473,8 @@ def test_future_transactions():
     futures = future_transactions(records)
 
     assert len(futures) == 2
-    assert futures[0].date == date(2020, 3, 15)
-    assert futures[1].date == date(2021, 12, 31)
+    assert futures[0].date == GeneratedDate(2020, 3, 15)
+    assert futures[1].date == GeneratedDate(2021, 12, 31)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100, symbol='$')),
@@ -486,7 +487,7 @@ def test_future_transactions():
     # only transactions that match in currency will be projected
     # because of that we only expect 1 in this case
     assert len(futures) == 1
-    assert futures[0].date == date(2020, 7, 15)
+    assert futures[0].date == GeneratedDate(2020, 7, 15)
 
 
 def test_estimated_transactions():
@@ -505,7 +506,7 @@ def test_estimated_transactions():
     estimations = estimated_transactions(records)
 
     assert len(estimations) == 1
-    assert estimations[0].date == date(2020, 3, 15)
+    assert estimations[0].date == GeneratedDate(2020, 3, 15)
 
     records = [
         Transaction(date(2019, 3, 16), 'ABC', 1, Amount(100))
@@ -514,7 +515,7 @@ def test_estimated_transactions():
     estimations = estimated_transactions(records)
 
     assert len(estimations) == 1
-    assert estimations[0].date == date(2020, 3, 31)
+    assert estimations[0].date == GeneratedDate(2020, 3, 31)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -524,8 +525,8 @@ def test_estimated_transactions():
     estimations = estimated_transactions(records)
 
     assert len(estimations) == 2
-    assert estimations[0].date == date(2021, 3, 31)
-    assert estimations[1].date == date(2021, 12, 31)
+    assert estimations[0].date == GeneratedDate(2021, 3, 31)
+    assert estimations[1].date == GeneratedDate(2021, 12, 31)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100, symbol='$')),
@@ -540,10 +541,10 @@ def test_estimated_transactions():
     # it does affect the estimated amount, however, as that will only ever be based upon
     # the latest transaction (and all previous transactions of matching symbols)
     assert len(estimations) == 4
-    assert estimations[0].date == date(2019, 12, 15)
-    assert estimations[1].date == date(2020, 3, 15)
-    assert estimations[2].date == date(2020, 6, 15)
-    assert estimations[3].date == date(2020, 9, 15)
+    assert estimations[0].date == GeneratedDate(2019, 12, 15)
+    assert estimations[1].date == GeneratedDate(2020, 3, 15)
+    assert estimations[2].date == GeneratedDate(2020, 6, 15)
+    assert estimations[3].date == GeneratedDate(2020, 9, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -554,15 +555,15 @@ def test_estimated_transactions():
     estimations = estimated_transactions(records)
 
     assert len(estimations) == 4
-    assert estimations[0].date == date(2019, 12, 15)
+    assert estimations[0].date == GeneratedDate(2019, 12, 15)
     assert estimations[0].amount.value == 100
     assert estimations[0].amount_range[0].value == 100
     assert estimations[0].amount_range[1].value == 100
-    assert estimations[1].date == date(2020, 3, 15)
+    assert estimations[1].date == GeneratedDate(2020, 3, 15)
     assert estimations[1].amount.value == 100
-    assert estimations[2].date == date(2020, 6, 15)
+    assert estimations[2].date == GeneratedDate(2020, 6, 15)
     assert estimations[2].amount.value == 100
-    assert estimations[3].date == date(2020, 9, 15)
+    assert estimations[3].date == GeneratedDate(2020, 9, 15)
     assert estimations[3].amount.value == 100
 
     records = [
@@ -574,17 +575,17 @@ def test_estimated_transactions():
     estimations = estimated_transactions(records)
 
     assert len(estimations) == 4
-    assert estimations[0].date == date(2019, 12, 15)
+    assert estimations[0].date == GeneratedDate(2019, 12, 15)
     assert estimations[0].amount_range[0].value == 60   # lowest (adjusted by position)
     assert estimations[0].amount_range[1].value == 100  # highest (adjusted by position)
     assert estimations[0].amount.value == 80            # mean of highest / lowest
-    assert estimations[1].date == date(2020, 3, 15)
+    assert estimations[1].date == GeneratedDate(2020, 3, 15)
     assert estimations[1].amount_range[0].value == 80  # lowest (adjusted by position)
     assert estimations[1].amount_range[1].value == 100  # highest (adjusted by position)
     assert estimations[1].amount.value == 90
-    assert estimations[2].date == date(2020, 6, 15)
+    assert estimations[2].date == GeneratedDate(2020, 6, 15)
     assert estimations[2].amount.value == 100
-    assert estimations[3].date == date(2020, 9, 15)
+    assert estimations[3].date == GeneratedDate(2020, 9, 15)
     assert estimations[3].amount.value == 100
 
     records = [
@@ -599,13 +600,13 @@ def test_estimated_transactions():
     assert estimations[0].amount_range[0].value == 400  # lowest (adjusted by position)
     assert estimations[0].amount_range[1].value == 600  # highest (adjusted by position)
     assert estimations[0].amount.value == 500            # mean of highest aps / lowest aps
-    assert estimations[1].date == date(2020, 3, 15)
+    assert estimations[1].date == GeneratedDate(2020, 3, 15)
     assert estimations[1].amount_range[0].value == 400
     assert estimations[1].amount_range[1].value == 600
     assert estimations[1].amount.value == 500
-    assert estimations[2].date == date(2020, 6, 15)
+    assert estimations[2].date == GeneratedDate(2020, 6, 15)
     assert estimations[2].amount.value == 600
-    assert estimations[3].date == date(2020, 9, 15)
+    assert estimations[3].date == GeneratedDate(2020, 9, 15)
     assert estimations[3].amount.value == 600
 
 
@@ -662,7 +663,7 @@ def test_scheduled_transactions():
     scheduled = scheduled_transactions(records, since=date(2019, 1, 1))
 
     assert len(scheduled) == 1
-    assert scheduled[0].date == date(2019, 12, 15)
+    assert scheduled[0].date == GeneratedDate(2019, 12, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -675,7 +676,7 @@ def test_scheduled_transactions():
     scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
 
     assert len(scheduled) == 4
-    assert scheduled[0].date == date(2019, 12, 15)
+    assert scheduled[0].date == GeneratedDate(2019, 12, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -688,7 +689,7 @@ def test_scheduled_transactions():
     scheduled = scheduled_transactions(records, since=date(2020, 1, 15))
 
     assert len(scheduled) == 4
-    assert scheduled[0].date == date(2020, 3, 15)
+    assert scheduled[0].date == GeneratedDate(2020, 3, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -700,9 +701,9 @@ def test_scheduled_transactions():
     scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
 
     assert len(scheduled) == 3
-    assert scheduled[0].date == date(2020, 3, 15)  # because we have one prelim record for dec
-    assert scheduled[1].date == date(2020, 6, 15)
-    assert scheduled[2].date == date(2020, 9, 15)
+    assert scheduled[0].date == GeneratedDate(2020, 3, 15)  # because we have one prelim record for dec
+    assert scheduled[1].date == GeneratedDate(2020, 6, 15)
+    assert scheduled[2].date == GeneratedDate(2020, 9, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -715,8 +716,8 @@ def test_scheduled_transactions():
     scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
 
     assert len(scheduled) == 2
-    assert scheduled[0].date == date(2020, 6, 15)
-    assert scheduled[1].date == date(2020, 9, 15)
+    assert scheduled[0].date == GeneratedDate(2020, 6, 15)
+    assert scheduled[1].date == GeneratedDate(2020, 9, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -728,9 +729,9 @@ def test_scheduled_transactions():
     scheduled = scheduled_transactions(records, since=date(2019, 10, 1))
 
     assert len(scheduled) == 3
-    assert scheduled[0].date == date(2020, 3, 15)
-    assert scheduled[1].date == date(2020, 6, 15)
-    assert scheduled[2].date == date(2020, 9, 15)
+    assert scheduled[0].date == GeneratedDate(2020, 3, 15)
+    assert scheduled[1].date == GeneratedDate(2020, 6, 15)
+    assert scheduled[2].date == GeneratedDate(2020, 9, 15)
 
 
 def test_scheduled_grace_period():
@@ -798,13 +799,13 @@ def test_scheduled_transactions_closed_position():
     scheduled = scheduled_transactions(records, since=date(2020, 2, 20))
 
     assert len(scheduled) == 4
-    assert scheduled[0].date == date(2020, 4, 30)
+    assert scheduled[0].date == GeneratedDate(2020, 4, 30)
     assert scheduled[0].position == 1
-    assert scheduled[0].amount == Amount(100)
+    assert scheduled[0].amount == GeneratedAmount(100)
     # ...
-    assert scheduled[3].date == date(2021, 1, 31)
+    assert scheduled[3].date == GeneratedDate(2021, 1, 31)
     assert scheduled[3].position == 1
-    assert scheduled[3].amount == Amount(100)
+    assert scheduled[3].amount == GeneratedAmount(100)
 
 
 def test_scheduled_transactions_sampling():
@@ -838,7 +839,7 @@ def test_scheduled_transactions_sampling():
     scheduled = scheduled_transactions(records, since=date(2020, 3, 15))
 
     assert len(scheduled) == 4
-    assert scheduled[0].date == date(2020, 6, 15)
+    assert scheduled[0].date == GeneratedDate(2020, 6, 15)
 
     records = [
         Transaction(date(2019, 3, 10), 'ABC', 1, Amount(100)),
@@ -865,7 +866,7 @@ def test_scheduled_transactions_sampling():
     scheduled = scheduled_transactions(records, since=date(2020, 3, 12))
 
     assert len(scheduled) == 4
-    assert scheduled[0].date == date(2020, 3, 15)
+    assert scheduled[0].date == GeneratedDate(2020, 3, 15)
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
@@ -885,7 +886,7 @@ def test_scheduled_transactions_sampling():
     #         2020/02/28
     #       then there's 16 days between, crossing the 15 days threshold for filtering
     assert len(scheduled) == 5
-    assert scheduled[0].date == date(2020, 3, 15)
+    assert scheduled[0].date == GeneratedDate(2020, 3, 15)
 
     records = [
         Transaction(date(2018, 1, 1), 'ABC', 1, Amount(100)),
@@ -905,13 +906,13 @@ def test_scheduled_transactions_sampling():
     scheduled = scheduled_transactions(records, since=date(2019, 1, 1))
 
     assert len(scheduled) == 12
-    assert scheduled[0].date == date(2019, 1, 15)
+    assert scheduled[0].date == GeneratedDate(2019, 1, 15)
     assert scheduled[0].amount_range is None  # to verify that this is not projected by estimate
-    assert scheduled[1].date == date(2019, 2, 15)
+    assert scheduled[1].date == GeneratedDate(2019, 2, 15)
     assert scheduled[1].amount_range is None
-    assert scheduled[2].date == date(2019, 3, 15)
+    assert scheduled[2].date == GeneratedDate(2019, 3, 15)
     # ...
-    assert scheduled[11].date == date(2019, 12, 15)
+    assert scheduled[11].date == GeneratedDate(2019, 12, 15)
 
     records = [
         Transaction(date(2018, 1, 31), 'ABC', 1, Amount(100)),
@@ -932,7 +933,7 @@ def test_scheduled_transactions_sampling():
     scheduled = scheduled_transactions(records, since=date(2019, 1, 3))
 
     assert len(scheduled) == 11
-    assert scheduled[0].date == date(2019, 2, 15)
+    assert scheduled[0].date == GeneratedDate(2019, 2, 15)
 
     records = [
         Transaction(date(2019, 4, 30), 'ABC', 1, Amount(100)),
@@ -950,7 +951,7 @@ def test_scheduled_transactions_sampling():
     scheduled = scheduled_transactions(records, since=date(2020, 2, 11))
 
     assert len(scheduled) == 12
-    assert scheduled[0].date == date(2020, 2, 29)
+    assert scheduled[0].date == GeneratedDate(2020, 2, 29)
 
 
 def test_scheduled_transactions_in_leap_year():
@@ -961,7 +962,7 @@ def test_scheduled_transactions_in_leap_year():
     scheduled = scheduled_transactions(records, since=date(2020, 1, 1))
 
     assert len(scheduled) == 1
-    assert scheduled[0].date == date(2020, 2, 29)
+    assert scheduled[0].date == GeneratedDate(2020, 2, 29)
 
     records = [
         Transaction(date(2019, 2, 28), 'ABC', 1, Amount(100)),
@@ -971,8 +972,8 @@ def test_scheduled_transactions_in_leap_year():
     scheduled = scheduled_transactions(records, since=date(2020, 1, 1))
 
     assert len(scheduled) == 2
-    assert scheduled[0].date == date(2020, 2, 29)
-    assert scheduled[1].date == date(2020, 3, 31)
+    assert scheduled[0].date == GeneratedDate(2020, 2, 29)
+    assert scheduled[1].date == GeneratedDate(2020, 3, 31)
 
     records = [
         Transaction(date(2019, 2, 28), 'ABC', 1, Amount(100)),
@@ -988,7 +989,7 @@ def test_scheduled_transactions_in_leap_year():
     # todo: note that this should be considered a false-positive, as we may not expect
     #       2020/03/15 to be discarded, but in other cases, we do!
     assert len(scheduled) == 1
-    assert scheduled[0].date == date(2021, 2, 28)
+    assert scheduled[0].date == GeneratedDate(2021, 2, 28)
 
     records = [
         Transaction(date(2019, 2, 28), 'ABC', 1, Amount(100)),
@@ -999,8 +1000,8 @@ def test_scheduled_transactions_in_leap_year():
     scheduled = scheduled_transactions(records, since=date(2020, 3, 1))
 
     assert len(scheduled) == 2
-    assert scheduled[0].date == date(2020, 3, 15)
-    assert scheduled[1].date == date(2021, 2, 15)
+    assert scheduled[0].date == GeneratedDate(2020, 3, 15)
+    assert scheduled[1].date == GeneratedDate(2021, 2, 15)
 
     records = [
         Transaction(date(2019, 2, 28), 'ABC', 1, Amount(100)),
@@ -1010,7 +1011,7 @@ def test_scheduled_transactions_in_leap_year():
     scheduled = scheduled_transactions(records, since=date(2020, 2, 15))
 
     assert len(scheduled) == 1
-    assert scheduled[0].date == date(2021, 2, 15)
+    assert scheduled[0].date == GeneratedDate(2021, 2, 15)
 
     records = [
         Transaction(date(2019, 2, 1), 'ABC', 1, Amount(100)),
@@ -1020,7 +1021,7 @@ def test_scheduled_transactions_in_leap_year():
     scheduled = scheduled_transactions(records, since=date(2020, 3, 1))
 
     assert len(scheduled) == 1
-    assert scheduled[0].date == date(2021, 2, 28)
+    assert scheduled[0].date == GeneratedDate(2021, 2, 28)
 
     records = [
         Transaction(date(2020, 2, 29), 'ABC', 1, Amount(100)),
@@ -1030,7 +1031,7 @@ def test_scheduled_transactions_in_leap_year():
     scheduled = scheduled_transactions(records, since=date(2021, 2, 15))
 
     assert len(scheduled) == 1
-    assert scheduled[0].date == date(2022, 2, 15)
+    assert scheduled[0].date == GeneratedDate(2022, 2, 15)
 
     records = [
         Transaction(date(2020, 2, 1), 'ABC', 1, Amount(100)),
@@ -1040,7 +1041,7 @@ def test_scheduled_transactions_in_leap_year():
     scheduled = scheduled_transactions(records, since=date(2021, 3, 1))
 
     assert len(scheduled) == 1
-    assert scheduled[0].date == date(2022, 2, 28)
+    assert scheduled[0].date == GeneratedDate(2022, 2, 28)
 
 
 def test_conversion_factors():

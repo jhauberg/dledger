@@ -26,6 +26,12 @@ class GeneratedDate(date):
 
 
 @dataclass(frozen=True)
+class GeneratedAmount(Amount):
+    """ Represents an estimated/generated amount. """
+    pass
+
+
+@dataclass(frozen=True)
 class FutureTransaction(Transaction):
     """ Represents an unrealized transaction; a projection. """
 
@@ -185,16 +191,17 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
     for rec in estimate_records:
         conversion_factor = 1.0
         estimate_symbol = rec.dividend.symbol
-        estimate_format = rec.dividend.format
+        estimate_format = rec.dividend.fmt
         latest_transaction = latest(by_ticker(transactions, rec.ticker))
         if latest_transaction is not None:
             estimate_symbol = latest_transaction.amount.symbol
-            estimate_format = latest_transaction.amount.format
+            estimate_format = latest_transaction.amount.fmt
             if rec.dividend.symbol != latest_transaction.amount.symbol:
                 conversion_factor = conversion_factors[(rec.dividend.symbol,
                                                         latest_transaction.amount.symbol)]
-        estimate_amount = Amount((rec.position * rec.dividend.value) * conversion_factor,
-                                 estimate_symbol, estimate_format)
+        estimate_amount = GeneratedAmount(
+            value=(rec.position * rec.dividend.value) * conversion_factor,
+            symbol=estimate_symbol, fmt=estimate_format)
         estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
                                      estimate_amount, rec.dividend, rec.kind)
         i = records.index(rec)
@@ -221,12 +228,14 @@ def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Tran
         estimate_format: Optional[str] = None
         for t in reversed(transactions):
             if t.amount.symbol == symbol:
-                estimate_format = t.amount.format
+                estimate_format = t.amount.fmt
             elif t.dividend is not None and t.dividend.symbol == symbol:
-                estimate_format = t.dividend.format
+                estimate_format = t.dividend.fmt
             if estimate_format is not None:
                 break
-        estimate_amount = Amount(rec.amount.value * conversion_factor, symbol, estimate_format)
+        estimate_amount = GeneratedAmount(
+            value=rec.amount.value * conversion_factor,
+            symbol=symbol, fmt=estimate_format)
         estimate = FutureTransaction(rec.date, rec.ticker, rec.position,
                                      estimate_amount, rec.dividend, rec.kind)
         i = records.index(rec)
@@ -409,32 +418,32 @@ def estimated_transactions(records: List[Transaction]) \
                     future_dividend = float(s)
                     future_amount = future_dividend * future_position
                     future_amount = future_amount * conversion_factor
-                    future_amount_range = (Amount(lowest_dividend * conversion_factor,
+                    future_amount_range = (GeneratedAmount(lowest_dividend * conversion_factor,
                                                   symbol=latest_transaction.amount.symbol,
-                                                  format=latest_transaction.amount.format),
-                                           Amount(highest_dividend * conversion_factor,
+                                                  fmt=latest_transaction.amount.fmt),
+                                           GeneratedAmount(highest_dividend * conversion_factor,
                                                   symbol=latest_transaction.amount.symbol,
-                                                  format=latest_transaction.amount.format))
+                                                  fmt=latest_transaction.amount.fmt))
                 elif len(aps) > 0:
                     highest_amount = max(aps) * future_position
                     lowest_amount = min(aps) * future_position
                     mean_amount = fmean(aps) * future_position
                     future_amount = mean_amount
-                    future_amount_range = (Amount(lowest_amount,
+                    future_amount_range = (GeneratedAmount(lowest_amount,
                                                   symbol=latest_transaction.amount.symbol,
-                                                  format=latest_transaction.amount.format),
-                                           Amount(highest_amount,
+                                                  fmt=latest_transaction.amount.fmt),
+                                           GeneratedAmount(highest_amount,
                                                   symbol=latest_transaction.amount.symbol,
-                                                  format=latest_transaction.amount.format))
+                                                  fmt=latest_transaction.amount.fmt))
 
             future_record = FutureTransaction(future_date, ticker, future_position,
-                                              amount=Amount(future_amount,
+                                              amount=GeneratedAmount(future_amount,
                                                             symbol=latest_transaction.amount.symbol,
-                                                            format=latest_transaction.amount.format),
+                                                            fmt=latest_transaction.amount.fmt),
                                               amount_range=future_amount_range,
-                                              dividend=(Amount(future_dividend,
+                                              dividend=(GeneratedAmount(future_dividend,
                                                                symbol=latest_transaction.dividend.symbol,
-                                                               format=latest_transaction.dividend.format)
+                                                               fmt=latest_transaction.dividend.fmt)
                                                         if can_convert_from_dividend else None))
 
             scheduled_records.append(future_record)
@@ -444,7 +453,7 @@ def estimated_transactions(records: List[Transaction]) \
     return sorted(approximate_records)
 
 
-def next_linear_dividend(records: List[Transaction]) -> Optional[Amount]:
+def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount]:
     """ Return the estimated next linearly projected dividend if able, None otherwise. """
 
     transactions = list(r for r in records if r.amount is not None)
@@ -473,7 +482,9 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[Amount]:
             n = len(multimode(movements))
             # if there's a clear trend, up or down, assume linear pattern
             if n == 0 or n == 1:
-                return latest(comparable_transactions).dividend
+                latest_comparable = latest(comparable_transactions)
+                div = latest_comparable.dividend
+                return GeneratedAmount(div.value, div.symbol, div.fmt)
 
     return None
 
@@ -552,9 +563,10 @@ def future_transactions(records: List[Transaction]) \
                 future_amount = future_position * future_dividend.value
 
         future_record = FutureTransaction(future_date, transaction.ticker, future_position,
-                                          amount=Amount(future_amount,
-                                                        symbol=latest_transaction.amount.symbol,
-                                                        format=latest_transaction.amount.format),
+                                          amount=GeneratedAmount(
+                                              future_amount,
+                                              symbol=latest_transaction.amount.symbol,
+                                              fmt=latest_transaction.amount.fmt),
                                           dividend=future_dividend,
                                           kind=transaction.kind,
                                           payout_date=future_payout_date)
