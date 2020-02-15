@@ -8,7 +8,6 @@ from dledger.formatutil import format_amount, most_decimal_places
 from dledger.printutil import colored, COLOR_NEGATIVE, COLOR_MARKED
 from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import (
-    FutureTransaction,
     GeneratedDate, GeneratedAmount,
     symbol_conversion_factors
 )
@@ -42,7 +41,7 @@ def print_simple_annual_report(records: List[Transaction]):
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.fmt % amount
             d = f'{year}'
-            if any(isinstance(x, FutureTransaction) for x in yearly_transactions):
+            if any(isinstance(r.amount, GeneratedAmount) for r in yearly_transactions):
                 if year == years[-1]:
                     d = latest_transaction.date.strftime('%Y/%m')
                     line = f'~ {amount.rjust(18)}  < {d.ljust(11)}'
@@ -82,7 +81,7 @@ def print_simple_monthly_report(records: List[Transaction]):
                 amount = latest_transaction.amount.fmt % amount
                 month_indicator = f'{month}'.zfill(2)
                 d = f'{year}/{month_indicator}'
-                if any(isinstance(x, FutureTransaction) for x in monthly_transactions):
+                if any(isinstance(r.amount, GeneratedAmount) for r in monthly_transactions):
                     line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
                 else:
                     line = f'{amount.rjust(20)}    {d.ljust(11)}'
@@ -124,7 +123,7 @@ def print_simple_quarterly_report(records: List[Transaction]):
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.fmt % amount
                 d = f'{year}/Q{quarter}'
-                if any(isinstance(x, FutureTransaction) for x in quarterly_transactions):
+                if any(isinstance(r.amount, GeneratedAmount) for r in quarterly_transactions):
                     line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
                 else:
                     line = f'{amount.rjust(20)}    {d.ljust(11)}'
@@ -158,7 +157,15 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         else:
             line = f'{amount.rjust(20)}'
 
-        if isinstance(transaction, FutureTransaction):
+        if (not isinstance(transaction.date, GeneratedDate) and
+            not isinstance(transaction.amount, GeneratedAmount)):
+            if transaction.kind is Distribution.INTERIM:
+                line = f'{line}  ^ {d} {transaction.ticker.ljust(8)}'
+            elif transaction.kind is Distribution.SPECIAL:
+                line = f'{line}  * {d} {transaction.ticker.ljust(8)}'
+            else:
+                line = f'{line}    {d} {transaction.ticker.ljust(8)}'
+        else:
             if isinstance(transaction.date, GeneratedDate):
                 if transaction.date < today:
                     should_colorize_expired_transaction = True
@@ -171,15 +178,6 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                     should_colorize_expired_transaction = True
                     # call attention as it is a preliminary record, not completed yet
                     line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
-                else:
-                    raise TypeError(f'invalid transaction state ({transaction})')
-        else:
-            if transaction.kind is Distribution.INTERIM:
-                line = f'{amount.rjust(20)}  ^ {d} {transaction.ticker.ljust(8)}'
-            elif transaction.kind is Distribution.SPECIAL:
-                line = f'{amount.rjust(20)}  * {d} {transaction.ticker.ljust(8)}'
-            else:
-                line = f'{amount.rjust(20)}    {d} {transaction.ticker.ljust(8)}'
 
         if transaction.payout_date is not None:
             pd = transaction.payout_date.strftime('%Y/%m/%d')
@@ -189,9 +187,10 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
 
         if detailed:
             if transaction.dividend is not None:
-                dividend = format_amount(transaction.dividend.value,
-                                         trailing_zero=False,
-                                         places=dividend_decimal_places[transaction.ticker])
+                dividend = format_amount(
+                    transaction.dividend.value,
+                    trailing_zero=False,
+                    places=dividend_decimal_places[transaction.ticker])
                 dividend = transaction.dividend.fmt % dividend
 
                 line = f'{line} {dividend.rjust(12)}'
@@ -231,8 +230,7 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
 
             weight = income_by_ticker / total_income * 100
 
-            is_estimate = (True if any(isinstance(x, FutureTransaction) for x in filtered_records)
-                           else False)
+            is_estimate = any(isinstance(r.amount, GeneratedAmount) for r in filtered_records)
             
             weights.append((ticker, amount, weight, is_estimate))
         weights.sort(key=lambda w: w[2], reverse=True)
@@ -261,7 +259,7 @@ def print_simple_sum_report(records: List[Transaction]) -> None:
         amount = format_amount(total, trailing_zero=False)
         amount = latest_transaction.amount.fmt % amount
 
-        if any(isinstance(x, FutureTransaction) for x in matching_transactions):
+        if any(isinstance(r.amount, GeneratedAmount) for r in matching_transactions):
             print(f'~ {amount.rjust(18)}')
         else:
             print(f'{amount.rjust(20)}')
@@ -334,7 +332,7 @@ def print_simple_rolling_report(records: List[Transaction]):
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.fmt % amount
                 d = ending_date.strftime('%Y/%m')
-                if any(isinstance(x, FutureTransaction) for x in rolling_transactions):
+                if any(isinstance(r.amount, GeneratedAmount) for r in rolling_transactions):
                     line = f'~ {amount.rjust(18)}  < {d.ljust(11)}'
                 else:
                     line = f'{amount.rjust(20)}  < {d.ljust(11)}'
@@ -344,13 +342,13 @@ def print_simple_rolling_report(records: List[Transaction]):
                     print(line)
                 should_breakline = True
 
-        future_transactions = [r for r in matching_transactions if
-                               isinstance(r, FutureTransaction) and r.date >= today]
+        future_transactions = [r for r in matching_transactions if r.date > today]
         if len(future_transactions) > 0:
             total = income(future_transactions)
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.fmt % amount
             print(f'~ {amount.rjust(18)}    next 12m')
+            should_breakline = True
 
         if commodity != commodities[-1] and should_breakline:
             print()
