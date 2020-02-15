@@ -222,7 +222,7 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
         total_income = income(matching_transactions)
 
         weights = []
-        for ticker in tickers(records):
+        for ticker in tickers(matching_transactions):
             filtered_records = list(by_ticker(records, ticker))
             income_by_ticker = income(filtered_records)
 
@@ -243,6 +243,8 @@ def print_simple_weight_by_ticker(records: List[Transaction]):
                 print(f'~ {amount.rjust(18)}    {pct.rjust(7)}    {ticker}')
             else:
                 print(f'{amount.rjust(20)}    {pct.rjust(7)}    {ticker}')
+        if commodity != commodities[-1]:
+            print()
 
 
 def print_simple_sum_report(records: List[Transaction]) -> None:
