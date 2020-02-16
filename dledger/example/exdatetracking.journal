@@ -1,6 +1,8 @@
 # this file serves as an example journal for dledger to illustrate the
 # strategy of tracking transactions by ex-date using estimate records
 
+# this journal assumes a system locale using period as decimal separator
+
 2019/02/08 AAPL (100)    # note that this is the ex-date; not the paydate
   @ $ 0.73               # note that only the dividend is put in, because at this
                          # point the cash has only been earned, not received

@@ -2,6 +2,8 @@
 # a strategic sell-off preceding a forecasted ex-date, followed by
 # a buy-back afterwards
 
+# this journal assumes a system locale using comma as decimal separator
+
 2019/01/20 ABC (10)
   $ 1
 
@@ -17,7 +19,7 @@
 2020/01/19 ABC (0)    # closing position before ex-date
 
 #2020/01/20 ABC       # if you put in a transaction like this, e.g. a preliminary record
-#  @ $ 0,2            # then you can keep the dividend schedule for future forecasts
+#  @ $ 0.2            # then you can keep the dividend schedule for future forecasts
                       # but it will also show up in reports as a $ 0 transaction
 
 #2020/01/20 ABC

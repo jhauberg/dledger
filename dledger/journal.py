@@ -125,31 +125,6 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         d, d2, ticker, position, amount, dividend, kind, location = entry
         p, position_change_direction = position
 
-        if amount is not None and dividend is not None:
-            if amount.symbol is None and dividend.symbol is not None:
-                amount = Amount(amount.value,
-                                symbol=dividend.symbol,
-                                fmt=dividend.fmt)
-            elif dividend.symbol is None and amount.symbol is not None:
-                dividend = Amount(dividend.value,
-                                  symbol=amount.symbol,
-                                  fmt=amount.fmt)
-
-        if amount is not None and amount.symbol is None:
-            # infer symbol/format from previous entries
-            for previous_record in reversed(records):
-                if previous_record.ticker == ticker:
-                    if previous_record.amount is None:
-                        continue
-                    amount = Amount(amount.value,
-                                    symbol=previous_record.amount.symbol,
-                                    fmt=previous_record.amount.fmt)
-                    if dividend is not None:
-                        dividend = Amount(dividend.value,
-                                          symbol=previous_record.amount.symbol,
-                                          fmt=previous_record.amount.fmt)
-                    break
-
         if p is None or position_change_direction != 0:
             # infer position from previous entries
             for previous_record in reversed(records):
@@ -173,7 +148,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
                 if p != logical_position:
                     raise_parse_error(f'position does not equal amount divided by dividend '
-                                      f'({logical_position})',
+                                      f'({p} != {logical_position})',
                                       location=location)
 
         if p is None:
@@ -331,7 +306,7 @@ def split_secondary_date(text: str) \
 
 def split_amount(amount: str, *, location: Tuple[str, int]) \
         -> Amount:
-    symbol = None
+    symbol: Optional[str] = None
     lhs = ''
 
     for c in amount:
@@ -358,6 +333,9 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
         if symbol is not None:
             raise_parse_error(f'ambiguous symbol definition (\'{symbol}\' or \'{rhs.strip()}\'?)', location)
         symbol = rhs.strip()
+
+    if symbol is None or len(symbol) == 0:
+        raise_parse_error(f'missing symbol definition', location)
 
     value: float = 0.0
 
