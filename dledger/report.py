@@ -157,14 +157,10 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         else:
             line = f'{amount.rjust(20)}'
 
-        if (not isinstance(transaction.date, GeneratedDate) and
-            not isinstance(transaction.amount, GeneratedAmount)):
-            if transaction.kind is Distribution.INTERIM:
-                line = f'{line}  ^ {d} {transaction.ticker.ljust(8)}'
-            elif transaction.kind is Distribution.SPECIAL:
-                line = f'{line}  * {d} {transaction.ticker.ljust(8)}'
-            else:
-                line = f'{line}    {d} {transaction.ticker.ljust(8)}'
+        if transaction.is_preliminary:
+            should_colorize_expired_transaction = True
+            # call attention as it is a preliminary record, not completed yet
+            line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
         else:
             if isinstance(transaction.date, GeneratedDate):
                 if transaction.date < today:
@@ -174,10 +170,12 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                 else:
                     line = f'{line}  < {d} {transaction.ticker.ljust(8)}'
             else:
-                if isinstance(transaction.amount, GeneratedAmount):
-                    should_colorize_expired_transaction = True
-                    # call attention as it is a preliminary record, not completed yet
-                    line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
+                if transaction.kind is Distribution.INTERIM:
+                    line = f'{line}  ^ {d} {transaction.ticker.ljust(8)}'
+                elif transaction.kind is Distribution.SPECIAL:
+                    line = f'{line}  * {d} {transaction.ticker.ljust(8)}'
+                else:
+                    line = f'{line}    {d} {transaction.ticker.ljust(8)}'
 
         if transaction.payout_date is not None:
             pd = transaction.payout_date.strftime('%Y/%m/%d')

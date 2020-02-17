@@ -42,6 +42,7 @@ class Transaction:
     dividend: Optional[Amount] = None
     kind: Distribution = Distribution.FINAL
     payout_date: Optional[date] = None  # to determine exchange rate if transaction date is earlier
+    is_preliminary: bool = False
 
     def __lt__(self, other):
         # sort by primary date and always put buy/sell transactions later if on same date
@@ -159,7 +160,13 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                               symbol=amount.symbol,
                               fmt=amount.fmt)
 
-        records.append(Transaction(d, ticker, p, amount, dividend, kind, payout_date=d2))
+        is_incomplete = False
+        if amount is None and dividend is not None:
+            is_incomplete = True
+
+        records.append(
+            Transaction(d, ticker, p, amount, dividend, kind,
+                        payout_date=d2, is_preliminary=is_incomplete))
 
     records = remove_redundant_journal_transactions(records)
 
