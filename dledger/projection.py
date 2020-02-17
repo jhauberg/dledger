@@ -1,5 +1,5 @@
 from datetime import datetime, date, timedelta
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from statistics import multimode, fmean  # type: ignore
 
@@ -195,8 +195,7 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
         estimate_amount = GeneratedAmount(
             value=(rec.position * rec.dividend.value) * conversion_factor,
             symbol=estimate_symbol, fmt=estimate_format)
-        estimate = Transaction(rec.date, rec.ticker, rec.position,
-                               estimate_amount, rec.dividend, rec.kind)
+        estimate = replace(rec, amount=estimate_amount)
         i = records.index(rec)
         records.pop(i)
         records.insert(i, estimate)
@@ -229,8 +228,7 @@ def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Tran
         estimate_amount = GeneratedAmount(
             value=rec.amount.value * conversion_factor,
             symbol=symbol, fmt=estimate_format)
-        estimate = Transaction(rec.date, rec.ticker, rec.position,
-                               estimate_amount, rec.dividend, rec.kind)
+        estimate = replace(rec, amount=estimate_amount)
         i = records.index(rec)
         records.pop(i)
         records.insert(i, estimate)
