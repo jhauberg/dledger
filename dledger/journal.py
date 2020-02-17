@@ -19,6 +19,8 @@ IMPORT_EX_DATE = False  # whether to import ex- or payout date when reading non-
 
 
 class Distribution(Enum):
+    """ Represents the type of a dividend distribution. """
+
     FINAL = 0
     INTERIM = 1
     SPECIAL = 2
@@ -26,6 +28,8 @@ class Distribution(Enum):
 
 @dataclass(frozen=True, unsafe_hash=True)
 class Amount:
+    """ Represents a cash amount. """
+
     value: float
     symbol: Optional[str] = None
     fmt: Optional[str] = None
@@ -33,7 +37,7 @@ class Amount:
 
 @dataclass(frozen=True, unsafe_hash=True)
 class Transaction:
-    """ Represents a transaction. """
+    """ Represents a transactional record. """
 
     date: date  # for order and display; no assumption on whether this is payout, ex-date or other
     ticker: str

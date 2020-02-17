@@ -20,14 +20,20 @@ EARLY_LATE_THRESHOLD = 15  # early before or at this day of month, late after
 
 
 class GeneratedDate(date):
-    """ Represents an estimated/generated date. """
+    """ Represents a date estimation. """
     def __new__(cls, year, month=None, day=None):
         return super(GeneratedDate, cls).__new__(cls, year, month, day)
 
 
 @dataclass(frozen=True)
 class GeneratedAmount(Amount):
-    """ Represents an estimated/generated amount. """
+    """ Represents an amount estimation. """
+    pass
+
+
+@dataclass(frozen=True)
+class GeneratedTransaction(Transaction):
+    """ Represents a projected transaction. """
     pass
 
 
@@ -239,7 +245,7 @@ def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Tran
 def scheduled_transactions(records: List[Transaction],
                            *,
                            since: date = datetime.today().date()) \
-        -> List[Transaction]:
+        -> List[GeneratedTransaction]:
     # take a sample set of latest 12 months on a per ticker basis
     sample_records: List[Transaction] = []
     for ticker in tickers(records):
@@ -324,7 +330,7 @@ def estimated_schedule(records: List[Transaction], record: Transaction) \
 
 
 def estimated_transactions(records: List[Transaction]) \
-        -> List[Transaction]:
+        -> List[GeneratedTransaction]:
     """ Return a list of transactions dated into the future according to an estimated schedule. """
 
     approximate_records = []
@@ -409,7 +415,7 @@ def estimated_transactions(records: List[Transaction]) \
                     mean_amount = fmean(aps) * future_position
                     future_amount = mean_amount
 
-            future_record = Transaction(future_date, ticker, future_position,
+            future_record = GeneratedTransaction(future_date, ticker, future_position,
                                         amount=GeneratedAmount(
                                             future_amount,
                                             symbol=latest_transaction.amount.symbol,
@@ -465,7 +471,7 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount
 
 
 def future_transactions(records: List[Transaction]) \
-        -> List[Transaction]:
+        -> List[GeneratedTransaction]:
     """ Return a list of transactions, each dated 12 months into the future. """
     
     future_records = []
@@ -537,7 +543,7 @@ def future_transactions(records: List[Transaction]) \
             else:
                 future_amount = future_position * future_dividend.value
 
-        future_record = Transaction(future_date, transaction.ticker, future_position,
+        future_record = GeneratedTransaction(future_date, transaction.ticker, future_position,
                                     amount=GeneratedAmount(
                                         future_amount,
                                         symbol=latest_transaction.amount.symbol,
