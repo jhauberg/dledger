@@ -183,6 +183,7 @@ def projected_date(d: date, *, timeframe: int) -> GeneratedDate:
 
 
 def convert_estimates(records: List[Transaction]) -> List[Transaction]:
+    """ Return a list of transactions, replacing missing amounts with estimates. """
     conversion_factors = symbol_conversion_factors(records)
     transactions = list(r for r in records if r.amount is not None)
     estimate_records = (r for r in records if (r.amount is None and
@@ -210,6 +211,7 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
 
 
 def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Transaction]:
+    """ Return a list of transactions, replacing amounts with estimates in given currency. """
     conversion_factors = symbol_conversion_factors(records)
     transactions = list(r for r in records if r.amount is not None)
     convertible_records = (r for r in records if (r.amount is not None and
@@ -246,6 +248,7 @@ def scheduled_transactions(records: List[Transaction],
                            *,
                            since: date = datetime.today().date()) \
         -> List[GeneratedTransaction]:
+    """ Return a list of forecasted transactions. """
     # take a sample set of latest 12 months on a per ticker basis
     sample_records: List[Transaction] = []
     for ticker in tickers(records):
@@ -313,6 +316,7 @@ def scheduled_transactions(records: List[Transaction],
 
 def estimated_schedule(records: List[Transaction], record: Transaction) \
         -> Schedule:
+    """ Return a forecasted dividend schedule. """
     # todo: we should clean this up- don't filter out by period, caller can do that
     sample_records = trailing(by_ticker(records, record.ticker),
                               since=last_of_month(record.date), months=24)
@@ -331,7 +335,7 @@ def estimated_schedule(records: List[Transaction], record: Transaction) \
 
 def estimated_transactions(records: List[Transaction]) \
         -> List[GeneratedTransaction]:
-    """ Return a list of transactions dated into the future according to an estimated schedule. """
+    """ Return a list of forecasted transactions based on a dividend schedule. """
 
     approximate_records = []
 
@@ -349,7 +353,7 @@ def estimated_transactions(records: List[Transaction]) \
         sched = estimated_schedule(transactions, latest_transaction)
 
         scheduled_months = sched.months
-        scheduled_records: List[Transaction] = []
+        scheduled_records: List[GeneratedTransaction] = []
 
         future_date = latest_transaction.date
         # estimate timeframe by latest actual record
@@ -435,7 +439,7 @@ def estimated_transactions(records: List[Transaction]) \
 
 
 def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount]:
-    """ Return the estimated next linearly projected dividend if able, None otherwise. """
+    """ Return the next linearly projected dividend if any, None otherwise. """
 
     transactions = list(r for r in records if r.amount is not None)
     latest_transaction = latest(transactions)
@@ -472,7 +476,7 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount
 
 def future_transactions(records: List[Transaction]) \
         -> List[GeneratedTransaction]:
-    """ Return a list of transactions, each dated 12 months into the future. """
+    """ Return a list of forecasted transactions projected 12 months into the future. """
     
     future_records = []
 
@@ -559,6 +563,8 @@ def future_transactions(records: List[Transaction]) \
 
 def symbol_conversion_factors(records: List[Transaction]) \
         -> Dict[Tuple[str, str], float]:
+    """ Return a set of currency exchange rates. """
+
     conversion_factors: Dict[Tuple[str, str], float] = dict()
 
     transactions = list(r for r in records if r.amount is not None)

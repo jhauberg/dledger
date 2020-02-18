@@ -8,7 +8,7 @@ from dledger.formatutil import format_amount, most_decimal_places
 from dledger.printutil import colored, COLOR_NEGATIVE, COLOR_MARKED
 from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import (
-    GeneratedDate, GeneratedAmount,
+    GeneratedDate, GeneratedAmount, GeneratedTransaction,
     symbol_conversion_factors
 )
 from dledger.record import (
@@ -162,7 +162,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             # call attention as it is a preliminary record, not completed yet
             line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
         else:
-            if isinstance(transaction.date, GeneratedDate):
+            if isinstance(transaction, GeneratedTransaction):
                 if transaction.date < today:
                     should_colorize_expired_transaction = True
                     # call attention as it may be a payout about to happen, or a closed position

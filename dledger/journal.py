@@ -45,8 +45,8 @@ class Transaction:
     amount: Optional[Amount] = None
     dividend: Optional[Amount] = None
     kind: Distribution = Distribution.FINAL
-    payout_date: Optional[date] = None  # to determine exchange rate if transaction date is earlier
-    is_preliminary: bool = False
+    payout_date: Optional[date] = None  # determine exchange rate if primary date is earlier
+    is_preliminary: bool = False  # True if amount component left blank intentionally
 
     def __lt__(self, other):
         # sort by primary date and always put buy/sell transactions later if on same date
@@ -77,6 +77,7 @@ def read(path: str, kind: str) \
 
 
 def raise_parse_error(error: str, location: Tuple[str, int]) -> None:
+    # todo: should be ParseError(msg, location)
     raise ValueError(f'{location[0]}:{location[1]} {error}')
 
 
