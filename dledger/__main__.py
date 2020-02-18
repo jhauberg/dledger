@@ -5,6 +5,7 @@ usage: dledger report  <journal>... [--period=<interval>] [-V]
                                     [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
                                     [--without-forecast]
                                     [--by-ticker=<ticker>]
+                                    [--by-payout-date]
                                     [--in-currency=<symbol>]
        dledger stats   <journal>... [--period=<interval>] [-V]
        dledger print   <journal>... [--condensed] [-V]
@@ -55,6 +56,8 @@ from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
 )
 
+from dataclasses import replace
+
 from typing import List
 
 
@@ -91,6 +94,11 @@ def main() -> None:
             sys.exit(f'Transaction type is not supported: {input_type}')
 
         records.extend(read(input_path, input_type))
+
+    if args['--by-payout-date']:
+        records = [r if r.payout_date is None else
+                   replace(r, date=r.payout_date, payout_date=None) for
+                   r in records]
 
     records = sorted(records)
 
