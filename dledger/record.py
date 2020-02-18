@@ -52,7 +52,7 @@ def intervals(records: Iterable[Transaction]) \
     previous_record_date: Optional[date] = None
 
     for record in records:
-        d = first_of_month(record.date)
+        d = first_of_month(record.entry_date)
 
         if previous_record_date is None:
             first_record_date = d
@@ -132,7 +132,7 @@ def monthly_schedule(records: Iterable[Transaction]) \
         -> List[int]:
     """ Return a list of unique month components in a set of records. """
 
-    return sorted(set([record.date.month for record in records]))
+    return sorted(set([record.entry_date.month for record in records]))
 
 
 def trailing(records: Iterable[Transaction], since: date, *, months: int):
@@ -144,7 +144,7 @@ def trailing(records: Iterable[Transaction], since: date, *, months: int):
     begin = in_months(since, months=-months)
     end = since
 
-    return (r for r in records if end >= r.date > begin)
+    return (r for r in records if end >= r.entry_date > begin)
 
 
 def monthly(records: Iterable[Transaction],
@@ -152,8 +152,8 @@ def monthly(records: Iterable[Transaction],
         -> Iterable[Transaction]:
     """ Return an iterator for records dated on a given month and year. """
 
-    return (r for r in records if (r.date.year == year and
-                                   r.date.month == month))
+    return (r for r in records if (r.entry_date.year == year and
+                                   r.entry_date.month == month))
 
 
 def yearly(records: Iterable[Transaction],
@@ -166,8 +166,8 @@ def yearly(records: Iterable[Transaction],
     and May (inclusive).
     """
 
-    return (r for r in records if (r.date.year == year and
-                                   r.date.month <= months))
+    return (r for r in records if (r.entry_date.year == year and
+                                   r.entry_date.month <= months))
 
 
 def by_ticker(records: Iterable[Transaction], symbol: str) \
@@ -188,14 +188,14 @@ def after(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated later than a date. """
 
-    return (r for r in records if r.date > d)
+    return (r for r in records if r.entry_date > d)
 
 
 def before(records: Iterable[Transaction], d: date) \
         -> Iterable[Transaction]:
     """ Return an iterator for records dated prior to a date. """
 
-    return (r for r in records if r.date < d)
+    return (r for r in records if r.entry_date < d)
 
 
 def in_period(records: Iterable[Transaction],
@@ -236,7 +236,7 @@ def latest(records: Iterable[Transaction], *, by_payout: bool = False) \
 
     if by_payout:
         records = sorted(records, key=lambda r: (r.payout_date if r.payout_date is not None else
-                                                 r.date))
+                                                 r.entry_date))
     else:
         records = sorted(records)
 
@@ -251,7 +251,7 @@ def pruned(records: Iterable[Transaction]) \
     for record in records:
         collected = False
         for collected_record in collected_records:
-            if record.date == collected_record.date:
+            if record.entry_date == collected_record.entry_date:
                 collected = True
                 break
         if not collected:

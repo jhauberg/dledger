@@ -93,7 +93,7 @@ def frequency(records: Iterable[Transaction]) \
         # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
         latest_record = latest(records)
         assert latest_record is not None
-        sample_records = trailing(records, since=last_of_month(latest_record.date), months=12)
+        sample_records = trailing(records, since=last_of_month(latest_record.entry_date), months=12)
         payouts_per_year = len(list(sample_records))
         average_interval = int(12 / payouts_per_year)
         return normalize_interval(average_interval)
@@ -263,13 +263,13 @@ def scheduled_transactions(records: List[Transaction],
         if not future_position > 0:
             # don't project closed positions
             continue
-        if months_between(latest_record.date, since) > 12:
+        if months_between(latest_record.entry_date, since) > 12:
             # skip projections for this ticker entirely,
             # as latest transaction is dated more than 12 months ago
             continue
         # otherwise, add the trailing 12 months of transactions by this ticker
         sample_records.extend(
-            trailing(recs, since=latest_record.date, months=12))
+            trailing(recs, since=latest_record.entry_date, months=12))
     # don't include special dividend transactions
     sample_records = [r for r in sample_records if r.kind is not Distribution.SPECIAL]
     # project sample records 1 year into the future
@@ -284,8 +284,8 @@ def scheduled_transactions(records: List[Transaction],
         # if a future already "occupies" this month
         duplicates = [r for r in scheduled
                       if r.ticker == future_record.ticker
-                      and r.date.year == future_record.date.year
-                      and r.date.month == future_record.date.month]
+                      and r.entry_date.year == future_record.entry_date.year
+                      and r.entry_date.month == future_record.entry_date.month]
         if len(duplicates) > 0:
             # it does, so skip this estimate
             continue
@@ -295,16 +295,16 @@ def scheduled_transactions(records: List[Transaction],
     cutoff_date = in_months(since, months=12)
     # add a grace period
     earliest_date = since + timedelta(days=-EARLY_LATE_THRESHOLD)
-    scheduled = [r for r in scheduled if cutoff_date >= r.date >= earliest_date]
+    scheduled = [r for r in scheduled if cutoff_date >= r.entry_date >= earliest_date]
     for sample_record in sample_records:
         if sample_record.amount is None:
             # skip buy/sell transactions; they should not have any effect on this bit of filtering
             continue
         # look for projections dated same month, or less than 15 days between a realized transaction
         discards = [r for r in scheduled if r.ticker == sample_record.ticker and
-                    ((r.date.year == sample_record.date.year and
-                      r.date.month == sample_record.date.month) or
-                     (abs((r.date - sample_record.date).days) <= EARLY_LATE_THRESHOLD))]
+                    ((r.entry_date.year == sample_record.entry_date.year and
+                      r.entry_date.month == sample_record.entry_date.month) or
+                     (abs((r.entry_date - sample_record.entry_date).days) <= EARLY_LATE_THRESHOLD))]
         # assuming these projections are incorrect, we discard them
         # note that this method does have false-positive scenarios (see tests),
         # but prefer less projections (pessimistic) over too many projections (optimistic)
@@ -319,7 +319,7 @@ def estimated_schedule(records: List[Transaction], record: Transaction) \
     """ Return a forecasted dividend schedule. """
     # todo: we should clean this up- don't filter out by period, caller can do that
     sample_records = trailing(by_ticker(records, record.ticker),
-                              since=last_of_month(record.date), months=24)
+                              since=last_of_month(record.entry_date), months=24)
 
     # exclude closed positions
     sample_records = (r for r in sample_records if r.position > 0)
@@ -355,7 +355,7 @@ def estimated_transactions(records: List[Transaction]) \
         scheduled_months = sched.months
         scheduled_records: List[GeneratedTransaction] = []
 
-        future_date = latest_transaction.date
+        future_date = latest_transaction.entry_date
         # estimate timeframe by latest actual record
         future_timeframe = projected_timeframe(future_date)
 
@@ -499,8 +499,8 @@ def future_transactions(records: List[Transaction]) \
             continue
 
         # offset 12 months into the future by assuming an annual schedule
-        next_date = next_scheduled_date(transaction.date, [transaction.date.month])
-        future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.date))
+        next_date = next_scheduled_date(transaction.entry_date, [transaction.entry_date.month])
+        future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.entry_date))
         future_payout_date: Optional[date] = None
         if transaction.payout_date is not None:
             next_payout_date = next_scheduled_date(

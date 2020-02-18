@@ -97,7 +97,7 @@ def main() -> None:
 
     if args['--by-payout-date']:
         records = [r if r.payout_date is None else
-                   replace(r, date=r.payout_date, payout_date=None) for
+                   replace(r, entry_date=r.payout_date, payout_date=None) for
                    r in records]
 
     records = sorted(records)

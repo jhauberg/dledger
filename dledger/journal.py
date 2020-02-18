@@ -39,7 +39,7 @@ class Amount:
 class Transaction:
     """ Represents a transactional record. """
 
-    date: date  # for order and display; no assumption on whether this is payout, ex-date or other
+    entry_date: date  # no assumption whether this is payout, ex-date or other
     ticker: str
     position: int
     amount: Optional[Amount] = None
@@ -55,8 +55,8 @@ class Transaction:
         #   =>
         #       2019/01/01 ABC (10)  $ 1
         #       2019/01/01 ABC (+10)
-        return (self.date, self.amount is None and self.dividend is None) < \
-               (other.date, other.amount is None and other.dividend is None)
+        return (self.entry_date, self.amount is None and self.dividend is None) < \
+               (other.entry_date, other.amount is None and other.dividend is None)
 
 
 def read(path: str, kind: str) \
@@ -183,31 +183,32 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
     for ticker in set([record.ticker for record in records]):
         recs = list(r for r in records if r.ticker == ticker)
         # find all entries that only record a change in position
-        position_entries = list(r for r in recs if r.amount is None and r.dividend is None)
+        position_records = list(r for r in recs if r.amount is None and r.dividend is None)
 
-        if len(position_entries) == 0:
+        if len(position_records) == 0:
             continue
 
         # find all dividend transactions (e.g. cash received or earned)
-        realized_entries = list(r for r in recs if r.amount is not None or r.dividend is not None)
+        realized_records = list(r for r in recs if r.amount is not None or r.dividend is not None)
 
-        if len(realized_entries) > 0:
-            latest_entry = realized_entries[-1]
+        if len(realized_records) > 0:
+            latest_record = realized_records[-1]
             # at this point we no longer need to keep some of the position entries around,
             # as we have already used them to infer and determine position for each realized entry
-            for entry in position_entries:
+            for record in position_records:
                 # so each position entry dated prior to a dividend entry is basically redundant
-                if entry.position == 0:
+                if record.position == 0:
                     # unless it's a closer, in which case we have to keep it around in any case
                     # (e.g. see example/strategic.journal)
                     continue
                 is_redundant = False
-                if entry.date < latest_entry.date:
+                if record.entry_date < latest_record.entry_date:
                     is_redundant = True
-                elif entry.date == latest_entry.date and entry.position == latest_entry.position:
+                elif record.entry_date == latest_record.entry_date and \
+                        record.position == latest_record.position:
                     is_redundant = True
                 if is_redundant:
-                    records.remove(entry)
+                    records.remove(record)
 
     return records
 
@@ -467,7 +468,7 @@ def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
             indicator = '* '
         elif record.kind is Distribution.INTERIM:
             indicator = '^ '
-        datestamp = record.date.strftime('%Y/%m/%d')
+        datestamp = record.entry_date.strftime('%Y/%m/%d')
         line = f'{datestamp} {indicator}{record.ticker} ({record.position})'
         if not condensed:
             print(line, file=file)

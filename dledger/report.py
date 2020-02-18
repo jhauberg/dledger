@@ -21,8 +21,8 @@ from typing import List, Dict, Optional
 
 def print_simple_annual_report(records: List[Transaction]):
     today = datetime.today().date()
-    years = range(earliest(records).date.year,
-                  latest(records).date.year + 1)
+    years = range(earliest(records).entry_date.year,
+                  latest(records).entry_date.year + 1)
 
     commodities = sorted(symbols(records, excluding_dividends=True))
 
@@ -43,7 +43,7 @@ def print_simple_annual_report(records: List[Transaction]):
             d = f'{year}'
             if any(isinstance(r.amount, GeneratedAmount) for r in yearly_transactions):
                 if year == years[-1]:
-                    d = latest_transaction.date.strftime('%Y/%m')
+                    d = latest_transaction.entry_date.strftime('%Y/%m')
                     line = f'~ {amount.rjust(18)}  < {d.ljust(11)}'
                 else:
                     line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
@@ -59,8 +59,8 @@ def print_simple_annual_report(records: List[Transaction]):
 
 def print_simple_monthly_report(records: List[Transaction]):
     today = datetime.today().date()
-    years = range(earliest(records).date.year,
-                  latest(records).date.year + 1)
+    years = range(earliest(records).entry_date.year,
+                  latest(records).entry_date.year + 1)
 
     commodities = sorted(symbols(records, excluding_dividends=True))
 
@@ -96,8 +96,8 @@ def print_simple_monthly_report(records: List[Transaction]):
 
 def print_simple_quarterly_report(records: List[Transaction]):
     today = datetime.today().date()
-    years = range(earliest(records).date.year,
-                  latest(records).date.year + 1)
+    years = range(earliest(records).entry_date.year,
+                  latest(records).entry_date.year + 1)
 
     commodities = sorted(symbols(records, excluding_dividends=True))
 
@@ -150,7 +150,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         amount = format_amount(transaction.amount.value, trailing_zero=False)
         amount = transaction.amount.fmt % amount
 
-        d = transaction.date.strftime('%Y/%m/%d')
+        d = transaction.entry_date.strftime('%Y/%m/%d')
 
         if isinstance(transaction.amount, GeneratedAmount):
             line = f'~ {amount.rjust(18)}'
@@ -163,7 +163,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
         else:
             if isinstance(transaction, GeneratedTransaction):
-                if transaction.date < today:
+                if transaction.entry_date < today:
                     should_colorize_expired_transaction = True
                     # call attention as it may be a payout about to happen, or a closed position
                     line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
@@ -201,7 +201,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
 
         if should_colorize_expired_transaction:
             line = colored(line, COLOR_NEGATIVE)
-        elif transaction.date == today:
+        elif transaction.entry_date == today:
             line = colored(line, COLOR_MARKED)
 
         print(line)
@@ -284,8 +284,8 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
     else:
         print_stat_row('Records', f'{len(records)}')
     if len(records) > 0:
-        earliest_datestamp = records[0].date.strftime('%Y/%m/%d')
-        latest_datestamp = records[-1].date.strftime('%Y/%m/%d')
+        earliest_datestamp = records[0].entry_date.strftime('%Y/%m/%d')
+        latest_datestamp = records[-1].entry_date.strftime('%Y/%m/%d')
         print_stat_row('Earliest', earliest_datestamp)
         print_stat_row('Latest', latest_datestamp)
         print_stat_row('Tickers', f'{len(tickers(records))}')
@@ -302,8 +302,8 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
 
 def print_simple_rolling_report(records: List[Transaction]):
     today = datetime.today().date()
-    years = range(earliest(records).date.year,
-                  latest(records).date.year + 1)
+    years = range(earliest(records).entry_date.year,
+                  latest(records).entry_date.year + 1)
 
     commodities = sorted(symbols(records, excluding_dividends=True))
 
@@ -340,7 +340,7 @@ def print_simple_rolling_report(records: List[Transaction]):
                     print(line)
                 should_breakline = True
 
-        future_transactions = [r for r in matching_transactions if r.date > today]
+        future_transactions = [r for r in matching_transactions if r.entry_date > today]
         if len(future_transactions) > 0:
             total = income(future_transactions)
             amount = format_amount(total, trailing_zero=False)
