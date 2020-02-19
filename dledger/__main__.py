@@ -5,7 +5,7 @@ usage: dledger report  <journal>... [--period=<interval>] [-V]
                                     [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
                                     [--without-forecast]
                                     [--by-ticker=<ticker>]
-                                    [--by-payout-date]
+                                    [--by-payout-date | --by-ex-date]
                                     [--in-currency=<symbol>]
        dledger stats   <journal>... [--period=<interval>] [-V]
        dledger print   <journal>... [--condensed] [-V]
@@ -17,6 +17,8 @@ OPTIONS:
      --output=<journal>       Specify journal filename [default: ledger.journal]
   -d --period=<interval>      Specify reporting date interval
      --without-forecast       Don't include forecasted transactions
+     --by-payout-date         List chronologically by payout date
+     --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
      --in-currency=<symbol>   Show income as if exchanged to currency
   -y --annual                 Show income by year
@@ -95,11 +97,6 @@ def main() -> None:
 
         records.extend(read(input_path, input_type))
 
-    if args['--by-payout-date']:
-        records = [r if r.payout_date is None else
-                   replace(r, entry_date=r.payout_date, payout_date=None) for
-                   r in records]
-
     records = sorted(records)
 
     if len(records) == 0:
@@ -140,6 +137,15 @@ def main() -> None:
     if not args['--without-forecast']:
         transactions.extend(
             scheduled_transactions(records))
+
+    if args['--by-payout-date']:
+        transactions = [r if r.payout_date is None else
+                        replace(r, entry_date=r.payout_date, payout_date=None) for
+                        r in transactions]
+    elif args['--by-ex-date']:
+        transactions = [r if r.ex_date is None else
+                        replace(r, entry_date=r.ex_date, ex_date=None) for
+                        r in transactions]
 
     if interval is not None:
         transactions = list(in_period(transactions, interval))
