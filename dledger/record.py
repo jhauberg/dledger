@@ -135,7 +135,8 @@ def monthly_schedule(records: Iterable[Transaction]) \
     return sorted(set([record.entry_date.month for record in records]))
 
 
-def trailing(records: Iterable[Transaction], since: date, *, months: int):
+def trailing(records: Iterable[Transaction], since: date, *, months: int) \
+        -> Iterable[Transaction]:
     """ Return an iterator for records dated within months prior to a given date (inclusive).
 
     Does take days into account.

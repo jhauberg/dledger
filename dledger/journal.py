@@ -10,7 +10,7 @@ from dledger.dateutil import parse_datestamp
 from dataclasses import dataclass
 from datetime import datetime, date
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any
 from enum import Enum
 
 SUPPORTED_TYPES = ['journal', 'nordnet']
@@ -48,7 +48,7 @@ class Transaction:
     payout_date: Optional[date] = None  # determine exchange rate if primary date is earlier
     is_preliminary: bool = False  # True if amount component left blank intentionally
 
-    def __lt__(self, other):
+    def __lt__(self, other):  # type: ignore
         # sort by primary date and always put buy/sell transactions later if on same date
         # e.g.  2019/01/01 ABC (+10)
         #       2019/01/01 ABC (10)  $ 1
@@ -57,6 +57,11 @@ class Transaction:
         #       2019/01/01 ABC (+10)
         return (self.entry_date, self.amount is None and self.dividend is None) < \
                (other.entry_date, other.amount is None and other.dividend is None)
+
+
+class ParseError(Exception):
+    def __init__(self, message: str, location: Tuple[str, int]):
+        super().__init__(f'{location[0]}:{location[1]} {message}')
 
 
 def read(path: str, kind: str) \
@@ -74,11 +79,6 @@ def read(path: str, kind: str) \
         return read_nordnet_transactions(path, encoding)
 
     return []
-
-
-def raise_parse_error(error: str, location: Tuple[str, int]) -> None:
-    # todo: should be ParseError(msg, location)
-    raise ValueError(f'{location[0]}:{location[1]} {error}')
 
 
 def read_journal_transactions(path: str, encoding: str = 'utf-8') \
@@ -141,8 +141,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                         p = 0
                     p = previous_record.position + p * position_change_direction
                     if p < 0:
-                        raise_parse_error(f'position change to negative position ({p})',
-                                          location=location)
+                        raise ParseError(f'position change to negative position ({p})', location)
                     break
 
         if amount is not None and dividend is not None:
@@ -153,12 +152,10 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                     p = logical_position
 
                 if p != logical_position:
-                    raise_parse_error(f'position does not equal amount divided by dividend '
-                                      f'({p} != {logical_position})',
-                                      location=location)
+                    raise ParseError(f'position does not equal amount divided by dividend ({p} != {logical_position})', location)
 
         if p is None:
-            raise_parse_error(f'position could not be inferred', location=location)
+            raise ParseError(f'position could not be inferred', location)
 
         if amount is not None and dividend is None:
             dividend = Amount(amount.value / p,
@@ -214,17 +211,17 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
 
 
 def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
-        -> tuple:
+        -> Tuple[date, Optional[date], str, Tuple[Optional[int], int], Optional[Amount], Optional[Amount], Distribution, Tuple[str, int]]:
     condensed_line = '  '.join(lines)
     if len(condensed_line) < 10:  # the shortest starting transaction line is "YYYY/M/D X"
-        raise_parse_error('invalid transaction', location)
+        raise ParseError('invalid transaction', location)
     datestamp_end_index = condensed_line.index(' ')
     datestamp = condensed_line[:datestamp_end_index]
     d: Optional[date] = None
     try:
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
-        raise_parse_error(f'invalid date format (\'{datestamp}\')', location)
+        raise ParseError(f'invalid date format (\'{datestamp}\')', location)
     condensed_line = condensed_line[datestamp_end_index:].strip()
     break_separators = ['(',   # position opener
                         '[',   # secondary date opener
@@ -244,7 +241,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         break_index = min([condensed_line.index(sep) for sep in break_separators
                            if sep in condensed_line])
     except ValueError:
-        raise_parse_error(f'invalid transaction', location)
+        raise ParseError(f'invalid transaction', location)
     ticker = None
     kind = Distribution.FINAL
     if break_index is not None:
@@ -257,7 +254,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
             ticker = ticker[1:].strip()
         condensed_line = condensed_line[break_index:].strip()
     if ticker is None or len(ticker) == 0:
-        raise_parse_error('invalid ticker format', location)
+        raise ParseError('invalid ticker format', location)
     position: Optional[int] = None
     position_change_direction = 0
     if ')' in condensed_line:
@@ -273,7 +270,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         try:
             position = locale.atoi(position_str)
         except ValueError:
-            raise_parse_error(f'invalid position (\'{position}\')', location)
+            raise ParseError(f'invalid position (\'{position}\')', location)
         condensed_line = condensed_line[break_index:].strip()
 
     if len(condensed_line) == 0:
@@ -284,10 +281,10 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     if len(amount_components) > 1:
         dividend_str, dividend_date = split_secondary_date(amount_components[1].strip())
         if dividend_date is not None:
-            raise_parse_error(f'secondary date applied to dividend', location)
+            raise ParseError(f'secondary date applied to dividend', location)
         dividend = split_amount(dividend_str, location=location)
         if dividend.value <= 0:
-            raise_parse_error(f'negative or zero dividend (\'{dividend.value}\')', location)
+            raise ParseError(f'negative or zero dividend (\'{dividend.value}\')', location)
     amount: Optional[Amount] = None
     d2: Optional[date] = None
     if len(amount_components) > 0:
@@ -295,15 +292,15 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         if len(amount_str) > 0:
             amount = split_amount(amount_str, location=location)
             if amount.value <= 0:
-                raise_parse_error(f'negative or zero amount (\'{amount.value}\')', location)
+                raise ParseError(f'negative or zero amount (\'{amount.value}\')', location)
         else:
             if dividend is None:
-                raise_parse_error(f'missing amount', location)
+                raise ParseError(f'missing amount', location)
         if amount_datestamp is not None:
             try:
                 d2 = parse_datestamp(amount_datestamp, strict=True)
             except ValueError:
-                raise_parse_error(f'invalid date format (\'{amount_datestamp}\')', location)
+                raise ParseError(f'invalid date format (\'{amount_datestamp}\')', location)
     return d, d2, ticker, (position, position_change_direction), amount, dividend, kind, location
 
 
@@ -344,18 +341,18 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
         symbol = lhs.strip()
     if len(rhs) > 0:
         if symbol is not None:
-            raise_parse_error(f'ambiguous symbol definition (\'{symbol}\' or \'{rhs.strip()}\'?)', location)
+            raise ParseError(f'ambiguous symbol definition (\'{symbol}\' or \'{rhs.strip()}\'?)', location)
         symbol = rhs.strip()
 
     if symbol is None or len(symbol) == 0:
-        raise_parse_error(f'missing symbol definition', location)
+        raise ParseError(f'missing symbol definition', location)
 
     value: float = 0.0
 
     try:
         value = locale.atof(amount)
     except ValueError:
-        raise_parse_error(f'invalid value (\'{amount}\')', location)
+        raise ParseError(f'invalid value (\'{amount}\')', location)
 
     return Amount(value, symbol, f'{lhs}%s{rhs}')
 
@@ -397,13 +394,13 @@ def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
 def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
         -> Transaction:
     if len(record) < 12:
-        raise_parse_error(f'unexpected number of columns ({len(record)} > 12)', location)
+        raise ParseError(f'unexpected number of columns ({len(record)} > 12)', location)
 
     date_value = str(record[2 if IMPORT_EX_DATE else 3]).strip()
     ticker = str(record[5]).strip()
-    position_value = str(record[8]).strip()
-    dividend_value = str(record[9]).strip()
-    amount_value = str(record[12]).strip()
+    position_str = str(record[8]).strip()
+    dividend_str = str(record[9]).strip()
+    amount_str = str(record[12]).strip()
     amount_symbol = str(record[13]).strip()
     transaction_text = str(record[19]).strip()
 
@@ -411,8 +408,8 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     #       when in fact it should be parsed as 1.500,00 as per danish locale
     #       so this attempts to negate that issue by removing all dot-separators,
     #       but leaving comma-decimal separator
-    amount_value = amount_value.replace('.', '')
-    dividend_value = dividend_value.replace('.', '')
+    amount_str = amount_str.replace('.', '')
+    dividend_str = dividend_str.replace('.', '')
 
     # parse date; expects format '2018-03-19'
     d = datetime.strptime(date_value, "%Y-%m-%d").date()
@@ -423,9 +420,9 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     # (currently assumes danish locale)
     trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
 
-    position = locale.atoi(position_value)
-    amount = locale.atof(amount_value)
-    dividend = locale.atof(dividend_value)
+    position = locale.atoi(position_str)
+    amount = locale.atof(amount_str)
+    dividend = locale.atof(dividend_str)
 
     locale.setlocale(locale.LC_NUMERIC, prev)
 
@@ -434,26 +431,30 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     if transaction_text_components[-1].startswith('/'):
         # hack: the transaction text is sometimes split like "USD /SH"
         dividend_symbol = transaction_text_components[-2]
-        dividend_rate = transaction_text_components[-3]
+        dividend_rate_str = transaction_text_components[-3]
     else:
         dividend_symbol = transaction_text_components[-1].split('/')[0]
-        dividend_rate = transaction_text_components[-2]
+        dividend_rate_str = transaction_text_components[-2]
 
     # hack: for this number, it is typically represented using period for decimals
     #       but occasionally a comma sneaks in- we assume that is an error and correct it
-    dividend_rate = dividend_rate.replace(',', '.')
+    dividend_rate_str = dividend_rate_str.replace(',', '.')
 
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
+    dividend_rate: Optional[float] = None
+
     try:
-        dividend_rate = locale.atof(dividend_rate)
+        dividend_rate = locale.atof(dividend_rate_str)
     except ValueError:
-        raise_parse_error(f'unexpected transaction text', location)
+        raise ParseError(f'unexpected transaction text', location)
 
     locale.setlocale(locale.LC_NUMERIC, prev)
 
+    assert dividend_rate is not None
+
     if dividend != dividend_rate:
-        raise_parse_error(f'ambiguous dividend ({dividend} or {dividend_rate}?)', location)
+        raise ParseError(f'ambiguous dividend ({dividend} or {dividend_rate}?)', location)
 
     return Transaction(
         d, ticker, position,
@@ -461,7 +462,7 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
         Amount(dividend, symbol=dividend_symbol, fmt=f'%s {dividend_symbol}'))
 
 
-def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
+def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> None:
     for record in records:
         indicator = ''
         if record.kind is Distribution.SPECIAL:

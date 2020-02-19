@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass, replace
 
-from statistics import multimode, fmean  # type: ignore
+from statistics import multimode, fmean
 
 from dledger.journal import Transaction, Distribution, Amount
 from dledger.dateutil import last_of_month, months_between, in_months
@@ -21,8 +21,8 @@ EARLY_LATE_THRESHOLD = 15  # early before or at this day of month, late after
 
 class GeneratedDate(date):
     """ Represents a date estimation. """
-    def __new__(cls, year, month=None, day=None):
-        return super(GeneratedDate, cls).__new__(cls, year, month, day)
+    def __new__(cls, year: int, month: Optional[int] = None, day: Optional[int] = None):  # type: ignore
+        return super(GeneratedDate, cls).__new__(cls, year, month, day)  # type: ignore
 
 
 @dataclass(frozen=True)
@@ -190,13 +190,17 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
                                                r.dividend is not None))
     for rec in estimate_records:
         conversion_factor = 1.0
+        assert rec.dividend is not None
         estimate_symbol = rec.dividend.symbol
         estimate_format = rec.dividend.fmt
         latest_transaction = latest(by_ticker(transactions, rec.ticker))
         if latest_transaction is not None:
+            assert latest_transaction.amount is not None
             estimate_symbol = latest_transaction.amount.symbol
             estimate_format = latest_transaction.amount.fmt
             if rec.dividend.symbol != latest_transaction.amount.symbol:
+                assert rec.dividend.symbol is not None
+                assert latest_transaction.amount.symbol is not None
                 conversion_factor = conversion_factors[(rec.dividend.symbol,
                                                         latest_transaction.amount.symbol)]
         estimate_amount = GeneratedAmount(
@@ -217,6 +221,8 @@ def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Tran
     convertible_records = (r for r in records if (r.amount is not None and
                                                   r.amount.symbol != symbol))
     for rec in convertible_records:
+        assert rec.amount is not None
+        assert rec.amount.symbol is not None
         try:
             conversion_factor = conversion_factors[(rec.amount.symbol, symbol)]
         except KeyError:
@@ -227,6 +233,7 @@ def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Tran
                 continue
         estimate_format: Optional[str] = None
         for t in reversed(transactions):
+            assert t.amount is not None
             if t.amount.symbol == symbol:
                 estimate_format = t.amount.fmt
             elif t.dividend is not None and t.dividend.symbol == symbol:
@@ -386,14 +393,15 @@ def estimated_transactions(records: List[Transaction]) \
 
             future_amount = amount_per_share(latest_transaction) * future_position
             future_dividend = next_linear_dividend(reference_records)
-
+            future_dividend_value: Optional[float] = None
             if future_dividend is not None:
                 if can_convert_from_dividend:
+                    assert future_dividend.symbol is not None
+                    assert latest_transaction.amount.symbol is not None
                     conversion_factor = conversion_factors[(future_dividend.symbol,
                                                             latest_transaction.amount.symbol)]
-                    future_dividend_value = future_position * future_dividend.value
-                    future_dividend = future_dividend.value
-                    future_amount = future_dividend_value * conversion_factor
+                    future_dividend_value = future_dividend.value
+                    future_amount = (future_position * future_dividend_value) * conversion_factor
                 else:
                     future_amount = future_position * future_dividend.value
             else:
@@ -405,31 +413,33 @@ def estimated_transactions(records: List[Transaction]) \
                 aps = [amount_per_share(r) for r in reference_records]
 
                 if len(divs) > 0 and can_convert_from_dividend:
+                    assert latest_transaction.amount.symbol is not None
+                    assert latest_transaction.dividend.symbol is not None
                     conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
                                                             latest_transaction.amount.symbol)]
-                    future_dividend = fmean(divs)
+                    future_dividend_value = fmean(divs)
                     decimal_places = most_decimal_places(divs)
                     # truncate/round off to fit longest decimal place count observed
                     # in all of the real transactions
-                    s = f'{future_dividend:.{decimal_places}f}'
-                    future_dividend = float(s)
-                    future_amount = future_dividend * future_position
+                    s = f'{future_dividend_value:.{decimal_places}f}'
+                    future_dividend_value = float(s)
+                    future_amount = future_dividend_value * future_position
                     future_amount = future_amount * conversion_factor
                 elif len(aps) > 0:
                     mean_amount = fmean(aps) * future_position
                     future_amount = mean_amount
 
             future_record = GeneratedTransaction(future_date, ticker, future_position,
-                                        amount=GeneratedAmount(
-                                            future_amount,
-                                            symbol=latest_transaction.amount.symbol,
-                                            fmt=latest_transaction.amount.fmt),
-                                        dividend=(GeneratedAmount(
-                                            future_dividend,
-                                            symbol=latest_transaction.dividend.symbol,
-                                            fmt=latest_transaction.dividend.fmt)
-                                                  if can_convert_from_dividend else
-                                                  None))
+                                                 amount=GeneratedAmount(
+                                                     future_amount,
+                                                     symbol=latest_transaction.amount.symbol,
+                                                     fmt=latest_transaction.amount.fmt),
+                                                 dividend=(GeneratedAmount(
+                                                     future_dividend_value,
+                                                     symbol=latest_transaction.dividend.symbol,
+                                                     fmt=latest_transaction.dividend.fmt)
+                                                           if can_convert_from_dividend else
+                                                           None))
 
             scheduled_records.append(future_record)
 
@@ -468,6 +478,7 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount
             # if there's a clear trend, up or down, assume linear pattern
             if n == 0 or n == 1:
                 latest_comparable = latest(comparable_transactions)
+                assert latest_comparable is not None
                 div = latest_comparable.dividend
                 return GeneratedAmount(div.value, div.symbol, div.fmt)
 
@@ -540,6 +551,8 @@ def future_transactions(records: List[Transaction]) \
 
         if future_dividend is not None:
             if future_dividend.symbol != transaction.amount.symbol:
+                assert future_dividend.symbol is not None
+                assert transaction.amount.symbol is not None
                 conversion_factor = conversion_factors[(future_dividend.symbol,
                                                         transaction.amount.symbol)]
                 future_dividend_value = future_position * future_dividend.value
@@ -584,6 +597,12 @@ def symbol_conversion_factors(records: List[Transaction]) \
 
             if latest_transaction is None:
                 continue
+
+            assert latest_transaction.amount is not None
+            assert latest_transaction.amount.symbol is not None
+
+            assert latest_transaction.dividend is not None
+            assert latest_transaction.dividend.symbol is not None
 
             conversion_factor = amount_conversion_factor(latest_transaction)
             conversion_factors[(latest_transaction.dividend.symbol,
