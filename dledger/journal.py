@@ -45,7 +45,8 @@ class Transaction:
     amount: Optional[Amount] = None
     dividend: Optional[Amount] = None
     kind: Distribution = Distribution.FINAL
-    payout_date: Optional[date] = None  # determine exchange rate if primary date is earlier
+    payout_date: Optional[date] = None
+    ex_date: Optional[date] = None
     is_preliminary: bool = False  # True if amount component left blank intentionally
 
     def __lt__(self, other):  # type: ignore
@@ -123,12 +124,12 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     # so they must be sorted prior to inferring positions/currencies
     # note that position change entries are always sorted to occur *after*
     # any realized transaction on the same date (see Transaction.__lt__)
-    journal_entries = sorted(journal_entries, key=lambda r: (r[0], r[4] is None and r[5] is None))
+    journal_entries = sorted(journal_entries, key=lambda r: (r[0], r[5] is None and r[6] is None))
 
     records: List[Transaction] = []
 
     for entry in journal_entries:
-        d, d2, ticker, position, amount, dividend, kind, location = entry
+        d, d2, d3, ticker, position, amount, dividend, kind, location = entry
         p, position_change_direction = position
 
         if p is None or position_change_direction != 0:
@@ -162,13 +163,18 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                               symbol=amount.symbol,
                               fmt=amount.fmt)
 
+        if d2 is not None and d3 is not None:
+            if d2 < d3:
+                raise ParseError(f'payout date dated earlier than ex-date', location)
+
         is_incomplete = False
         if amount is None and dividend is not None:
             is_incomplete = True
 
         records.append(
             Transaction(d, ticker, p, amount, dividend, kind,
-                        payout_date=d2, is_preliminary=is_incomplete))
+                        payout_date=d2, ex_date=d3,
+                        is_preliminary=is_incomplete))
 
     records = remove_redundant_journal_transactions(records)
 
@@ -211,7 +217,7 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
 
 
 def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
-        -> Tuple[date, Optional[date], str, Tuple[Optional[int], int], Optional[Amount], Optional[Amount], Distribution, Tuple[str, int]]:
+        -> Tuple[date, Optional[date], Optional[date], str, Tuple[Optional[int], int], Optional[Amount], Optional[Amount], Distribution, Tuple[str, int]]:
     condensed_line = '  '.join(lines)
     if len(condensed_line) < 10:  # the shortest starting transaction line is "YYYY/M/D X"
         raise ParseError('invalid transaction', location)
@@ -274,21 +280,25 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         condensed_line = condensed_line[break_index:].strip()
 
     if len(condensed_line) == 0:
-        return d, None, ticker, (position, position_change_direction), None, None, kind, location
+        return d, None, None, ticker, (position, position_change_direction), None, None, kind, location
 
     amount_components = condensed_line.split('@')
     dividend: Optional[Amount] = None
+    d3: Optional[date] = None
     if len(amount_components) > 1:
-        dividend_str, dividend_date = split_secondary_date(amount_components[1].strip())
-        if dividend_date is not None:
-            raise ParseError(f'secondary date applied to dividend', location)
+        dividend_str, dividend_datestamp = split_amount_date(amount_components[1].strip())
         dividend = split_amount(dividend_str, location=location)
         if dividend.value <= 0:
             raise ParseError(f'negative or zero dividend (\'{dividend.value}\')', location)
+        if dividend_datestamp is not None:
+            try:
+                d3 = parse_datestamp(dividend_datestamp, strict=True)
+            except ValueError:
+                raise ParseError(f'invalid date format (\'{dividend_datestamp}\')', location)
     amount: Optional[Amount] = None
     d2: Optional[date] = None
     if len(amount_components) > 0:
-        amount_str, amount_datestamp = split_secondary_date(amount_components[0].strip())
+        amount_str, amount_datestamp = split_amount_date(amount_components[0].strip())
         if len(amount_str) > 0:
             amount = split_amount(amount_str, location=location)
             if amount.value <= 0:
@@ -301,10 +311,10 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
                 d2 = parse_datestamp(amount_datestamp, strict=True)
             except ValueError:
                 raise ParseError(f'invalid date format (\'{amount_datestamp}\')', location)
-    return d, d2, ticker, (position, position_change_direction), amount, dividend, kind, location
+    return d, d2, d3, ticker, (position, position_change_direction), amount, dividend, kind, location
 
 
-def split_secondary_date(text: str) \
+def split_amount_date(text: str) \
         -> Tuple[str, Optional[str]]:
     m = re.search(r'\[(.*)\]', text)  # match anything encapsulated by []
     if m is None:
@@ -347,12 +357,14 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
     if symbol is None or len(symbol) == 0:
         raise ParseError(f'missing symbol definition', location)
 
-    value: float = 0.0
+    value: Optional[float] = None
 
     try:
         value = locale.atof(amount)
     except ValueError:
         raise ParseError(f'invalid value (\'{amount}\')', location)
+
+    assert value is not None
 
     return Amount(value, symbol, f'{lhs}%s{rhs}')
 

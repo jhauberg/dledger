@@ -518,6 +518,12 @@ def future_transactions(records: List[Transaction]) \
                 transaction.payout_date, [transaction.payout_date.month])
             future_payout_date = projected_date(
                 next_payout_date, timeframe=projected_timeframe(transaction.payout_date))
+        future_ex_date: Optional[date] = None
+        if transaction.ex_date is not None:
+            next_ex_date = next_scheduled_date(
+                transaction.ex_date, [transaction.ex_date.month])
+            future_ex_date = projected_date(
+                next_ex_date, timeframe=projected_timeframe(transaction.ex_date))
 
         # we must double-check that the position has not been closed in the timeframe leading
         # up to the projected date; for example, this sequence of transactions should not
@@ -561,13 +567,14 @@ def future_transactions(records: List[Transaction]) \
                 future_amount = future_position * future_dividend.value
 
         future_record = GeneratedTransaction(future_date, transaction.ticker, future_position,
-                                    amount=GeneratedAmount(
-                                        future_amount,
-                                        symbol=latest_transaction.amount.symbol,
-                                        fmt=latest_transaction.amount.fmt),
-                                    dividend=future_dividend,
-                                    kind=transaction.kind,
-                                    payout_date=future_payout_date)
+                                             amount=GeneratedAmount(
+                                                 future_amount,
+                                                 symbol=latest_transaction.amount.symbol,
+                                                 fmt=latest_transaction.amount.fmt),
+                                             dividend=future_dividend,
+                                             kind=transaction.kind,
+                                             payout_date=future_payout_date,
+                                             ex_date=future_ex_date)
 
         future_records.append(future_record)
 
