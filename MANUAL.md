@@ -456,9 +456,33 @@ $ dledger report ~/.journal --period=tomorrow: --weight
 
 *Replace "tomorrow" with the date a day after today.*
 
+### Report how much you earned/received
+
+> This tip only applies if your journal tracks ex-date information
+
+Let's say you were wondering how much you _earned_ in a given period, compared to how much you _collected_ in cash in the same period.
+
+You can figure this out by running two `--sum` reports (in this case, for the month of January 2020):
+
+```shell
+$ dledger report ~/.journal --period=2020/1 --sum --by-ex-date
+```
+
+The result of this report is how much you earned, but have yet to receive in a cash payout.
+
+Then, you run the same report, but this time applying the `--by-payout-date` flag.
+
+```shell
+$ dledger report ~/.journal --period=2020/1 --sum --by-payout-date
+```
+
+Now you can compare the two results.
+
+Note that you can omit either `--by-ex-date` or `--by-payout-date` if your primary transaction date corresponds to either (e.g. if your primary date corresponds to the ex-date, then you can omit `--by-ex-date`).
+
 ### Next expected payouts
 
-> This tip only applies to macOS/Linux
+> This tip only applies on macOS/Linux platforms
 
 Sometimes it is nice to know when the next 5 or 10 expected payouts are due. This is not a built-in feature of `dledger`, but can still be achieved using existing system tools.
 
