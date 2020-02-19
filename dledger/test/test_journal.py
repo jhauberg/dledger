@@ -44,6 +44,60 @@ def test_simple_journal():
 
 
 def test_ordering():
+    records = [
+        Transaction(date(2019, 1, 1), 'ABC', 10, Amount(100)),
+        Transaction(date(2019, 2, 1), 'ABC', 10, Amount(200)),
+        Transaction(date(2019, 3, 1), 'ABC', 10, Amount(150))
+    ]
+
+    records = sorted(records)
+
+    assert records[0] == Transaction(date(2019, 1, 1), 'ABC', 10, Amount(100))
+    assert records[1] == Transaction(date(2019, 2, 1), 'ABC', 10, Amount(200))
+    assert records[2] == Transaction(date(2019, 3, 1), 'ABC', 10, Amount(150))
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 10, Amount(150)),
+        Transaction(date(2019, 1, 1), 'ABC', 10, Amount(100)),
+        Transaction(date(2019, 2, 1), 'ABC', 10, Amount(200)),
+    ]
+
+    records = sorted(records)
+
+    assert records[0] == Transaction(date(2019, 1, 1), 'ABC', 10, Amount(100))
+    assert records[1] == Transaction(date(2019, 2, 1), 'ABC', 10, Amount(200))
+    assert records[2] == Transaction(date(2019, 3, 1), 'ABC', 10, Amount(150))
+
+    records = [
+        Transaction(date(2019, 1, 1), 'ABC', 10, Amount(100)),
+        Transaction(date(2019, 1, 1), 'ABC', 20),
+        Transaction(date(2019, 2, 1), 'ABC', 20, Amount(200)),
+        Transaction(date(2019, 3, 1), 'ABC', 20, Amount(150)),
+    ]
+
+    records = sorted(records)
+
+    assert records[0] == Transaction(date(2019, 1, 1), 'ABC', 10, Amount(100))
+    assert records[1] == Transaction(date(2019, 1, 1), 'ABC', 20)
+    assert records[2] == Transaction(date(2019, 2, 1), 'ABC', 20, Amount(200))
+    assert records[3] == Transaction(date(2019, 3, 1), 'ABC', 20, Amount(150))
+
+    records = [
+        Transaction(date(2019, 1, 1), 'ABC', 20),
+        Transaction(date(2019, 1, 1), 'ABC', 10, Amount(100)),
+        Transaction(date(2019, 2, 1), 'ABC', 20, Amount(200)),
+        Transaction(date(2019, 3, 1), 'ABC', 20, Amount(150)),
+    ]
+
+    records = sorted(records)
+
+    assert records[0] == Transaction(date(2019, 1, 1), 'ABC', 10, Amount(100))
+    assert records[1] == Transaction(date(2019, 1, 1), 'ABC', 20)
+    assert records[2] == Transaction(date(2019, 2, 1), 'ABC', 20, Amount(200))
+    assert records[3] == Transaction(date(2019, 3, 1), 'ABC', 20, Amount(150))
+
+
+def test_ordering_journal():
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
     records = read('../example/ordering.journal', kind='journal')
@@ -98,6 +152,24 @@ def test_positions_journal():
     assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 140,
                                      amount=Amount(107.8, '$', '$ %s'),
                                      dividend=Amount(0.77, '$', '$ %s'))
+
+
+def test_position_inference_journal():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    records = read('../example/positioninference.journal', kind='journal')
+
+    assert len(records) == 3
+    assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
+                                     amount=Amount(73, '$', '$ %s'),
+                                     dividend=Amount(0.73, '$', '$ %s'))
+    assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
+                                     amount=Amount(77, '$', '$ %s'),
+                                     dividend=Amount(0.77, '$', '$ %s'),
+                                     ex_date=date(2019, 5, 10))
+    assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 120,
+                                     dividend=Amount(0.77, '$', '$ %s'),
+                                     is_preliminary=True)
 
 
 def test_dividends_journal():
