@@ -134,9 +134,13 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
         if p is None or position_change_direction != 0:
             # infer position from previous entries
-            for previous_record in reversed(records):
+            # todo: this sorting rule occurs in multiple places; should consolidate
+            by_ex_date = sorted(records, key=lambda r: (r.ex_date if r.ex_date is not None else r.entry_date, r.amount is None and r.dividend is None))
+            for previous_record in reversed(by_ex_date):
                 if previous_record.ticker == ticker:
                     if previous_record.position is None:
+                        continue
+                    if d3 is not None and previous_record.entry_date > d3:
                         continue
                     if p is None:
                         p = 0
@@ -204,6 +208,8 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
                     # unless it's a closer, in which case we have to keep it around in any case
                     # (e.g. see example/strategic.journal)
                     continue
+                if latest_record.ex_date is not None and record.entry_date >= latest_record.ex_date:
+                    continue
                 is_redundant = False
                 if record.entry_date < latest_record.entry_date:
                     is_redundant = True
@@ -233,16 +239,16 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
                         '[',   # secondary date opener
                         '  ',  # manually spaced (or automatically spaced by newline)
                         '\t']  # manually tabbed
-    break_index = None
+    break_index: Optional[int] = None
     try:
         # note that by including [ as a breaker, we allow additional formatting options
         # but it also requires any position () to always be the next component after ticker
         # e.g. this format is allowed:
-        #   "2019/12/31 ABC [2020/01/15]"
+        #   "2019/12/31 ABC [2020/01/15] $ 1"
         # but this is not:
-        #   "2019/12/31 ABC [2020/01/15] (10)"
+        #   "2019/12/31 ABC [2020/01/15] (10) $ 1"
         # it must instead be:
-        #   "2019/12/31 ABC (10) [2020/01/15]"
+        #   "2019/12/31 ABC (10) [2020/01/15] $ 1"
         # (the secondary date is like a tag attached to the cash amount)
         break_index = min([condensed_line.index(sep) for sep in break_separators
                            if sep in condensed_line])
