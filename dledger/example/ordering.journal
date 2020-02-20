@@ -1,6 +1,6 @@
 # this file serves as an example journal for dledger
 
-# this journal assumes a system locale using comma as decimal separator
+# this journal assumes a system locale using period as decimal separator
 
 2019/11/14 AAPL        # latest transaction at the top
   $ 92.4
