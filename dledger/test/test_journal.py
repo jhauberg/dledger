@@ -172,6 +172,30 @@ def test_position_inference_journal():
                                      is_preliminary=True)
 
 
+def test_fractional_positions_journal():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    records = read('../example/fractionalpositions.journal', kind='journal')
+
+    assert len(records) == 4
+    assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 10.6,
+                                     amount=Amount(7.738, '$', '$ %s'),
+                                     # note the dividend calculation rather than hardcoding to 0.73
+                                     # as it is inferred (not entered), and the actual stored result
+                                     # is more likely to be something like 0.7300000000000001
+                                     dividend=Amount(7.738 / 10.6, '$', '$ %s'))
+    assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 10.6,
+                                     amount=Amount(8.162, '$', '$ %s'),
+                                     # note that this dividend is entered, not inferred
+                                     dividend=Amount(0.77, '$', '$ %s'))
+    assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 10.6 + 0.7,
+                                     amount=Amount(8.701, '$', '$ %s'),
+                                     dividend=Amount(8.701 / (10.6 + 0.7), '$', '$ %s'))
+    assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 21.3,
+                                     amount=Amount(16.401, '$', '$ %s'),
+                                     dividend=Amount(16.401 / 21.3, '$', '$ %s'))
+
+
 def test_dividends_journal():
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
