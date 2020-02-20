@@ -230,7 +230,7 @@ def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Tran
                 conversion_factor = conversion_factors[(symbol, rec.amount.symbol)]
                 conversion_factor = 1.0 / conversion_factor
             except KeyError:
-                continue
+                raise ValueError(f'no exchange rate established between {rec.amount.symbol}/{symbol}')
         estimate_format: Optional[str] = None
         for t in reversed(transactions):
             assert t.amount is not None
