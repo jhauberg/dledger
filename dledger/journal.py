@@ -1,5 +1,6 @@
 import csv
 import re
+import math
 import locale
 
 from dledger.localeutil import trysetlocale
@@ -41,7 +42,7 @@ class Transaction:
 
     entry_date: date  # no assumption whether this is payout, ex-date or other
     ticker: str
-    position: int
+    position: float
     amount: Optional[Amount] = None
     dividend: Optional[Amount] = None
     kind: Distribution = Distribution.FINAL
@@ -151,13 +152,20 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
         if amount is not None and dividend is not None:
             if amount.symbol == dividend.symbol:
-                logical_position = int(round(amount.value / dividend.value))
+                expected_p = amount.value / dividend.value
                 if p is None:
                     # infer position from amount/dividend - if same currency
-                    p = logical_position
-
-                if p != logical_position:
-                    raise ParseError(f'position does not equal amount divided by dividend ({p} != {logical_position})', location)
+                    p = expected_p
+                # determine whether position equates (close enough) to the expected position
+                # tolerance based on fractional precision from Robinhood/M1
+                # see https://robinhood.com/us/en/support/articles/66zKxGmw7zjdkFXEcGYksl/fractional-shares/
+                # or https://support.m1finance.com/hc/en-us/articles/221053227-Explanation-of-Fractional-Shares
+                # todo: Robinhood rounds to nearest penny, so this ambiguity check might not work
+                #       e.g. 1 penny = $ 0.01
+                #       so if you your position would amount to 0.006, you would get 0.01
+                #       but also hit this error, because your position is 0.006/div, not 0.01/div
+                if not math.isclose(p, expected_p, abs_tol=0.000001):
+                    raise ParseError(f'ambiguous position ({p} or {expected_p}?)', location)
 
         if p is None:
             raise ParseError(f'position could not be inferred', location)
@@ -223,7 +231,7 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
 
 
 def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
-        -> Tuple[date, Optional[date], Optional[date], str, Tuple[Optional[int], int], Optional[Amount], Optional[Amount], Distribution, Tuple[str, int]]:
+        -> Tuple[date, Optional[date], Optional[date], str, Tuple[Optional[float], int], Optional[Amount], Optional[Amount], Distribution, Tuple[str, int]]:
     condensed_line = '  '.join(lines)
     if len(condensed_line) < 10:  # the shortest starting transaction line is "YYYY/M/D X"
         raise ParseError('invalid transaction', location)
@@ -267,7 +275,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         condensed_line = condensed_line[break_index:].strip()
     if ticker is None or len(ticker) == 0:
         raise ParseError('invalid ticker format', location)
-    position: Optional[int] = None
+    position: Optional[float] = None
     position_change_direction = 0
     if ')' in condensed_line:
         break_index = condensed_line.index(')') + 1
@@ -280,9 +288,9 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
             position_change_direction = -1
             position_str = position_str[1:]
         try:
-            position = locale.atoi(position_str)
+            position = locale.atof(position_str)
         except ValueError:
-            raise ParseError(f'invalid position (\'{position}\')', location)
+            raise ParseError(f'invalid position (\'{position_str}\')', location)
         condensed_line = condensed_line[break_index:].strip()
 
     if len(condensed_line) == 0:
