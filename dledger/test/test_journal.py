@@ -7,6 +7,13 @@ from dledger.journal import (
     read, remove_redundant_journal_transactions
 )
 from dledger.localeutil import trysetlocale
+from dledger.formatutil import most_decimal_places
+
+
+def test_most_decimal_places():
+    assert most_decimal_places([1, 2, 3]) == 0
+    assert most_decimal_places([1.1, 2, 3]) == 1
+    assert most_decimal_places([1.10, 2, 3]) == 1
 
 
 def test_simple_journal():
@@ -14,33 +21,33 @@ def test_simple_journal():
 
     assert len(records) == 4
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
-                                     amount=Amount(73, '$', '$ %s'),
-                                     dividend=Amount(0.73, '$', '$ %s'))
+                                     amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
 
     records = read('../example/simple-condensed.journal', kind='journal')
 
     assert len(records) == 4
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
-                                     amount=Amount(73, '$', '$ %s'),
-                                     dividend=Amount(0.73, '$', '$ %s'))
+                                     amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
 
 
 def test_ordering():
@@ -104,17 +111,17 @@ def test_ordering_journal():
 
     assert len(records) == 5
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
-                                     amount=Amount(73, '$', '$ %s'),
-                                     dividend=Amount(0.73, '$', '$ %s'))
+                                     amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 110,
-                                     amount=Amount(84.7, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(84.7, places=1, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 120,
-                                     amount=Amount(92.4, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(92.4, places=1, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[4] == Transaction(date(2019, 11, 14), 'AAPL', 0)
 
 
@@ -125,33 +132,33 @@ def test_positions_journal():
 
     assert len(records) == 4
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
-                                     amount=Amount(73, '$', '$ %s'),
-                                     dividend=Amount(0.73, '$', '$ %s'))
+                                     amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 120,
-                                     amount=Amount(92.4, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(92.4, places=1, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 140,
-                                     amount=Amount(107.8, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(107.8, places=1, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
 
     records = read('../example/positions-condensed.journal', kind='journal')
 
     assert len(records) == 4
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
-                                     amount=Amount(73, '$', '$ %s'),
-                                     dividend=Amount(0.73, '$', '$ %s'))
+                                     amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 120,
-                                     amount=Amount(92.4, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(92.4, places=1, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 140,
-                                     amount=Amount(107.8, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(107.8, places=1, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
 
 
 def test_position_inference_journal():
@@ -161,14 +168,14 @@ def test_position_inference_journal():
 
     assert len(records) == 3
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
-                                     amount=Amount(73, '$', '$ %s'),
-                                     dividend=Amount(0.73, '$', '$ %s'))
+                                     amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'),
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'),
                                      ex_date=date(2019, 5, 10))
     assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 120,
-                                     dividend=Amount(0.77, '$', '$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'),
                                      is_preliminary=True)
 
 
@@ -179,21 +186,17 @@ def test_fractional_positions_journal():
 
     assert len(records) == 4
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 10.6,
-                                     amount=Amount(7.738, '$', '$ %s'),
-                                     # note the dividend calculation rather than hardcoding to 0.73
-                                     # as it is inferred (not entered), and the actual stored result
-                                     # is more likely to be something like 0.7300000000000001
-                                     dividend=Amount(7.738 / 10.6, '$', '$ %s'))
+                                     amount=Amount(7.738, places=3, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 10.6,
-                                     amount=Amount(8.162, '$', '$ %s'),
-                                     # note that this dividend is entered, not inferred
-                                     dividend=Amount(0.77, '$', '$ %s'))
-    assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 10.6 + 0.7,
-                                     amount=Amount(8.701, '$', '$ %s'),
-                                     dividend=Amount(8.701 / (10.6 + 0.7), '$', '$ %s'))
+                                     amount=Amount(8.162, places=3, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
+    assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 11.3,
+                                     amount=Amount(8.701, places=3, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 21.3,
-                                     amount=Amount(16.401, '$', '$ %s'),
-                                     dividend=Amount(16.401 / 21.3, '$', '$ %s'))
+                                     amount=Amount(16.401, places=3, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
 
 
 def test_dividends_journal():
@@ -203,17 +206,17 @@ def test_dividends_journal():
 
     assert len(records) == 4
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
-                                     amount=Amount(73, '$', '$ %s'),
-                                     dividend=Amount(0.73, '$', '$ %s'))
+                                     amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 100,
-                                     amount=Amount(77, '$', '$ %s'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
 
 
 def test_nativedividends_journal():
@@ -223,17 +226,17 @@ def test_nativedividends_journal():
 
     assert len(records) == 4
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
-                                     amount=Amount(490.33, 'kr', '%s kr'),
-                                     dividend=Amount(0.73, '$', '$ %s'))
+                                     amount=Amount(490.33, places=2, symbol='kr', fmt='%s kr'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
-                                     amount=Amount(517.19, 'kr', '%s kr'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(517.19, places=2, symbol='kr', fmt='%s kr'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 100,
-                                     amount=Amount(517.19, 'kr', '%s kr'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(517.19, places=2, symbol='kr', fmt='%s kr'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
     assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 100,
-                                     amount=Amount(517.19, 'kr', '%s kr'),
-                                     dividend=Amount(0.77, '$', '$ %s'))
+                                     amount=Amount(517.19, places=2, symbol='kr', fmt='%s kr'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'))
 
 
 def test_strategic_journal():
@@ -243,17 +246,17 @@ def test_strategic_journal():
 
     assert len(records) == 6
     assert records[0] == Transaction(date(2019, 1, 20), 'ABC', 10,
-                                     amount=Amount(1, '$', '$ %s'),
-                                     dividend=Amount(0.1, '$', '$ %s'))
+                                     amount=Amount(1, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.1, places=1, symbol='$', fmt='$ %s'))
     assert records[1] == Transaction(date(2019, 4, 20), 'ABC', 10,
-                                     amount=Amount(2, '$', '$ %s'),
-                                     dividend=Amount(0.2, '$', '$ %s'))
+                                     amount=Amount(2, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.2, places=1, symbol='$', fmt='$ %s'))
     assert records[2] == Transaction(date(2019, 7, 20), 'ABC', 10,
-                                     amount=Amount(2, '$', '$ %s'),
-                                     dividend=Amount(0.2, '$', '$ %s'))
+                                     amount=Amount(2, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.2, places=1, symbol='$', fmt='$ %s'))
     assert records[3] == Transaction(date(2019, 10, 20), 'ABC', 10,
-                                     amount=Amount(2, '$', '$ %s'),
-                                     dividend=Amount(0.2, '$', '$ %s'))
+                                     amount=Amount(2, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.2, places=1, symbol='$', fmt='$ %s'))
     assert records[4] == Transaction(date(2020, 1, 19), 'ABC', 0)
     assert records[5] == Transaction(date(2020, 2, 1), 'ABC', 10)
 

@@ -3,12 +3,12 @@ import os
 
 from datetime import datetime, date
 
-from dledger.journal import Transaction, Distribution
+from dledger.journal import Transaction, Distribution, max_decimal_places
 from dledger.formatutil import format_amount, most_decimal_places
 from dledger.printutil import colored, COLOR_NEGATIVE, COLOR_MARKED
 from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import (
-    GeneratedDate, GeneratedAmount, GeneratedTransaction,
+    GeneratedAmount, GeneratedTransaction,
     symbol_conversion_factors
 )
 from dledger.record import (
@@ -137,17 +137,28 @@ def print_simple_quarterly_report(records: List[Transaction]):
 
 def print_simple_report(records: List[Transaction], *, detailed: bool = False):
     today = datetime.today().date()
+    payout_decimal_places: Dict[str, Optional[int]] = dict()
     dividend_decimal_places: Dict[str, Optional[int]] = dict()
+    position_decimal_places: Dict[str, Optional[int]] = dict()
+    for ticker in tickers(records):
+        payout_decimal_places[ticker] = max_decimal_places(
+            (r.amount for r in records if r.ticker == ticker)
+        )
     if detailed:
         for ticker in tickers(records):
-            dividend_decimal_places[ticker] = most_decimal_places(
-                (r.dividend.value for r in records if
-                 r.ticker == ticker and
-                 r.dividend is not None))
+            dividend_decimal_places[ticker] = max_decimal_places(
+                (r.dividend for r in records if r.ticker == ticker)
+            )
+            position_decimal_places[ticker] = most_decimal_places(
+                (r.position for r in records if
+                 r.ticker == ticker))
     for transaction in records:
         should_colorize_expired_transaction = False
-
-        amount = format_amount(transaction.amount.value, trailing_zero=False)
+        amount_decimal_places = payout_decimal_places[transaction.ticker]
+        if amount_decimal_places is not None:
+            amount = format_amount(transaction.amount.value, places=amount_decimal_places)
+        else:
+            amount = format_amount(transaction.amount.value, rounded=False)
         amount = transaction.amount.fmt % amount
 
         d = transaction.entry_date.strftime('%Y/%m/%d')
@@ -177,25 +188,27 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                 else:
                     line = f'{line}    {d} {transaction.ticker.ljust(8)}'
 
-        if transaction.payout_date is not None:
-            pd = transaction.payout_date.strftime('%Y/%m/%d')
-            line = f'{line} [{pd}]'
-        else:
-            line = f'{line} ' + (' ' * 12)
-
         if detailed:
             if transaction.dividend is not None:
-                dividend = format_amount(
-                    transaction.dividend.value,
-                    trailing_zero=False,
-                    places=dividend_decimal_places[transaction.ticker])
+                div_decimal_places = dividend_decimal_places[transaction.ticker]
+                if div_decimal_places is not None:
+                    dividend = format_amount(transaction.dividend.value,
+                                             places=div_decimal_places)
+                else:
+                    dividend = format_amount(transaction.dividend.value,
+                                             rounded=False)
                 dividend = transaction.dividend.fmt % dividend
 
-                line = f'{line} {dividend.rjust(12)}'
+                line = f'{line} {dividend.rjust(16)}'
             else:
-                line = f'{line} ' + (' ' * 12)
+                line = f'{line} ' + (' ' * 16)
 
-            position = f'({transaction.position})'.rjust(8)
+            p_decimal_places = position_decimal_places[transaction.ticker]
+            if p_decimal_places is not None:
+                p = format_amount(transaction.position, trailing_zero=False, places=p_decimal_places)
+            else:
+                p = format_amount(transaction.position, trailing_zero=False, rounded=False)
+            position = f'({p})'.rjust(14)
 
             line = f'{line} {position}'
 

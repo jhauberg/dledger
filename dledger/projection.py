@@ -480,7 +480,7 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount
                 latest_comparable = latest(comparable_transactions)
                 assert latest_comparable is not None
                 div = latest_comparable.dividend
-                return GeneratedAmount(div.value, div.symbol, div.fmt)
+                return GeneratedAmount(div.value, places=div.places, symbol=div.symbol, fmt=div.fmt)
 
     return None
 

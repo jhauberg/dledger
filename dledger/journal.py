@@ -4,14 +4,15 @@ import math
 import locale
 
 from dledger.localeutil import trysetlocale
-from dledger.formatutil import format_amount
+from dledger.formatutil import format_amount, most_decimal_places
 from dledger.fileutil import fileencoding
 from dledger.dateutil import parse_datestamp
 
 from dataclasses import dataclass
 from datetime import datetime, date
+from decimal import Decimal
 
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any, Dict, Iterable
 from enum import Enum
 
 SUPPORTED_TYPES = ['journal', 'nordnet']
@@ -32,6 +33,7 @@ class Amount:
     """ Represents a cash amount. """
 
     value: float
+    places: Optional[int] = None
     symbol: Optional[str] = None
     fmt: Optional[str] = None
 
@@ -129,14 +131,22 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
     records: List[Transaction] = []
 
+    def truncate_floating_point(value: float, *, places: int = 2) -> float:
+        v = Decimal(value)
+        v = round(v, places)
+        return float(v)
+
     for entry in journal_entries:
         d, d2, d3, ticker, position, amount, dividend, kind, location = entry
-        p, position_change_direction = position
+        p, p_direction = position
 
-        if p is None or position_change_direction != 0:
+        if p is None or p_direction != 0:
             # infer position from previous entries
             # todo: this sorting rule occurs in multiple places; should consolidate
-            by_ex_date = sorted(records, key=lambda r: (r.ex_date if r.ex_date is not None else r.entry_date, r.amount is None and r.dividend is None))
+            by_ex_date = sorted(records, key=lambda r: (
+                r.ex_date if r.ex_date is not None else r.entry_date,
+                r.amount is None and r.dividend is None
+            ))
             for previous_record in reversed(by_ex_date):
                 if previous_record.ticker == ticker:
                     if previous_record.position is None:
@@ -145,33 +155,35 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                         continue
                     if p is None:
                         p = 0
-                    p = previous_record.position + p * position_change_direction
+                    p = truncate_floating_point(previous_record.position + p * p_direction)
                     if p < 0:
                         raise ParseError(f'position change to negative position ({p})', location)
                     break
 
         if amount is not None and dividend is not None:
             if amount.symbol == dividend.symbol:
-                expected_p = amount.value / dividend.value
-                if p is None:
-                    # infer position from amount/dividend - if same currency
-                    p = expected_p
-                # determine whether position equates (close enough) to the expected position
-                # tolerance based on fractional precision from Robinhood/M1
-                # see https://robinhood.com/us/en/support/articles/66zKxGmw7zjdkFXEcGYksl/fractional-shares/
-                # or https://support.m1finance.com/hc/en-us/articles/221053227-Explanation-of-Fractional-Shares
-                # todo: Robinhood rounds to nearest penny, so this ambiguity check might not work
-                #       e.g. 1 penny = $ 0.01
-                #       so if you your position would amount to 0.006, you would get 0.01
-                #       but also hit this error, because your position is 0.006/div, not 0.01/div
-                if not math.isclose(p, expected_p, abs_tol=0.000001):
-                    raise ParseError(f'ambiguous position ({p} or {expected_p}?)', location)
+                inferred_p = amount.value / dividend.value
+                if p is not None:
+                    # determine whether position equates (close enough) to the inferred position
+                    # tolerance based on fractional precision from Robinhood/M1
+                    # see https://robinhood.com/us/en/support/articles/66zKxGmw7zjdkFXEcGYksl/fractional-shares/
+                    # or https://support.m1finance.com/hc/en-us/articles/221053227-Explanation-of-Fractional-Shares
+                    # todo: Robinhood rounds to nearest penny, so this ambiguity check might not work
+                    #       e.g. 1 penny = $ 0.01
+                    #       so if you your position would amount to 0.006, you would get 0.01
+                    #       but also hit this error, because your position is 0.006/div, not 0.01/div
+                    if not math.isclose(p, inferred_p, abs_tol=0.000001):
+                        raise ParseError(f'ambiguous position ({p} or {inferred_p}?)', location)
+                else:
+                    p = truncate_floating_point(inferred_p)
 
         if p is None:
             raise ParseError(f'position could not be inferred', location)
 
         if amount is not None and dividend is None:
-            dividend = Amount(amount.value / p,
+            inferred_dividend = truncate_floating_point(amount.value / p, places=2)
+            dividend = Amount(inferred_dividend,
+                              places=most_decimal_places([inferred_dividend]),
                               symbol=amount.symbol,
                               fmt=amount.fmt)
 
@@ -222,7 +234,7 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
                 if record.entry_date < latest_record.entry_date:
                     is_redundant = True
                 elif record.entry_date == latest_record.entry_date and \
-                        record.position == latest_record.position:
+                        math.isclose(record.position, latest_record.position, abs_tol=0.000001):
                     is_redundant = True
                 if is_redundant:
                     records.remove(record)
@@ -380,7 +392,12 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
 
     assert value is not None
 
-    return Amount(value, symbol, f'{lhs}%s{rhs}')
+    separator = locale.localeconv()['decimal_point']
+    separator_index = amount[::-1].find(separator)
+
+    fmt_places = separator_index if separator_index != -1 else 0
+
+    return Amount(value, places=fmt_places, symbol=symbol, fmt=f'{lhs}%s{rhs}')
 
 
 def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
@@ -484,11 +501,35 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
 
     return Transaction(
         d, ticker, position,
+        # todo: places=?
         Amount(amount, symbol=amount_symbol, fmt=f'%s {amount_symbol}'),
         Amount(dividend, symbol=dividend_symbol, fmt=f'%s {dividend_symbol}'))
 
 
+def max_decimal_places(amounts: Iterable[Amount]) -> Optional[int]:
+    places: Optional[int] = None
+    values = [amount.places for amount in amounts if
+              amount is not None and
+              amount.places is not None]
+    if len(values) > 0:
+        return max(values)
+    return places
+
+
 def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> None:
+    position_decimal_places: Dict[str, Optional[int]] = dict()
+    payout_decimal_places: Dict[str, Optional[int]] = dict()
+    dividend_decimal_places: Dict[str, Optional[int]] = dict()
+    for ticker in set([record.ticker for record in records]):
+        payout_decimal_places[ticker] = max_decimal_places(
+            (r.amount for r in records if r.ticker == ticker)
+        )
+        dividend_decimal_places[ticker] = max_decimal_places(
+            (r.dividend for r in records if r.ticker == ticker)
+        )
+        position_decimal_places[ticker] = most_decimal_places(
+            (r.position for r in records if
+             r.ticker == ticker))
     for record in records:
         indicator = ''
         if record.kind is Distribution.SPECIAL:
@@ -496,27 +537,46 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
         elif record.kind is Distribution.INTERIM:
             indicator = '^ '
         datestamp = record.entry_date.strftime('%Y/%m/%d')
-        line = f'{datestamp} {indicator}{record.ticker} ({record.position})'
+        p_decimal_places = position_decimal_places[record.ticker]
+        if p_decimal_places is not None:
+            p = format_amount(record.position, trailing_zero=False, places=p_decimal_places)
+        else:
+            p = format_amount(record.position, trailing_zero=False, rounded=False)
+        line = f'{datestamp} {indicator}{record.ticker} ({p})'
         if not condensed:
             print(line, file=file)
         amount_display = ''
+        if record.payout_date is not None:
+            payout_datestamp = record.payout_date.strftime('%Y/%m/%d')
+            amount_display += f'[{payout_datestamp}]'
         if record.amount is not None:
-            payout_display = format_amount(record.amount.value, trailing_zero=False, rounded=False)
+            amount_decimal_places = payout_decimal_places[record.ticker]
+            if amount_decimal_places is not None:
+                payout_display = format_amount(record.amount.value, places=amount_decimal_places)
+            else:
+                payout_display = format_amount(record.amount.value, rounded=False)
             if record.amount.fmt is not None:
                 payout_display = record.amount.fmt % payout_display
-            amount_display += payout_display
+            amount_display += f' {payout_display}' if record.payout_date is not None else payout_display
         if record.dividend is not None:
-            dividend_display = format_amount(record.dividend.value, trailing_zero=False, rounded=False)
+            div_decimal_places = dividend_decimal_places[record.ticker]
+            if div_decimal_places is not None:
+                dividend_display = format_amount(record.dividend.value, places=div_decimal_places)
+            else:
+                dividend_display = format_amount(record.dividend.value, rounded=False)
             if record.dividend.fmt is not None:
                 dividend_display = record.dividend.fmt % dividend_display
-            amount_display += f' @ {dividend_display}'
+            amount_display += f' @ {dividend_display}' if record.payout_date is not None or record.amount is not None else f'@ {dividend_display}'
+        if record.ex_date is not None:
+            exdate_datestamp = record.ex_date.strftime('%Y/%m/%d')
+            amount_display += f' [{exdate_datestamp}]' if record.dividend is not None else f' @ [{exdate_datestamp}]'
         if len(amount_display) > 0:
-            amount_line = f'  {amount_display}'
+            amount_line = f' {amount_display}' if condensed else f'  {amount_display}'
             if not condensed:
                 print(amount_line, file=file)
             else:
                 line += amount_line
         if condensed:
-            print(line)
+            print(line, file=file)
         if record != records[-1] and not condensed:
             print(file=file)
