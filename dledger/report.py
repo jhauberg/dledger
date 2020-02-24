@@ -158,7 +158,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         if amount_decimal_places is not None:
             amount = format_amount(transaction.amount.value, places=amount_decimal_places)
         else:
-            amount = format_amount(transaction.amount.value, rounded=False)
+            amount = format_amount(transaction.amount.value)
         amount = transaction.amount.fmt % amount
 
         d = transaction.entry_date.strftime('%Y/%m/%d')
@@ -195,8 +195,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                     dividend = format_amount(transaction.dividend.value,
                                              places=div_decimal_places)
                 else:
-                    dividend = format_amount(transaction.dividend.value,
-                                             rounded=False)
+                    dividend = format_amount(transaction.dividend.value)
                 dividend = transaction.dividend.fmt % dividend
 
                 line = f'{line} {dividend.rjust(16)}'
