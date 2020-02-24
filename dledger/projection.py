@@ -394,6 +394,7 @@ def estimated_transactions(records: List[Transaction]) \
             future_amount = amount_per_share(latest_transaction) * future_position
             future_dividend = next_linear_dividend(reference_records)
             future_dividend_value: Optional[float] = None
+            future_dividend_places: Optional[int] = None
             if future_dividend is not None:
                 if can_convert_from_dividend:
                     assert future_dividend.symbol is not None
@@ -418,10 +419,11 @@ def estimated_transactions(records: List[Transaction]) \
                     conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
                                                             latest_transaction.amount.symbol)]
                     future_dividend_value = fmean(divs)
-                    decimal_places = most_decimal_places(divs)
+                    future_dividend_places = most_decimal_places(divs)
+                    assert future_dividend_places is not None
                     # truncate/round off to fit longest decimal place count observed
                     # in all of the real transactions
-                    s = f'{future_dividend_value:.{decimal_places}f}'
+                    s = f'{future_dividend_value:.{future_dividend_places}f}'
                     future_dividend_value = float(s)
                     future_amount = future_dividend_value * future_position
                     future_amount = future_amount * conversion_factor
@@ -432,10 +434,12 @@ def estimated_transactions(records: List[Transaction]) \
             future_record = GeneratedTransaction(future_date, ticker, future_position,
                                                  amount=GeneratedAmount(
                                                      future_amount,
+                                                     places=latest_transaction.amount.places,
                                                      symbol=latest_transaction.amount.symbol,
                                                      fmt=latest_transaction.amount.fmt),
                                                  dividend=(GeneratedAmount(
                                                      future_dividend_value,
+                                                     places=future_dividend_places,
                                                      symbol=latest_transaction.dividend.symbol,
                                                      fmt=latest_transaction.dividend.fmt)
                                                            if can_convert_from_dividend else
@@ -569,6 +573,7 @@ def future_transactions(records: List[Transaction]) \
         future_record = GeneratedTransaction(future_date, transaction.ticker, future_position,
                                              amount=GeneratedAmount(
                                                  future_amount,
+                                                 places=transaction.amount.places,
                                                  symbol=latest_transaction.amount.symbol,
                                                  fmt=latest_transaction.amount.fmt),
                                              dividend=future_dividend,
