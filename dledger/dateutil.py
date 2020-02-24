@@ -140,13 +140,13 @@ def parse_interval(interval: str) \
     starting: Optional[date] = None
 
     if len(starting_datestamp) > 0:
-        starting = parse_datestamp(starting_datestamp)
+        starting, _ = parse_period_component(starting_datestamp)
 
     ending_datestamp: Optional[str] = datestamps[1].strip() if len(datestamps) > 1 else None
     ending: Optional[date] = None
 
     if ending_datestamp is not None and len(ending_datestamp) > 0:
-        ending = parse_datestamp(ending_datestamp)
+        ending, _ = parse_period_component(ending_datestamp)
 
     if starting is not None and ending is not None:
         if starting > ending:
@@ -157,23 +157,32 @@ def parse_interval(interval: str) \
     return starting, ending
 
 
+def parse_period_component(component: str) -> Tuple[date, date]:
+    today = datetime.today().date()
+    if component == 'today':
+        return today, today + timedelta(days=1)
+    if component == 'tomorrow':
+        return today + timedelta(days=1), today + timedelta(days=2)
+    if component == 'yesterday':
+        return today + timedelta(days=-1), today
+
+    starting = parse_datestamp(component)
+
+    n = max(component.count('/'), component.count('-'))
+
+    if n == 0:
+        return starting, starting.replace(year=starting.year + 1)
+    if n == 1:
+        return starting, next_month(starting)
+    if n == 2:
+        return starting, starting + timedelta(days=1)
+
+
 def parse_period(interval: str) \
         -> Tuple[Optional[date],
                  Optional[date]]:
+    interval = interval.strip()
     if ':' in interval:
         return parse_interval(interval)
-
-    n = max(interval.count('/'), interval.count('-'))
-
-    starting = parse_datestamp(interval)
-    ending = None
-
-    if n == 0:
-        ending = starting.replace(year=starting.year + 1)
-    if n == 1:
-        ending = next_month(starting)
-    if n == 2:
-        ending = starting + timedelta(days=1)
-
-    return starting, ending
+    return parse_period_component(interval)
 
