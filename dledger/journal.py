@@ -313,9 +313,10 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     d3: Optional[date] = None
     if len(amount_components) > 1:
         dividend_str, dividend_datestamp = split_amount_date(amount_components[1].strip())
-        dividend = split_amount(dividend_str, location=location)
-        if dividend.value <= 0:
-            raise ParseError(f'negative or zero dividend (\'{dividend.value}\')', location)
+        if len(dividend_str) > 0:
+            dividend = split_amount(dividend_str, location=location)
+            if dividend.value <= 0:
+                raise ParseError(f'negative or zero dividend (\'{dividend.value}\')', location)
         if dividend_datestamp is not None:
             try:
                 d3 = parse_datestamp(dividend_datestamp, strict=True)
