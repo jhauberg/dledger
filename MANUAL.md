@@ -361,8 +361,6 @@ Similarly, it can often be useful to weigh forecasted income instead of past inc
 $ dledger report example/simple.journal --weight --period=tomorrow:
 ```
 
-*Replace "tomorrow" with the date a day after today.*
-
 ```
 ~              $ 308    100.00%    AAPL
 ```
@@ -442,8 +440,6 @@ This can be achieved simply by using the [`--period`](#periods) flag. If you spe
 $ dledger report ~/.journal --period=tomorrow:
 ```
 
-*Replace "tomorrow" with the date a day after today.*
-
 In this example, the period will stretch from tomorrow (inclusive) through the last forecasted transaction.
 
 ### Report forecasted income weights
@@ -453,8 +449,6 @@ Building on the [previous tip](#report-only-forecasted-transactions), you can ap
 ```shell
 $ dledger report ~/.journal --period=tomorrow: --weight
 ```
-
-*Replace "tomorrow" with the date a day after today.*
 
 ### Report how much you earned/received
 
@@ -493,8 +487,6 @@ We can use this tool to list the next 5 payouts by piping a forecast report into
 ```shell
 $ dledger report ~/.journal --period=tomorrow: | head -n 5
 ```
-
-*Replace "tomorrow" with the date a day after today.*
 
 ### Most recent payouts
 
