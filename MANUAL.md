@@ -172,19 +172,37 @@ You don't *have* to do this, as the transactions will naturally fade away as tim
 
 ## Tracking methods
 
-There are two main methods to track your dividend income:
+Whenever you enter a record in your journal, you must associate a primary date with the entry. This date is the _entry date_. The date can be anything that makes sense to you, but it is also the date that forecasts will be based on.
+
+In general, there are typically two methods to track your dividend income:
 
 1. By payout date
 
 2. By ex-dividend date
 
-Both methods involve recording the cash you receive, the only difference being *when* you record it and which date you associate with each transaction.
+Both methods involve recording the cash you receive, the difference being *when* record it and which date you associate with each transaction. However, picking one method does not rule out benefits of the other; it's mostly a matter of preference.
 
 ### By payout date
 
-This is the most straightforward method to track your dividend income. To put it simply: when you see the cash in your account, you record the transaction. That's it.
+This is the most straightforward method to track your dividend income. To put it simply: on the day you get the cash in your account, you record the transaction. That's it.
 
-This method requires the least amount of effort and is recommended if you just want to get an overview of your cashflow and when you can expect to have money in pocket.
+```
+2019/02/14 AAPL (100)
+  $ 73
+```
+
+This method requires the least amount of effort and is recommended if you just want to get an overview of your cashflow and when you can expect to have money in pocket in the future.
+
+Note that even if you choose to go with this method, you can still record the ex-dividend date for good measure.
+
+Here's an example, extending the transaction with a dividend component and applying a tag with the ex-dividend date:
+
+```
+2019/02/14 AAPL (100)
+  $ 73 @ $ 0.73 [2019/02/08]
+```
+
+This can be a useful extension for several reasons, as explained in the following section.
 
 ### By ex-dividend date
 
@@ -193,7 +211,7 @@ This method requires a more hands-on approach, but does provide some benefits to
 * Tax estimations (e.g. ex-date in 2019, but payout in 2020)
 * Strategic buys/sells (controlling returns)
 
-Instead of recording the transaction on the date when cash is in your account, you record a "preliminary" transaction on the date that the stock goes ex-dividend. This is the date where you've *earned* the money. It's yours, you just won't *have it* until the payout date.
+Instead of recording the transaction on the date when cash is in your account, you record a "preliminary" transaction on the day that the stock goes ex-dividend. This is the date where you've *earned* the money. It's yours, you just won't *have it* until the payout date.
 
 For example, here's a preliminary record of a `$ 0.73` dividend from a position in AAPL of 100 shares:
 
@@ -204,7 +222,7 @@ For example, here's a preliminary record of a `$ 0.73` dividend from a position 
 
 Note that the cash amount is left blank to indicate that the transaction has not yet been realized (you don't have the money yet).
 
-Then, at the payout date, you complete the transaction by finally entering the amount of cash that you received:
+Then, on the day of payout, you complete the transaction by finally entering the amount of cash that you received:
 
 ```
 2019/02/08 AAPL (100)
@@ -226,6 +244,8 @@ However, if the cash was a different currency than the dividend, adding the date
 # Reports
 
 The `report` command will show a chronological list of all dividend transactions. This includes both past, pending and [future transactions](#forecasts).
+
+Depending on the fidelity of your records and tracking method of choice, you have two additional options for the listing; you can list by either payout date (`--by-payout-date`), or ex-dividend date (`--by-ex-date`). The flags have no effect unless you record these dates explicitly.
 
 ## Periods
 
