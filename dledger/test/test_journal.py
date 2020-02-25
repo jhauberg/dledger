@@ -261,6 +261,34 @@ def test_strategic_journal():
     assert records[5] == Transaction(date(2020, 2, 1), 'ABC', 10)
 
 
+def test_extended_journal():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    records = read('../example/extendingrecords.journal', kind='journal')
+
+    assert len(records) == 4
+    assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
+                                     amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'),
+                                     payout_date=date(2019, 2, 14),
+                                     ex_date=date(2019, 2, 8))
+    assert records[1] == Transaction(date(2019, 5, 16), 'AAPL', 100,
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'),
+                                     payout_date=None,
+                                     ex_date=date(2019, 5, 10))
+    assert records[2] == Transaction(date(2019, 8, 15), 'AAPL', 100,
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'),
+                                     payout_date=date(2019, 8, 15),
+                                     ex_date=None)
+    assert records[3] == Transaction(date(2019, 11, 14), 'AAPL', 100,
+                                     amount=Amount(77, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'),
+                                     payout_date=date(2019, 11, 14),
+                                     ex_date=date(2019, 11, 7))
+
+
 def test_remove_redundant_entries():
     records = [
         Transaction(date(2019, 1, 1), 'ABC', 10)

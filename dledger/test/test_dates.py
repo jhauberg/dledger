@@ -159,6 +159,8 @@ def test_parse_period():
 
     assert parse_period('2020/11/11:2019/11/11') == (date(2019, 11, 11),
                                                      date(2020, 11, 11))
+    assert parse_period('2019/11/11:2019/11/11') == (date(2019, 11, 11),
+                                                     date(2019, 11, 11))
 
     today = datetime.today().date()
     tomorrow = today + timedelta(days=1)
@@ -167,3 +169,7 @@ def test_parse_period():
     assert parse_period('today') == (today, tomorrow)
     assert parse_period('tomorrow') == (tomorrow, tomorrow + timedelta(days=1))
     assert parse_period('yesterday') == (yesterday, today)
+
+    assert parse_period('today:tomorrow') == (today, tomorrow)
+    assert parse_period('tomorrow:tomorrow') == (tomorrow, tomorrow)
+    assert parse_period('yesterday:tomorrow') == (yesterday, tomorrow)
