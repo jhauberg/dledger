@@ -87,7 +87,9 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
         -> date:
     """ Return the date that maps to datestamp.
 
-    A datestamp can be specified in any of the following variations:
+    If strict is True, a full datestamp is expected (year/month/day).
+
+    Otherwise, a datestamp can be specified in any of the following variations:
 
         "2019/11/11" => 2019/11/11
         "2019/11"    => 2019/11/01
@@ -99,7 +101,7 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
         "2019-11"    => 2019/11/01
         "2019"       => 2019/01/01
 
-    Components left out will default to the first of year or month.
+    Components omitted will default to the first of year or month.
     """
 
     try:
@@ -129,8 +131,7 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
 
 
 def parse_interval(interval: str) \
-        -> Tuple[Optional[date],
-                 Optional[date]]:
+        -> Tuple[Optional[date], Optional[date]]:
     datestamps = interval.split(':')
 
     if len(datestamps) > 2 or len(datestamps) == 0:
@@ -150,6 +151,7 @@ def parse_interval(interval: str) \
 
     if starting is not None and ending is not None:
         if starting > ending:
+            # flip dates such that starting is always earlier
             tmp = starting
             starting = ending
             ending = tmp
@@ -158,6 +160,15 @@ def parse_interval(interval: str) \
 
 
 def parse_period_component(component: str) -> Tuple[date, date]:
+    """ Return the date interval that exactly includes the period corresponding to a component.
+
+    A period component can be either a full or partial datestamp, or a pre-defined textual key that
+    maps to a specific date.
+
+    For example, if period component is 'today', then the date interval will range from
+    today to tomorrow, exactly including only today. Similarly, if component is '2019', then the
+    date interval will range from 2019/01/01 to 2020/01/01, including the full year period of 2019.
+    """
     today = datetime.today().date()
     if component == 'today':
         return today, today + timedelta(days=1)
@@ -166,21 +177,25 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     if component == 'yesterday':
         return today + timedelta(days=-1), today
 
+    # assume component is datestamp, as none of the textual keys matched
     starting = parse_datestamp(component)
-
+    # determine number of datestamp components
+    # (assuming valid datestamp at this point; i.e. only one separator, no combination of / or -)
     n = max(component.count('/'), component.count('-'))
 
     if n == 0:
+        # year component
         return starting, starting.replace(year=starting.year + 1)
     if n == 1:
+        # year and month components
         return starting, next_month(starting)
     if n == 2:
+        # year, month and day components
         return starting, starting + timedelta(days=1)
 
 
 def parse_period(interval: str) \
-        -> Tuple[Optional[date],
-                 Optional[date]]:
+        -> Tuple[Optional[date], Optional[date]]:
     interval = interval.strip()
     if ':' in interval:
         return parse_interval(interval)
