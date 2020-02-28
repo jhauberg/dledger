@@ -180,18 +180,21 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     # assume component is datestamp, as none of the textual keys matched
     starting = parse_datestamp(component)
     # determine number of datestamp components
-    # (assuming valid datestamp at this point; i.e. only one separator, no combination of / or -)
-    n = max(component.count('/'), component.count('-'))
+    # (assuming valid datestamp; i.e. only one separator kind, no combination)
+    num_separators = max(component.count('/'),
+                         component.count('-'))
 
-    if n == 0:
+    if num_separators > 2:
+        raise ValueError(f'invalid date format (\'{component}\')')
+
+    if num_separators == 0:
         # year component
         return starting, starting.replace(year=starting.year + 1)
-    if n == 1:
+    if num_separators == 1:
         # year and month components
         return starting, next_month(starting)
-    if n == 2:
-        # year, month and day components
-        return starting, starting + timedelta(days=1)
+    # year, month and day components
+    return starting, starting + timedelta(days=1)
 
 
 def parse_period(interval: str) \
