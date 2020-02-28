@@ -7,16 +7,49 @@ from dledger.journal import (
     read, remove_redundant_journal_transactions
 )
 from dledger.localeutil import trysetlocale
-from dledger.formatutil import most_decimal_places
+from dledger.formatutil import decimalplaces
 
 
-def test_most_decimal_places():
-    assert most_decimal_places([1, 2, 3]) == 0
-    assert most_decimal_places([1.1, 2, 3]) == 1
-    assert most_decimal_places([1.10, 2, 3]) == 1
+def test_decimal_places():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    assert decimalplaces('123') == 0
+    assert decimalplaces('123.4') == 1
+    assert decimalplaces('123.45') == 2
+    assert decimalplaces('123.456') == 3
+    assert decimalplaces('12.3456') == 4
+    assert decimalplaces('12.34560') == 5
+    assert decimalplaces('0.77') == 2
+
+    assert decimalplaces(123) == 0
+    assert decimalplaces(123.4) == 1
+    assert decimalplaces(123.45) == 2
+    assert decimalplaces(123.456) == 3
+    assert decimalplaces(12.3456) == 4
+    # note that we won't keep the trailing zero here
+    assert decimalplaces(12.34560) == 4
+    assert decimalplaces(0.77) == 2
+
+    trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
+
+    assert decimalplaces('123,4') == 1
+    assert decimalplaces('123,45') == 2
+    assert decimalplaces('123,456') == 3
+    assert decimalplaces('12,3456') == 4
+
+    assert decimalplaces(123) == 0
+    assert decimalplaces(123.4) == 1
+    assert decimalplaces(123.45) == 2
+    assert decimalplaces(123.456) == 3
+    assert decimalplaces(12.3456) == 4
+    # note that we won't keep the trailing zero here
+    assert decimalplaces(12.34560) == 4
+    assert decimalplaces(0.77) == 2
 
 
 def test_simple_journal():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
     records = read('../example/simple.journal', kind='journal')
 
     assert len(records) == 4
