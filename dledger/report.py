@@ -4,7 +4,7 @@ import os
 from datetime import datetime, date
 
 from dledger.journal import Transaction, Distribution, max_decimal_places
-from dledger.formatutil import format_amount, most_decimal_places
+from dledger.formatutil import format_amount, decimalplaces
 from dledger.printutil import colored, COLOR_NEGATIVE, COLOR_MARKED
 from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import (
@@ -149,9 +149,9 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             dividend_decimal_places[ticker] = max_decimal_places(
                 (r.dividend for r in records if r.ticker == ticker)
             )
-            position_decimal_places[ticker] = most_decimal_places(
-                (r.position for r in records if
-                 r.ticker == ticker))
+            position_decimal_places[ticker] = max(
+                decimalplaces(r.position) for r in records if r.ticker == ticker
+            )
     for transaction in records:
         should_colorize_expired_transaction = False
         amount_decimal_places = payout_decimal_places[transaction.ticker]

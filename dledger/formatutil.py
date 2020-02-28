@@ -1,6 +1,8 @@
+import locale
+
 from decimal import Decimal
 
-from typing import Optional, Iterable
+from typing import Union
 
 
 def format_amount(amount: float, *,
@@ -38,13 +40,21 @@ def format_amount(amount: float, *,
     return f'{d:n}'
 
 
-def most_decimal_places(values: Iterable[float]) -> Optional[int]:
-    decimal_places: Optional[int] = None
+def decimalplaces(value: Union[str, float]) -> int:
+    """ Return the number of places after a decimal separator.
 
-    for value in values:
-        d = Decimal(f'{value}')  # note wrapping as a string to truncate the float
-        places = abs(d.as_tuple().exponent)
-        if decimal_places is None or places > decimal_places:
-            decimal_places = places
+    Use 'decimal_point' from current system locale to determine decimal separator.
+    """
+    separator: str = locale.localeconv()['decimal_point']  # type: ignore
+    places = 0
+    if isinstance(value, float):
+        separator = '.'  # assume always period separator for non-string values
+        value = str(Decimal(f'{value}'))
+    if isinstance(value, str):
+        # reverse string and find first index of separator
+        # this index corresponds to the number of decimal places
+        separator_index = value[::-1].find(separator)
+        if separator_index != -1:
+            places = separator_index
 
-    return decimal_places
+    return places

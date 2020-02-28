@@ -4,7 +4,7 @@ import math
 import locale
 
 from dledger.localeutil import trysetlocale
-from dledger.formatutil import format_amount, most_decimal_places
+from dledger.formatutil import format_amount, decimalplaces
 from dledger.fileutil import fileencoding
 from dledger.dateutil import parse_datestamp
 
@@ -183,7 +183,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         if amount is not None and dividend is None:
             inferred_dividend = truncate_floating_point(amount.value / p, places=2)
             dividend = Amount(inferred_dividend,
-                              places=most_decimal_places([inferred_dividend]),
+                              places=decimalplaces(inferred_dividend),
                               symbol=amount.symbol,
                               fmt=amount.fmt)
 
@@ -393,12 +393,7 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
 
     assert value is not None
 
-    separator: str = locale.localeconv()['decimal_point']  # type: ignore
-    separator_index = amount[::-1].find(separator)
-
-    fmt_places = separator_index if separator_index != -1 else 0
-
-    return Amount(value, places=fmt_places, symbol=symbol, fmt=f'{lhs}%s{rhs}')
+    return Amount(value, places=decimalplaces(amount), symbol=symbol, fmt=f'{lhs}%s{rhs}')
 
 
 def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
@@ -502,9 +497,8 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
 
     return Transaction(
         d, ticker, position,
-        # todo: places=?
-        Amount(amount, symbol=amount_symbol, fmt=f'%s {amount_symbol}'),
-        Amount(dividend, symbol=dividend_symbol, fmt=f'%s {dividend_symbol}'))
+        Amount(amount, places=decimalplaces(amount_str), symbol=amount_symbol, fmt=f'%s {amount_symbol}'),
+        Amount(dividend, places=decimalplaces(dividend_str), symbol=dividend_symbol, fmt=f'%s {dividend_symbol}'))
 
 
 def max_decimal_places(amounts: Iterable[Optional[Amount]]) -> Optional[int]:
@@ -528,9 +522,9 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
         dividend_decimal_places[ticker] = max_decimal_places(
             (r.dividend for r in records if r.ticker == ticker)
         )
-        position_decimal_places[ticker] = most_decimal_places(
-            (r.position for r in records if
-             r.ticker == ticker))
+        position_decimal_places[ticker] = max(
+            decimalplaces(r.position) for r in records if r.ticker == ticker
+        )
     for record in records:
         indicator = ''
         if record.kind is Distribution.SPECIAL:

@@ -5,7 +5,7 @@ from statistics import multimode, fmean
 
 from dledger.journal import Transaction, Distribution, Amount
 from dledger.dateutil import last_of_month, months_between, in_months
-from dledger.formatutil import most_decimal_places
+from dledger.formatutil import decimalplaces
 from dledger.record import (
     by_ticker, tickers, trailing, latest, before, monthly_schedule, dividends, deltas,
     amount_per_share, amount_conversion_factor, intervals, pruned, symbols
@@ -420,7 +420,7 @@ def estimated_transactions(records: List[Transaction]) \
                     conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
                                                             latest_transaction.amount.symbol)]
                     future_dividend_value = fmean(divs)
-                    future_dividend_places = most_decimal_places(divs)
+                    future_dividend_places = max(decimalplaces(div) for div in divs)
                     assert future_dividend_places is not None
                     # truncate/round off to fit longest decimal place count observed
                     # in all of the real transactions
