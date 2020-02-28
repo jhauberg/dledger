@@ -369,6 +369,7 @@ def estimated_transactions(records: List[Transaction]) \
         can_convert_from_dividend = False
         if (latest_transaction.dividend is not None and
                 latest_transaction.dividend.symbol != latest_transaction.amount.symbol):
+            # todo: would be great to get rid of this variable
             can_convert_from_dividend = True
 
         # increase number of iterations to extend beyond the next twelve months

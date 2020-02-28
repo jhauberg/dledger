@@ -393,7 +393,7 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
 
     assert value is not None
 
-    separator = locale.localeconv()['decimal_point']
+    separator: str = locale.localeconv()['decimal_point']  # type: ignore
     separator_index = amount[::-1].find(separator)
 
     fmt_places = separator_index if separator_index != -1 else 0
@@ -507,7 +507,7 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
         Amount(dividend, symbol=dividend_symbol, fmt=f'%s {dividend_symbol}'))
 
 
-def max_decimal_places(amounts: Iterable[Amount]) -> Optional[int]:
+def max_decimal_places(amounts: Iterable[Optional[Amount]]) -> Optional[int]:
     places: Optional[int] = None
     values = [amount.places for amount in amounts if
               amount is not None and
