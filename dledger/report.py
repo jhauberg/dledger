@@ -168,7 +168,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         else:
             line = f'{amount.rjust(20)}'
 
-        if transaction.is_preliminary:
+        if transaction.entry_attr is not None and transaction.entry_attr.is_preliminary:
             should_colorize_expired_transaction = True
             # call attention as it is a preliminary record, not completed yet
             line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'

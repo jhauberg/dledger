@@ -36,6 +36,10 @@ class Amount:
     places: Optional[int] = None
     symbol: Optional[str] = None
     fmt: Optional[str] = None
+@dataclass(frozen=True)
+class EntryAttributes:
+    location: Tuple[str, int]  # journal:linenumber
+    is_preliminary: bool = False  # True if amount component left blank intentionally
 
 
 @dataclass(frozen=True, unsafe_hash=True)
@@ -50,7 +54,7 @@ class Transaction:
     kind: Distribution = Distribution.FINAL
     payout_date: Optional[date] = None
     ex_date: Optional[date] = None
-    is_preliminary: bool = False  # True if amount component left blank intentionally
+    entry_attr: Optional[EntryAttributes] = None
 
     def __lt__(self, other):  # type: ignore
         # sort by primary date and always put buy/sell transactions later if on same date
@@ -196,9 +200,8 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
             is_incomplete = True
 
         records.append(
-            Transaction(d, ticker, p, amount, dividend, kind,
-                        payout_date=d2, ex_date=d3,
-                        is_preliminary=is_incomplete))
+            Transaction(d, ticker, p, amount, dividend, kind, payout_date=d2, ex_date=d3,
+                        entry_attr=EntryAttributes(location, is_preliminary=is_incomplete)))
 
     records = remove_redundant_journal_transactions(records)
 
