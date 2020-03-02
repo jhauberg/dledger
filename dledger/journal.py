@@ -2,6 +2,7 @@ import csv
 import re
 import math
 import locale
+import os
 
 from dledger.localeutil import trysetlocale
 from dledger.formatutil import format_amount, decimalplaces
@@ -69,7 +70,7 @@ class Transaction:
 
 class ParseError(Exception):
     def __init__(self, message: str, location: Tuple[str, int]):
-        super().__init__(f'{location[0]}:{location[1]} {message}')
+        super().__init__(f'{os.path.abspath(location[0])}:{location[1]} {message}')
 
 
 def read(path: str, kind: str) \
