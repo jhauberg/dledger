@@ -47,6 +47,16 @@ def test_decimal_places():
     assert decimalplaces(0.77) == 2
 
 
+def test_empty_journal():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    path = '../example/empty.journal'
+
+    records = read(path, kind='journal')
+
+    assert len(records) == 0
+
+
 def test_simple_journal():
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
