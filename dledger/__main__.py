@@ -87,22 +87,17 @@ def main() -> None:
     input_type = args['--type']
     is_verbose = args['--verbose']
 
+    # note that --type defaults to 'journal' for all commands
+    # (only convert supports setting type explicitly)
+    if input_type not in SUPPORTED_TYPES:
+        sys.exit(f'Transaction type is not supported: {input_type}')
+
     records: List[Transaction] = []
-
     for input_path in input_paths:
-        # note that --type defaults to 'journal' for all commands
-        # (only convert supports setting type explicitly)
-        if input_type not in SUPPORTED_TYPES:
-            sys.exit(f'Transaction type is not supported: {input_type}')
-
         records.extend(read(input_path, input_type))
-
-    records = sorted(records)
-
     if len(records) == 0:
-        if is_verbose:
-            print('No valid records', file=sys.stderr)
         sys.exit(0)
+    records = sorted(records)
 
     if args['convert']:
         with open(args['--output'], 'w', newline='') as file:
@@ -127,7 +122,6 @@ def main() -> None:
     # produce estimate amounts for preliminary or incomplete records,
     # transforming them into transactions for all intents and purposes from this point onwards
     records = convert_estimates(records)
-
     # for reporting, keep only dividend transactions
     transactions = list(r for r in records if r.amount is not None)
 
