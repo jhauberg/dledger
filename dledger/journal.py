@@ -100,7 +100,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     transaction_start = re.compile(r'[0-9]+[-/][0-9]+[-/][0-9]+')
 
     with open(path, newline='', encoding=encoding) as file:
-        starting_line_number = -1  # todo: why -1?
+        starting_line_number = -1
         line_number = 0
         lines: List[str] = []
         # start reading, line by line; each line read representing part of the current transaction
@@ -121,10 +121,16 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                     journal_entries.append(read_journal_transaction(
                         lines, location=(path, starting_line_number)))
                     lines.clear()
+                # we will reach this line *before* parsing the first actual transaction,
+                # even if zero lines above it, which means starting_line_number can only equal -1
+                # if we never reach a valid transaction
                 starting_line_number = line_number
             if len(line) > 0:
                 lines.append(line)
         if len(lines) > 0:
+            if starting_line_number == -1:
+                # find the line number of the first line with content
+                starting_line_number = line_number - len(lines) + 1
             journal_entries.append(read_journal_transaction(
                 lines, location=(path, starting_line_number)))
 
