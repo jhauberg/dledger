@@ -122,8 +122,34 @@ def main() -> None:
     # produce estimate amounts for preliminary or incomplete records,
     # transforming them into transactions for all intents and purposes from this point onwards
     records = convert_estimates(records)
+
+    # keep a copy of the list of records as they were before any date swapping, so that we can
+    # produce diagnostics only on those transactions entered manually; i.e. not forecasts
+    # note that because we copy the list at this point (i.e. *before* period filtering),
+    # we have to apply any period filtering again when producing diagnostics
+    # if we had copied the list *after* period filtering, we would also be past the date-swapping
+    # step, causing every record to look like a diagnostic-producing case (i.e. they would all be
+    # lacking either payout or ex-date)
+    journaled_transactions = ([r for r in records if
+                               r.entry_attr is not None and  # only non-generated entries
+                               r.amount is not None]  # only keep transactions
+                              if is_verbose else
+                              None)
+
+    if args['--by-payout-date']:
+        # forcefully swap entry date with payout date, if able (diagnostic later if unable)
+        records = [r if r.payout_date is None else
+                   replace(r, entry_date=r.payout_date, payout_date=None) for
+                   r in records]
+
+    elif args['--by-ex-date']:
+        # forcefully swap entry date with ex date, if able (diagnostic later if unable)
+        records = [r if r.ex_date is None else
+                   replace(r, entry_date=r.ex_date, ex_date=None) for
+                   r in records]
+
     # for reporting, keep only dividend transactions
-    transactions = list(r for r in records if r.amount is not None)
+    transactions = [r for r in records if r.amount is not None]
 
     if not args['--without-forecast']:
         # produce forecasted transactions dated into the future
@@ -131,37 +157,16 @@ def main() -> None:
 
     exchange_symbol = args['--in-currency']
     if exchange_symbol is not None:
-        # forcefully apply an exchange into currency before any filtering, as we expect the
+        # forcefully apply an exchange to currency before any filtering, as we expect the
         # latest rate to be applied in all cases, no matter the period, ticker or other criteria
+        # (e.g. if we filtered down to only ticker ABC, we could end up using an outdated rate if
+        #  there were more recent transactions by other tickers)
         transactions = convert_to_currency(transactions, symbol=exchange_symbol)
 
     ticker = args['--by-ticker']
     if ticker is not None:
         # filter down to only include transactions by ticker
         transactions = list(r for r in transactions if r.ticker == ticker)
-
-    # keep a copy of the list of transactions as they were before any date swapping, so that we can
-    # produce diagnostics only on those transactions entered manually; i.e. not forecasts
-    # note that because we copy the list at this point (i.e. *before* period filtering),
-    # we have to apply any period filtering again when producing diagnostics
-    # if we had copied the list *after* period filtering, we would also be past the date-swapping
-    # step, causing every record to look like a diagnostic-producing case (i.e. they would all be
-    # lacking either payout or ex-date)
-    journaled_transactions = (list(r for r in transactions if r.entry_attr is not None)
-                              if is_verbose else
-                              None)
-
-    if args['--by-payout-date']:
-        # forcefully swap entry date with payout date, if able (diagnostic later if unable)
-        transactions = [r if r.payout_date is None else
-                        replace(r, entry_date=r.payout_date, payout_date=None) for
-                        r in transactions]
-
-    elif args['--by-ex-date']:
-        # forcefully swap entry date with ex date, if able (diagnostic later if unable)
-        transactions = [r if r.ex_date is None else
-                        replace(r, entry_date=r.ex_date, ex_date=None) for
-                        r in transactions]
 
     if interval is not None:
         # filter down to only transactions within period interval (after any date swapping)

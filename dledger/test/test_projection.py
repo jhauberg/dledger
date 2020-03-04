@@ -1124,32 +1124,56 @@ def test_convert_to_currency():
     assert math.floor(records[1].amount.value) == 33  # floor to ignore decimals
 
 
-def test_secondary_date():
+def test_secondary_date_monthly():
     records = [
-        Transaction(date(2019, 4, 30), 'O', 1, amount=Amount(0.226), dividend=Amount(0.226)),
-        Transaction(date(2019, 5, 31), 'O', 1, amount=Amount(0.226), dividend=Amount(0.226)),
-        Transaction(date(2019, 6, 28), 'O', 1, amount=Amount(0.2265), dividend=Amount(0.2265)),
-        Transaction(date(2019, 7, 31), 'O', 1, amount=Amount(0.2265), dividend=Amount(0.2265)),
-        Transaction(date(2019, 8, 30), 'O', 1, amount=Amount(0.2265), dividend=Amount(0.2265)),
-        Transaction(date(2019, 9, 30), 'O', 1, amount=Amount(0.227), dividend=Amount(0.227)),
-        Transaction(date(2019, 10, 31), 'O', 1, amount=Amount(0.227), dividend=Amount(0.227)),
-        Transaction(date(2019, 11, 28), 'O', 1, amount=Amount(0.227), dividend=Amount(0.227)),
-        Transaction(date(2019, 12, 31), 'O', 1, amount=Amount(0.2275), dividend=Amount(0.2275), payout_date=date(2020, 1, 15)),
-        Transaction(date(2020, 1, 31), 'O', 1, amount=Amount(0.2325), dividend=Amount(0.2325), payout_date=date(2020, 2, 14))
+        Transaction(date(2019, 4, 30), 'O', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 5, 31), 'O', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 6, 28), 'O', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 7, 31), 'O', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 8, 30), 'O', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 9, 30), 'O', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 10, 31), 'O', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 11, 28), 'O', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 12, 31), 'O', 1, amount=Amount(1), dividend=Amount(1), payout_date=date(2020, 1, 15)),
+        Transaction(date(2020, 1, 31), 'O', 1, amount=Amount(1), dividend=Amount(1), payout_date=date(2020, 2, 14))
     ]
+
+    # simulate --by-payout-date
+    from dataclasses import replace
+    records = [r if r.payout_date is None else
+               replace(r, entry_date=r.payout_date, payout_date=None) for
+               r in records]
 
     projections = scheduled_transactions(records, since=date(2020, 3, 2))
 
     assert len(projections) == 12
 
-    # simulate --by-payout-date
     transactions = records
     transactions.extend(projections)
 
-    from dataclasses import replace
-    transactions = [r if r.payout_date is None else
-                    replace(r, entry_date=r.payout_date, payout_date=None) for
-                    r in transactions]
-
     assert transactions[9].entry_date == date(2020, 2, 14)
-    assert transactions[10].entry_date == date(2020, 2, 29)
+    assert transactions[10].entry_date == date(2020, 3, 15)
+
+
+def test_secondary_date_quarterly():
+    records = [
+        Transaction(date(2019, 4, 30), 'ABC', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 7, 31), 'ABC', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2019, 10, 31), 'ABC', 1, amount=Amount(1), dividend=Amount(1), payout_date=date(2020, 1, 13)),
+    ]
+
+    # simulate --by-payout-date
+    from dataclasses import replace
+    records = [r if r.payout_date is None else
+               replace(r, entry_date=r.payout_date, payout_date=None) for
+               r in records]
+
+    projections = scheduled_transactions(records, since=date(2020, 1, 18))
+
+    assert len(projections) == 4
+
+    transactions = records
+    transactions.extend(projections)
+
+    assert transactions[2].entry_date == date(2020, 1, 13)
+    assert transactions[3].entry_date == date(2020, 4, 30)
