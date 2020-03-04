@@ -197,6 +197,8 @@ def main() -> None:
             assert journaled_transactions is not None
             if interval is not None:
                 journaled_transactions = list(in_period(journaled_transactions, interval))
+            if ticker is not None:
+                journaled_transactions = [r for r in journaled_transactions if r.ticker == ticker]
             journaled_transactions = sorted(journaled_transactions)
             if args['--by-payout-date']:
                 skipped_transactions = [r for r in journaled_transactions if r.payout_date is None]
