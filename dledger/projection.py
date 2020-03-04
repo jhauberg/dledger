@@ -517,18 +517,6 @@ def future_transactions(records: List[Transaction]) \
         # offset 12 months into the future by assuming an annual schedule
         next_date = next_scheduled_date(transaction.entry_date, [transaction.entry_date.month])
         future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.entry_date))
-        future_payout_date: Optional[date] = None
-        if transaction.payout_date is not None:
-            next_payout_date = next_scheduled_date(
-                transaction.payout_date, [transaction.payout_date.month])
-            future_payout_date = projected_date(
-                next_payout_date, timeframe=projected_timeframe(transaction.payout_date))
-        future_ex_date: Optional[date] = None
-        if transaction.ex_date is not None:
-            next_ex_date = next_scheduled_date(
-                transaction.ex_date, [transaction.ex_date.month])
-            future_ex_date = projected_date(
-                next_ex_date, timeframe=projected_timeframe(transaction.ex_date))
 
         # we must double-check that the position has not been closed in the timeframe leading
         # up to the projected date; for example, this sequence of transactions should not
@@ -578,9 +566,7 @@ def future_transactions(records: List[Transaction]) \
                                                  symbol=latest_transaction.amount.symbol,
                                                  fmt=latest_transaction.amount.fmt),
                                              dividend=future_dividend,
-                                             kind=transaction.kind,
-                                             payout_date=future_payout_date,
-                                             ex_date=future_ex_date)
+                                             kind=transaction.kind)
 
         future_records.append(future_record)
 
