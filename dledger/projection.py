@@ -386,7 +386,7 @@ def estimated_transactions(records: List[Transaction]) \
 
             if not future_position > 0:
                 # don't project closed positions
-                continue
+                break
 
             reference_records = trailing(
                 by_ticker(transactions, ticker), since=future_date, months=12)
