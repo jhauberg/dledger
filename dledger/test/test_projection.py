@@ -796,6 +796,40 @@ def test_scheduled_transactions_closed_position():
     assert scheduled[3].position == 1
     assert scheduled[3].amount == GeneratedAmount(100)
 
+    # for this scenario, assume a user records by payout date, but makes sure to put in
+    # ex-date when necessary to maintain correct forecasting
+    records = [
+        # past dividend transaction; assume semi-annual distribution for scenario
+        Transaction(date(2018, 10, 5), 'ABC', 100, Amount(100)),
+        # closing position right after passed ex-date
+        Transaction(date(2019, 1, 16), 'ABC', 0),
+        # opening lower position before reaching payout date
+        Transaction(date(2019, 1, 26), 'ABC', 50),
+        # payout date; note ex-date set
+        Transaction(date(2019, 2, 5), 'ABC', 100, Amount(100), ex_date=date(2019, 1, 15)),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 2, 16))
+
+    assert len(scheduled) == 2
+    assert scheduled[0].entry_date == date(2019, 10, 15)
+    assert scheduled[1].entry_date == date(2020, 2, 15)
+    assert scheduled[0].position == 50
+    assert scheduled[1].position == 50
+
+    # same exact scenario, except in this case, user forgot to set ex-date
+    from dataclasses import replace
+    records.append(replace(records[3], ex_date=None))
+    records.pop(3)
+
+    scheduled = scheduled_transactions(records, since=date(2019, 2, 16))
+
+    assert len(scheduled) == 2
+    assert scheduled[0].entry_date == date(2019, 10, 15)
+    assert scheduled[1].entry_date == date(2020, 2, 15)
+    assert scheduled[0].position == 100
+    assert scheduled[1].position == 100
+
 
 def test_scheduled_transactions_sampling():
     records = [
