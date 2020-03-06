@@ -172,6 +172,12 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             should_colorize_expired_transaction = True
             # call attention as it is a preliminary record, not completed yet
             line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
+
+            if not detailed:
+                if transaction.payout_date is not None:
+                    pd = transaction.payout_date.strftime('%Y/%m/%d')
+                    pd = f'[{pd}]'
+                    line = f'{line} {pd.rjust(18)}'
         else:
             if isinstance(transaction, GeneratedTransaction):
                 if transaction.entry_date < today:
@@ -198,16 +204,16 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                     dividend = format_amount(transaction.dividend.value)
                 dividend = transaction.dividend.fmt % dividend
 
-                line = f'{line} {dividend.rjust(16)}'
+                line = f'{line} {dividend.rjust(18)}'
             else:
-                line = f'{line} ' + (' ' * 16)
+                line = f'{line} ' + (' ' * 18)
 
             p_decimal_places = position_decimal_places[transaction.ticker]
             if p_decimal_places is not None:
                 p = format_amount(transaction.position, trailing_zero=False, places=p_decimal_places)
             else:
                 p = format_amount(transaction.position, trailing_zero=False, rounded=False)
-            position = f'({p})'.rjust(14)
+            position = f'({p})'.rjust(16)
 
             line = f'{line} {position}'
 
