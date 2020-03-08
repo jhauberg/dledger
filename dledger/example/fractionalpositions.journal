@@ -1,0 +1,17 @@
+# this file serves as an example journal for dledger
+
+# this journal assumes a system locale using period as decimal separator
+
+2019/02/14 AAPL (10.6)
+  $ 7.738
+
+2019/05/16 AAPL          # position = 10.6
+  $ 8.162 @ $ 0.77
+
+2019/06/04 AAPL (+.7)    # additional .7 shares purchased, position = 11.3
+
+2019/08/15 AAPL          # position = 11.3
+  $ 8.701
+
+2019/11/14 AAPL (21.3)   # additional 10 shares purchased, position = 21.3
+  $ 16.401

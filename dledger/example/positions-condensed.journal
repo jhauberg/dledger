@@ -1,5 +1,7 @@
 # this file serves as an example journal for dledger
 
+# this journal assumes a system locale using period as decimal separator
+
 2019/02/14 AAPL (100) $ 73
 2019/05/16 AAPL       $ 77
 2019/06/04 AAPL (+20)

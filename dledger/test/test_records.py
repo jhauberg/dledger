@@ -14,7 +14,7 @@ def test_trailing():
         Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
-    recs = list(trailing(records, since=records[2].date, months=1))
+    recs = list(trailing(records, since=records[2].entry_date, months=1))
 
     assert len(recs) == 1
     assert recs[0] == records[2]
@@ -25,7 +25,7 @@ def test_trailing():
         Transaction(date(2019, 3, 1), 'ABC', 1)
     ]
 
-    recs = list(trailing(records, since=records[2].date, months=1))
+    recs = list(trailing(records, since=records[2].entry_date, months=1))
 
     assert len(recs) == 2
     assert recs[0] == records[1] and recs[1] == records[2]
@@ -36,7 +36,7 @@ def test_trailing():
         Transaction(date(2019, 3, 31), 'ABC', 1)
     ]
 
-    recs = list(trailing(records, since=records[2].date, months=1))
+    recs = list(trailing(records, since=records[2].entry_date, months=1))
 
     assert len(recs) == 1
     assert recs[0] == records[2]

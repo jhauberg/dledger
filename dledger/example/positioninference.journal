@@ -1,0 +1,22 @@
+# this file serves as an example journal for dledger
+
+# this journal assumes a system locale using period as decimal separator
+
+2019/02/14 AAPL (100)         # starting position = 100
+  $ 73
+
+2019/05/14 AAPL (+20)         # puchased 20 additional shares, position = 120
+
+# now, the following transaction would typically infer position to 120, however,
+# we can fix that by attaching an ex-date to the dividend component
+
+2019/05/16 AAPL               # position = 100
+  $ 77 @ $ 0.77 [2019/05/10]
+
+# by doing this, the above transaction correctly infers a position = 100,
+# but forecasted transactions will have a position = 120, as expected
+
+# we can verify this by putting in a preliminary record
+
+2019/08/15 AAPL               # position = 120
+  @ $ 0.77

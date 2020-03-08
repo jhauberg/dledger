@@ -5,6 +5,7 @@ usage: dledger report  <journal>... [--period=<interval>] [-V]
                                     [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
                                     [--without-forecast]
                                     [--by-ticker=<ticker>]
+                                    [--by-payout-date | --by-ex-date]
                                     [--in-currency=<symbol>]
        dledger stats   <journal>... [--period=<interval>] [-V]
        dledger print   <journal>... [--condensed] [-V]
@@ -16,6 +17,8 @@ OPTIONS:
      --output=<journal>       Specify journal filename [default: ledger.journal]
   -d --period=<interval>      Specify reporting date interval
      --without-forecast       Don't include forecasted transactions
+     --by-payout-date         List chronologically by payout date
+     --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
      --in-currency=<symbol>   Show income as if exchanged to currency
   -y --annual                 Show income by year
@@ -55,6 +58,8 @@ from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
 )
 
+from dataclasses import replace
+
 from typing import List
 
 
@@ -82,73 +87,95 @@ def main() -> None:
     input_type = args['--type']
     is_verbose = args['--verbose']
 
+    # note that --type defaults to 'journal' for all commands
+    # (only convert supports setting type explicitly)
+    if input_type not in SUPPORTED_TYPES:
+        sys.exit(f'Transaction type is not supported: {input_type}')
+
     records: List[Transaction] = []
-
     for input_path in input_paths:
-        # note that --type defaults to 'journal' for all commands
-        # (only convert supports setting type explicitly)
-        if input_type not in SUPPORTED_TYPES:
-            sys.exit(f'Transaction type is not supported: {input_type}')
-
         records.extend(read(input_path, input_type))
-
-    records = sorted(records)
-
     if len(records) == 0:
-        if is_verbose:
-            print('No valid records', file=sys.stderr)
-
         sys.exit(0)
+    records = sorted(records)
 
     if args['convert']:
         with open(args['--output'], 'w', newline='') as file:
             write(records, file=file)
-
         sys.exit(0)
 
     if args['print']:
         write(records, file=sys.stdout, condensed=args['--condensed'])
-
         sys.exit(0)
 
     interval = args['--period']
-
     if interval is not None:
         interval = parse_period(interval)
 
     if args['stats']:
-        # filter down all records by --period, not just transactions
         if interval is not None:
+            # filter down all records by --period, not just transactions
             records = list(in_period(records, interval))
-
         print_stats(records, journal_paths=input_paths)
-
         sys.exit(0)
 
+    # produce estimate amounts for preliminary or incomplete records,
+    # transforming them into transactions for all intents and purposes from this point onwards
     records = convert_estimates(records)
 
-    transactions = list(r for r in records if r.amount is not None)
+    # keep a copy of the list of records as they were before any date swapping, so that we can
+    # produce diagnostics only on those transactions entered manually; i.e. not forecasts
+    # note that because we copy the list at this point (i.e. *before* period filtering),
+    # we have to apply any period filtering again when producing diagnostics
+    # if we had copied the list *after* period filtering, we would also be past the date-swapping
+    # step, causing every record to look like a diagnostic-producing case (i.e. they would all be
+    # lacking either payout or ex-date)
+    journaled_transactions = ([r for r in records if
+                               r.entry_attr is not None and  # only non-generated entries
+                               r.amount is not None]  # only keep transactions
+                              if is_verbose else
+                              None)
+
+    if args['--by-payout-date']:
+        # forcefully swap entry date with payout date, if able (diagnostic later if unable)
+        records = [r if r.payout_date is None else
+                   replace(r, entry_date=r.payout_date, payout_date=None) for
+                   r in records]
+
+    elif args['--by-ex-date']:
+        # forcefully swap entry date with ex date, if able (diagnostic later if unable)
+        records = [r if r.ex_date is None else
+                   replace(r, entry_date=r.ex_date, ex_date=None) for
+                   r in records]
+
+    # for reporting, keep only dividend transactions
+    transactions = [r for r in records if r.amount is not None]
 
     if not args['--without-forecast']:
-        transactions.extend(
-            scheduled_transactions(records))
-
-    if interval is not None:
-        transactions = list(in_period(transactions, interval))
-
-    transactions = sorted(transactions)
+        # produce forecasted transactions dated into the future
+        transactions.extend(scheduled_transactions(records))
 
     exchange_symbol = args['--in-currency']
-
     if exchange_symbol is not None:
+        # forcefully apply an exchange to currency before any filtering, as we expect the
+        # latest rate to be applied in all cases, no matter the period, ticker or other criteria
+        # (e.g. if we filtered down to only ticker ABC, we could end up using an outdated rate if
+        #  there were more recent transactions by other tickers)
         transactions = convert_to_currency(transactions, symbol=exchange_symbol)
 
     ticker = args['--by-ticker']
-
     if ticker is not None:
+        # filter down to only include transactions by ticker
         transactions = list(r for r in transactions if r.ticker == ticker)
 
+    if interval is not None:
+        # filter down to only transactions within period interval (after any date swapping)
+        transactions = list(in_period(transactions, interval))
+    # (redundantly) sort for good measure
+    transactions = sorted(transactions)
+
     if args['report']:
+        # finally produce and print a report
         if args['--weight']:
             print_simple_weight_by_ticker(transactions)
         elif args['--sum']:
@@ -164,7 +191,27 @@ def main() -> None:
         else:
             print_simple_report(transactions, detailed=ticker is not None)
 
-        sys.exit(0)
+    if is_verbose:
+        # print diagnostics on final set of transactions, if any
+        if args['--by-payout-date'] or args['--by-ex-date']:
+            assert journaled_transactions is not None
+            if interval is not None:
+                journaled_transactions = list(in_period(journaled_transactions, interval))
+            if ticker is not None:
+                journaled_transactions = [r for r in journaled_transactions if r.ticker == ticker]
+            journaled_transactions = sorted(journaled_transactions)
+            if args['--by-payout-date']:
+                skipped_transactions = [r for r in journaled_transactions if r.payout_date is None]
+                for transaction in skipped_transactions:
+                    journal, linenumber = transaction.entry_attr.location
+                    print(f'{journal}:{linenumber} transaction is missing payout date',
+                          file=sys.stderr)
+            elif args['--by-ex-date']:
+                skipped_transactions = [r for r in journaled_transactions if r.ex_date is None]
+                for transaction in skipped_transactions:
+                    journal, linenumber = transaction.entry_attr.location
+                    print(f'{journal}:{linenumber} transaction is missing ex-dividend date',
+                          file=sys.stderr)
 
     sys.exit(0)
 

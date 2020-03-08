@@ -1,16 +1,19 @@
 import csv
 import re
+import math
 import locale
+import os
 
 from dledger.localeutil import trysetlocale
-from dledger.formatutil import format_amount
+from dledger.formatutil import format_amount, decimalplaces
 from dledger.fileutil import fileencoding
 from dledger.dateutil import parse_datestamp
 
 from dataclasses import dataclass
 from datetime import datetime, date
+from decimal import Decimal
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any, Dict, Iterable
 from enum import Enum
 
 SUPPORTED_TYPES = ['journal', 'nordnet']
@@ -19,6 +22,8 @@ IMPORT_EX_DATE = False  # whether to import ex- or payout date when reading non-
 
 
 class Distribution(Enum):
+    """ Represents the type of a dividend distribution. """
+
     FINAL = 0
     INTERIM = 1
     SPECIAL = 2
@@ -26,32 +31,48 @@ class Distribution(Enum):
 
 @dataclass(frozen=True, unsafe_hash=True)
 class Amount:
+    """ Represents a cash amount. """
+
     value: float
+    places: Optional[int] = None
     symbol: Optional[str] = None
-    format: Optional[str] = None
+    fmt: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class EntryAttributes:
+    location: Tuple[str, int]  # journal:linenumber
+    is_preliminary: bool = False  # True if amount component left blank intentionally
 
 
 @dataclass(frozen=True, unsafe_hash=True)
 class Transaction:
-    """ Represents a transaction. """
+    """ Represents a transactional record. """
 
-    date: date  # for order and display; no assumption on whether this is payout, ex-date or other
+    entry_date: date  # no assumption whether this is payout, ex-date or other
     ticker: str
-    position: int
+    position: float
     amount: Optional[Amount] = None
     dividend: Optional[Amount] = None
     kind: Distribution = Distribution.FINAL
-    payout_date: Optional[date] = None  # to determine exchange rate if transaction date is earlier
+    payout_date: Optional[date] = None
+    ex_date: Optional[date] = None
+    entry_attr: Optional[EntryAttributes] = None
 
-    def __lt__(self, other):
+    def __lt__(self, other):  # type: ignore
         # sort by primary date and always put buy/sell transactions later if on same date
         # e.g.  2019/01/01 ABC (+10)
         #       2019/01/01 ABC (10)  $ 1
         #   =>
         #       2019/01/01 ABC (10)  $ 1
         #       2019/01/01 ABC (+10)
-        return (self.date, self.amount is None and self.dividend is None) < \
-               (other.date, other.amount is None and other.dividend is None)
+        return (self.entry_date, self.amount is None and self.dividend is None) < \
+               (other.entry_date, other.amount is None and other.dividend is None)
+
+
+class ParseError(Exception):
+    def __init__(self, message: str, location: Tuple[str, int]):
+        super().__init__(f'{os.path.abspath(location[0])}:{location[1]} {message}')
 
 
 def read(path: str, kind: str) \
@@ -71,10 +92,6 @@ def read(path: str, kind: str) \
     return []
 
 
-def raise_parse_error(error: str, location: Tuple[str, int]) -> None:
-    raise ValueError(f'{location[0]}:{location[1]} {error}')
-
-
 def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         -> List[Transaction]:
     journal_entries = []
@@ -85,7 +102,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     transaction_start = re.compile(r'[0-9]+[-/][0-9]+[-/][0-9]+')
 
     with open(path, newline='', encoding=encoding) as file:
-        starting_line_number = -1  # todo: why -1?
+        starting_line_number = -1
         line_number = 0
         lines: List[str] = []
         # start reading, line by line; each line read representing part of the current transaction
@@ -106,10 +123,16 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                     journal_entries.append(read_journal_transaction(
                         lines, location=(path, starting_line_number)))
                     lines.clear()
+                # we will reach this line *before* parsing the first actual transaction,
+                # even if zero lines above it, which means starting_line_number can only equal -1
+                # if we never reach a valid transaction
                 starting_line_number = line_number
             if len(line) > 0:
                 lines.append(line)
         if len(lines) > 0:
+            if starting_line_number == -1:
+                # find the line number of the first line with content
+                starting_line_number = line_number - len(lines) + 1
             journal_entries.append(read_journal_transaction(
                 lines, location=(path, starting_line_number)))
 
@@ -117,74 +140,77 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     # so they must be sorted prior to inferring positions/currencies
     # note that position change entries are always sorted to occur *after*
     # any realized transaction on the same date (see Transaction.__lt__)
-    journal_entries = sorted(journal_entries, key=lambda r: (r[0], r[4] is None and r[5] is None))
+    journal_entries = sorted(journal_entries, key=lambda r: (r[0], r[5] is None and r[6] is None))
 
     records: List[Transaction] = []
 
+    def truncate_floating_point(value: float, *, places: int = 2) -> float:
+        v = Decimal(value)
+        v = round(v, places)
+        return float(v)
+
     for entry in journal_entries:
-        d, d2, ticker, position, amount, dividend, kind, location = entry
-        p, position_change_direction = position
+        d, d2, d3, ticker, position, amount, dividend, kind, location = entry
+        p, p_direction = position
 
-        if amount is not None and dividend is not None:
-            if amount.symbol is None and dividend.symbol is not None:
-                amount = Amount(amount.value,
-                                symbol=dividend.symbol,
-                                format=dividend.format)
-            elif dividend.symbol is None and amount.symbol is not None:
-                dividend = Amount(dividend.value,
-                                  symbol=amount.symbol,
-                                  format=amount.format)
-
-        if amount is not None and amount.symbol is None:
-            # infer symbol/format from previous entries
-            for previous_record in reversed(records):
-                if previous_record.ticker == ticker:
-                    if previous_record.amount is None:
-                        continue
-                    amount = Amount(amount.value,
-                                    symbol=previous_record.amount.symbol,
-                                    format=previous_record.amount.format)
-                    if dividend is not None:
-                        dividend = Amount(dividend.value,
-                                          symbol=previous_record.amount.symbol,
-                                          format=previous_record.amount.format)
-                    break
-
-        if p is None or position_change_direction != 0:
+        if p is None or p_direction != 0:
             # infer position from previous entries
-            for previous_record in reversed(records):
+            # todo: this sorting rule occurs in multiple places; should consolidate
+            by_ex_date = sorted(records, key=lambda r: (
+                r.ex_date if r.ex_date is not None else r.entry_date,
+                r.amount is None and r.dividend is None
+            ))
+            for previous_record in reversed(by_ex_date):
                 if previous_record.ticker == ticker:
                     if previous_record.position is None:
                         continue
+                    if d3 is not None and previous_record.entry_date > d3:
+                        continue
                     if p is None:
                         p = 0
-                    p = previous_record.position + p * position_change_direction
+                    p = truncate_floating_point(previous_record.position + p * p_direction)
                     if p < 0:
-                        raise_parse_error(f'position change to negative position ({p})',
-                                          location=location)
+                        raise ParseError(f'position change to negative position ({p})', location)
                     break
 
         if amount is not None and dividend is not None:
             if amount.symbol == dividend.symbol:
-                logical_position = int(round(amount.value / dividend.value))
-                if p is None:
-                    # infer position from amount/dividend - if same currency
-                    p = logical_position
-
-                if p != logical_position:
-                    raise_parse_error(f'position does not equal amount divided by dividend '
-                                      f'({logical_position})',
-                                      location=location)
+                inferred_p = amount.value / dividend.value
+                if p is not None:
+                    # determine whether position equates (close enough) to the inferred position
+                    # tolerance based on fractional precision from Robinhood/M1
+                    # see https://robinhood.com/us/en/support/articles/66zKxGmw7zjdkFXEcGYksl/fractional-shares/
+                    # or https://support.m1finance.com/hc/en-us/articles/221053227-Explanation-of-Fractional-Shares
+                    # todo: Robinhood rounds to nearest penny, so this ambiguity check might not work
+                    #       e.g. 1 penny = $ 0.01
+                    #       so if you your position would amount to 0.006, you would get 0.01
+                    #       but also hit this error, because your position is 0.006/div, not 0.01/div
+                    if not math.isclose(p, inferred_p, abs_tol=0.000001):
+                        raise ParseError(f'ambiguous position ({p} or {inferred_p}?)', location)
+                else:
+                    p = truncate_floating_point(inferred_p)
 
         if p is None:
-            raise_parse_error(f'position could not be inferred', location=location)
+            raise ParseError(f'position could not be inferred', location)
 
         if amount is not None and dividend is None:
-            dividend = Amount(amount.value / p,
+            inferred_dividend = truncate_floating_point(amount.value / p, places=2)
+            dividend = Amount(inferred_dividend,
+                              places=decimalplaces(inferred_dividend),
                               symbol=amount.symbol,
-                              format=amount.format)
+                              fmt=amount.fmt)
 
-        records.append(Transaction(d, ticker, p, amount, dividend, kind, payout_date=d2))
+        if d2 is not None and d3 is not None:
+            if d2 < d3:
+                raise ParseError(f'payout date dated earlier than ex-date', location)
+
+        is_incomplete = False
+        if amount is None and dividend is not None:
+            is_incomplete = True
+
+        records.append(
+            Transaction(d, ticker, p, amount, dividend, kind, payout_date=d2, ex_date=d3,
+                        entry_attr=EntryAttributes(location, is_preliminary=is_incomplete)))
 
     records = remove_redundant_journal_transactions(records)
 
@@ -196,67 +222,70 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
     for ticker in set([record.ticker for record in records]):
         recs = list(r for r in records if r.ticker == ticker)
         # find all entries that only record a change in position
-        position_entries = list(r for r in recs if r.amount is None and r.dividend is None)
+        position_records = list(r for r in recs if r.amount is None and r.dividend is None)
 
-        if len(position_entries) == 0:
+        if len(position_records) == 0:
             continue
 
         # find all dividend transactions (e.g. cash received or earned)
-        realized_entries = list(r for r in recs if r.amount is not None or r.dividend is not None)
+        realized_records = list(r for r in recs if r.amount is not None or r.dividend is not None)
 
-        if len(realized_entries) > 0:
-            latest_entry = realized_entries[-1]
+        if len(realized_records) > 0:
+            latest_record = realized_records[-1]
             # at this point we no longer need to keep some of the position entries around,
             # as we have already used them to infer and determine position for each realized entry
-            for entry in position_entries:
+            for record in position_records:
                 # so each position entry dated prior to a dividend entry is basically redundant
-                if entry.position == 0:
+                if record.position == 0:
                     # unless it's a closer, in which case we have to keep it around in any case
                     # (e.g. see example/strategic.journal)
                     continue
+                if latest_record.ex_date is not None and record.entry_date >= latest_record.ex_date:
+                    continue
                 is_redundant = False
-                if entry.date < latest_entry.date:
+                if record.entry_date < latest_record.entry_date:
                     is_redundant = True
-                elif entry.date == latest_entry.date and entry.position == latest_entry.position:
+                elif record.entry_date == latest_record.entry_date and \
+                        math.isclose(record.position, latest_record.position, abs_tol=0.000001):
                     is_redundant = True
                 if is_redundant:
-                    records.remove(entry)
+                    records.remove(record)
 
     return records
 
 
 def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
-        -> tuple:
+        -> Tuple[date, Optional[date], Optional[date], str, Tuple[Optional[float], int], Optional[Amount], Optional[Amount], Distribution, Tuple[str, int]]:
     condensed_line = '  '.join(lines)
     if len(condensed_line) < 10:  # the shortest starting transaction line is "YYYY/M/D X"
-        raise_parse_error('invalid transaction', location)
+        raise ParseError('invalid transaction', location)
     datestamp_end_index = condensed_line.index(' ')
     datestamp = condensed_line[:datestamp_end_index]
     d: Optional[date] = None
     try:
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
-        raise_parse_error(f'invalid date format (\'{datestamp}\')', location)
+        raise ParseError(f'invalid date format (\'{datestamp}\')', location)
     condensed_line = condensed_line[datestamp_end_index:].strip()
     break_separators = ['(',   # position opener
                         '[',   # secondary date opener
                         '  ',  # manually spaced (or automatically spaced by newline)
                         '\t']  # manually tabbed
-    break_index = None
+    break_index: Optional[int] = None
     try:
         # note that by including [ as a breaker, we allow additional formatting options
         # but it also requires any position () to always be the next component after ticker
         # e.g. this format is allowed:
-        #   "2019/12/31 ABC [2020/01/15]"
+        #   "2019/12/31 ABC [2020/01/15] $ 1"
         # but this is not:
-        #   "2019/12/31 ABC [2020/01/15] (10)"
+        #   "2019/12/31 ABC [2020/01/15] (10) $ 1"
         # it must instead be:
-        #   "2019/12/31 ABC (10) [2020/01/15]"
+        #   "2019/12/31 ABC (10) [2020/01/15] $ 1"
         # (the secondary date is like a tag attached to the cash amount)
         break_index = min([condensed_line.index(sep) for sep in break_separators
                            if sep in condensed_line])
     except ValueError:
-        raise_parse_error(f'invalid transaction', location)
+        raise ParseError(f'invalid transaction', location)
     ticker = None
     kind = Distribution.FINAL
     if break_index is not None:
@@ -269,8 +298,8 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
             ticker = ticker[1:].strip()
         condensed_line = condensed_line[break_index:].strip()
     if ticker is None or len(ticker) == 0:
-        raise_parse_error('invalid ticker format', location)
-    position: Optional[int] = None
+        raise ParseError('invalid ticker format', location)
+    position: Optional[float] = None
     position_change_direction = 0
     if ')' in condensed_line:
         break_index = condensed_line.index(')') + 1
@@ -283,43 +312,48 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
             position_change_direction = -1
             position_str = position_str[1:]
         try:
-            position = locale.atoi(position_str)
+            position = locale.atof(position_str)
         except ValueError:
-            raise_parse_error(f'invalid position (\'{position}\')', location)
+            raise ParseError(f'invalid position (\'{position_str}\')', location)
         condensed_line = condensed_line[break_index:].strip()
 
     if len(condensed_line) == 0:
-        return d, None, ticker, (position, position_change_direction), None, None, kind, location
+        return d, None, None, ticker, (position, position_change_direction), None, None, kind, location
 
     amount_components = condensed_line.split('@')
     dividend: Optional[Amount] = None
+    d3: Optional[date] = None
     if len(amount_components) > 1:
-        dividend_str, dividend_date = split_secondary_date(amount_components[1].strip())
-        if dividend_date is not None:
-            raise_parse_error(f'secondary date applied to dividend', location)
-        dividend = split_amount(dividend_str, location=location)
-        if dividend.value <= 0:
-            raise_parse_error(f'negative or zero dividend (\'{dividend.value}\')', location)
+        dividend_str, dividend_datestamp = split_amount_date(amount_components[1].strip())
+        if len(dividend_str) > 0:
+            dividend = split_amount(dividend_str, location=location)
+            if dividend.value <= 0:
+                raise ParseError(f'negative or zero dividend (\'{dividend.value}\')', location)
+        if dividend_datestamp is not None:
+            try:
+                d3 = parse_datestamp(dividend_datestamp, strict=True)
+            except ValueError:
+                raise ParseError(f'invalid date format (\'{dividend_datestamp}\')', location)
     amount: Optional[Amount] = None
     d2: Optional[date] = None
     if len(amount_components) > 0:
-        amount_str, amount_datestamp = split_secondary_date(amount_components[0].strip())
+        amount_str, amount_datestamp = split_amount_date(amount_components[0].strip())
         if len(amount_str) > 0:
             amount = split_amount(amount_str, location=location)
             if amount.value <= 0:
-                raise_parse_error(f'negative or zero amount (\'{amount.value}\')', location)
+                raise ParseError(f'negative or zero amount (\'{amount.value}\')', location)
         else:
             if dividend is None:
-                raise_parse_error(f'missing amount', location)
+                raise ParseError(f'missing amount', location)
         if amount_datestamp is not None:
             try:
                 d2 = parse_datestamp(amount_datestamp, strict=True)
             except ValueError:
-                raise_parse_error(f'invalid date format (\'{amount_datestamp}\')', location)
-    return d, d2, ticker, (position, position_change_direction), amount, dividend, kind, location
+                raise ParseError(f'invalid date format (\'{amount_datestamp}\')', location)
+    return d, d2, d3, ticker, (position, position_change_direction), amount, dividend, kind, location
 
 
-def split_secondary_date(text: str) \
+def split_amount_date(text: str) \
         -> Tuple[str, Optional[str]]:
     m = re.search(r'\[(.*)\]', text)  # match anything encapsulated by []
     if m is None:
@@ -331,7 +365,7 @@ def split_secondary_date(text: str) \
 
 def split_amount(amount: str, *, location: Tuple[str, int]) \
         -> Amount:
-    symbol = None
+    symbol: Optional[str] = None
     lhs = ''
 
     for c in amount:
@@ -356,17 +390,22 @@ def split_amount(amount: str, *, location: Tuple[str, int]) \
         symbol = lhs.strip()
     if len(rhs) > 0:
         if symbol is not None:
-            raise_parse_error(f'ambiguous symbol definition (\'{symbol}\' or \'{rhs.strip()}\'?)', location)
+            raise ParseError(f'ambiguous symbol definition (\'{symbol}\' or \'{rhs.strip()}\'?)', location)
         symbol = rhs.strip()
 
-    value: float = 0.0
+    if symbol is None or len(symbol) == 0:
+        raise ParseError(f'missing symbol definition', location)
+
+    value: Optional[float] = None
 
     try:
         value = locale.atof(amount)
     except ValueError:
-        raise_parse_error(f'invalid value (\'{amount}\')', location)
+        raise ParseError(f'invalid value (\'{amount}\')', location)
 
-    return Amount(value, symbol, f'{lhs}%s{rhs}')
+    assert value is not None
+
+    return Amount(value, places=decimalplaces(amount), symbol=symbol, fmt=f'{lhs}%s{rhs}')
 
 
 def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
@@ -406,13 +445,13 @@ def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
 def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
         -> Transaction:
     if len(record) < 12:
-        raise_parse_error(f'unexpected number of columns ({len(record)} > 12)', location)
+        raise ParseError(f'unexpected number of columns ({len(record)} > 12)', location)
 
     date_value = str(record[2 if IMPORT_EX_DATE else 3]).strip()
     ticker = str(record[5]).strip()
-    position_value = str(record[8]).strip()
-    dividend_value = str(record[9]).strip()
-    amount_value = str(record[12]).strip()
+    position_str = str(record[8]).strip()
+    dividend_str = str(record[9]).strip()
+    amount_str = str(record[12]).strip()
     amount_symbol = str(record[13]).strip()
     transaction_text = str(record[19]).strip()
 
@@ -420,8 +459,8 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     #       when in fact it should be parsed as 1.500,00 as per danish locale
     #       so this attempts to negate that issue by removing all dot-separators,
     #       but leaving comma-decimal separator
-    amount_value = amount_value.replace('.', '')
-    dividend_value = dividend_value.replace('.', '')
+    amount_str = amount_str.replace('.', '')
+    dividend_str = dividend_str.replace('.', '')
 
     # parse date; expects format '2018-03-19'
     d = datetime.strptime(date_value, "%Y-%m-%d").date()
@@ -432,9 +471,9 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     # (currently assumes danish locale)
     trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
 
-    position = locale.atoi(position_value)
-    amount = locale.atof(amount_value)
-    dividend = locale.atof(dividend_value)
+    position = locale.atoi(position_str)
+    amount = locale.atof(amount_str)
+    dividend = locale.atof(dividend_str)
 
     locale.setlocale(locale.LC_NUMERIC, prev)
 
@@ -443,62 +482,108 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     if transaction_text_components[-1].startswith('/'):
         # hack: the transaction text is sometimes split like "USD /SH"
         dividend_symbol = transaction_text_components[-2]
-        dividend_rate = transaction_text_components[-3]
+        dividend_rate_str = transaction_text_components[-3]
     else:
         dividend_symbol = transaction_text_components[-1].split('/')[0]
-        dividend_rate = transaction_text_components[-2]
+        dividend_rate_str = transaction_text_components[-2]
 
     # hack: for this number, it is typically represented using period for decimals
     #       but occasionally a comma sneaks in- we assume that is an error and correct it
-    dividend_rate = dividend_rate.replace(',', '.')
+    dividend_rate_str = dividend_rate_str.replace(',', '.')
 
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
+    dividend_rate: Optional[float] = None
+
     try:
-        dividend_rate = locale.atof(dividend_rate)
+        dividend_rate = locale.atof(dividend_rate_str)
     except ValueError:
-        raise_parse_error(f'unexpected transaction text', location)
+        raise ParseError(f'unexpected transaction text', location)
 
     locale.setlocale(locale.LC_NUMERIC, prev)
 
+    assert dividend_rate is not None
+
     if dividend != dividend_rate:
-        raise_parse_error(f'ambiguous dividend ({dividend} or {dividend_rate}?)', location)
+        raise ParseError(f'ambiguous dividend ({dividend} or {dividend_rate}?)', location)
 
     return Transaction(
         d, ticker, position,
-        Amount(amount, symbol=amount_symbol, format=f'%s {amount_symbol}'),
-        Amount(dividend, symbol=dividend_symbol, format=f'%s {dividend_symbol}'))
+        Amount(amount, places=decimalplaces(amount_str), symbol=amount_symbol, fmt=f'%s {amount_symbol}'),
+        Amount(dividend, places=decimalplaces(dividend_str), symbol=dividend_symbol, fmt=f'%s {dividend_symbol}'))
 
 
-def write(records: List[Transaction], file, *, condensed: bool = False) -> None:
+def max_decimal_places(amounts: Iterable[Optional[Amount]]) -> Optional[int]:
+    places: Optional[int] = None
+    values = [amount.places for amount in amounts if
+              amount is not None and
+              amount.places is not None]
+    if len(values) > 0:
+        return max(values)
+    return places
+
+
+def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> None:
+    position_decimal_places: Dict[str, Optional[int]] = dict()
+    payout_decimal_places: Dict[str, Optional[int]] = dict()
+    dividend_decimal_places: Dict[str, Optional[int]] = dict()
+    for ticker in set([record.ticker for record in records]):
+        payout_decimal_places[ticker] = max_decimal_places(
+            (r.amount for r in records if r.ticker == ticker)
+        )
+        dividend_decimal_places[ticker] = max_decimal_places(
+            (r.dividend for r in records if r.ticker == ticker)
+        )
+        position_decimal_places[ticker] = max(
+            decimalplaces(r.position) for r in records if r.ticker == ticker
+        )
     for record in records:
         indicator = ''
         if record.kind is Distribution.SPECIAL:
             indicator = '* '
         elif record.kind is Distribution.INTERIM:
             indicator = '^ '
-        datestamp = record.date.strftime('%Y/%m/%d')
-        line = f'{datestamp} {indicator}{record.ticker} ({record.position})'
+        datestamp = record.entry_date.strftime('%Y/%m/%d')
+        p_decimal_places = position_decimal_places[record.ticker]
+        if p_decimal_places is not None:
+            p = format_amount(record.position, trailing_zero=False, places=p_decimal_places)
+        else:
+            p = format_amount(record.position, trailing_zero=False, rounded=False)
+        line = f'{datestamp} {indicator}{record.ticker} ({p})'
         if not condensed:
             print(line, file=file)
         amount_display = ''
+        if record.payout_date is not None:
+            payout_datestamp = record.payout_date.strftime('%Y/%m/%d')
+            amount_display += f'[{payout_datestamp}]'
         if record.amount is not None:
-            payout_display = format_amount(record.amount.value, trailing_zero=False, rounded=False)
-            if record.amount.format is not None:
-                payout_display = record.amount.format % payout_display
-            amount_display += payout_display
+            amount_decimal_places = payout_decimal_places[record.ticker]
+            if amount_decimal_places is not None:
+                payout_display = format_amount(record.amount.value, places=amount_decimal_places)
+            else:
+                payout_display = format_amount(record.amount.value, rounded=False)
+            if record.amount.fmt is not None:
+                payout_display = record.amount.fmt % payout_display
+            amount_display += f' {payout_display}' if record.payout_date is not None else payout_display
         if record.dividend is not None:
-            dividend_display = format_amount(record.dividend.value, trailing_zero=False, rounded=False)
-            if record.dividend.format is not None:
-                dividend_display = record.dividend.format % dividend_display
-            amount_display += f' @ {dividend_display}'
+            div_decimal_places = dividend_decimal_places[record.ticker]
+            if div_decimal_places is not None:
+                dividend_display = format_amount(record.dividend.value, places=div_decimal_places)
+            else:
+                dividend_display = format_amount(record.dividend.value, rounded=False)
+            if record.dividend.fmt is not None:
+                dividend_display = record.dividend.fmt % dividend_display
+            amount_display += f' @ {dividend_display}' if record.payout_date is not None or record.amount is not None else f'@ {dividend_display}'
+        if record.ex_date is not None:
+            exdate_datestamp = record.ex_date.strftime('%Y/%m/%d')
+            amount_display += f' [{exdate_datestamp}]' if record.dividend is not None else f' @ [{exdate_datestamp}]'
         if len(amount_display) > 0:
-            amount_line = f'  {amount_display}'
+            amount_line = f' {amount_display}' if condensed else f'  {amount_display}'
             if not condensed:
                 print(amount_line, file=file)
             else:
                 line += amount_line
         if condensed:
-            print(line)
+            print(line, file=file)
         if record != records[-1] and not condensed:
             print(file=file)
