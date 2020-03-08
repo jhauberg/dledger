@@ -182,9 +182,11 @@ def projected_date(d: date, *, timeframe: int) -> GeneratedDate:
     raise ValueError(f'invalid timeframe')
 
 
-def convert_estimates(records: List[Transaction]) -> List[Transaction]:
+def convert_estimates(records: List[Transaction],
+                      rates: Optional[Dict[Tuple[str, str], float]] = None) \
+        -> List[Transaction]:
     """ Return a list of transactions, replacing missing amounts with estimates. """
-    conversion_factors = symbol_conversion_factors(records)
+    rates = rates if rates is not None else symbol_conversion_factors(records)
     transactions = list(r for r in records if r.amount is not None)
     estimate_records = (r for r in records if (r.amount is None and
                                                r.dividend is not None))
@@ -201,8 +203,8 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
             if rec.dividend.symbol != latest_transaction.amount.symbol:
                 assert rec.dividend.symbol is not None
                 assert latest_transaction.amount.symbol is not None
-                conversion_factor = conversion_factors[(rec.dividend.symbol,
-                                                        latest_transaction.amount.symbol)]
+                conversion_factor = rates[(rec.dividend.symbol,
+                                           latest_transaction.amount.symbol)]
         estimate_amount = GeneratedAmount(
             value=(rec.position * rec.dividend.value) * conversion_factor,
             symbol=estimate_symbol, fmt=estimate_format)
@@ -214,9 +216,12 @@ def convert_estimates(records: List[Transaction]) -> List[Transaction]:
     return records
 
 
-def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Transaction]:
+def convert_to_currency(records: List[Transaction], *,
+                        symbol: str,
+                        rates: Optional[Dict[Tuple[str, str], float]] = None) \
+        -> List[Transaction]:
     """ Return a list of transactions, replacing amounts with estimates in given currency. """
-    conversion_factors = symbol_conversion_factors(records)
+    rates = rates if rates is not None else symbol_conversion_factors(records)
     transactions = list(r for r in records if r.amount is not None)
     convertible_records = (r for r in records if (r.amount is not None and
                                                   r.amount.symbol != symbol))
@@ -224,10 +229,10 @@ def convert_to_currency(records: List[Transaction], *, symbol: str) -> List[Tran
         assert rec.amount is not None
         assert rec.amount.symbol is not None
         try:
-            conversion_factor = conversion_factors[(rec.amount.symbol, symbol)]
+            conversion_factor = rates[(rec.amount.symbol, symbol)]
         except KeyError:
             try:
-                conversion_factor = conversion_factors[(symbol, rec.amount.symbol)]
+                conversion_factor = rates[(symbol, rec.amount.symbol)]
                 conversion_factor = 1.0 / conversion_factor
             except KeyError:
                 raise ValueError(f'no exchange rate established between {rec.amount.symbol}/{symbol}')
