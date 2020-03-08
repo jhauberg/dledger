@@ -37,6 +37,8 @@ class Amount:
     places: Optional[int] = None
     symbol: Optional[str] = None
     fmt: Optional[str] = None
+
+
 @dataclass(frozen=True)
 class EntryAttributes:
     location: Tuple[str, int]  # journal:linenumber
