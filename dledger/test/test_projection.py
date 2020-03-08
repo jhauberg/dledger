@@ -796,6 +796,22 @@ def test_scheduled_transactions_closed_position():
     assert scheduled[3].position == 1
     assert scheduled[3].amount == GeneratedAmount(100)
 
+    records = [
+        Transaction(date(2018, 8, 15), 'ABC', 1, Amount(100)),
+        Transaction(date(2018, 11, 14), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 2, 20), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 5, 15), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 8, 14), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 11, 20), 'ABC', 1, Amount(100)),
+        # simulate preliminary record, using --by-payout-date (entry_date=ex_date)
+        Transaction(date(2020, 3, 12), 'ABC', 1, GeneratedAmount(100), ex_date=date(2020, 2, 19)),
+        Transaction(date(2020, 2, 28), 'ABC', 0),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 3, 8))
+
+    assert len(scheduled) == 0
+
     # for this scenario, assume a user records by payout date, but makes sure to put in
     # ex-date when necessary to maintain correct forecasting
     records = [

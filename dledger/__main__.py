@@ -52,7 +52,7 @@ from dledger.report import (
     print_stats
 )
 from dledger.projection import (
-    scheduled_transactions, convert_estimates, convert_to_currency
+    scheduled_transactions, convert_estimates, convert_to_currency, symbol_conversion_factors
 )
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
@@ -119,10 +119,16 @@ def main() -> None:
         print_stats(records, journal_paths=input_paths)
         sys.exit(0)
 
+    # determine exchange rates before filtering out any transactions, as we expect the
+    # latest rate to be applied in all cases, no matter the period, ticker or other criteria
+    exchange_rates = symbol_conversion_factors(records)
+    ticker = args['--by-ticker']
+    if ticker is not None:
+        # filter down to only include records by ticker
+        records = list(r for r in records if r.ticker == ticker)
     # produce estimate amounts for preliminary or incomplete records,
     # transforming them into transactions for all intents and purposes from this point onwards
-    records = convert_estimates(records)
-
+    records = convert_estimates(records, rates=exchange_rates)
     # keep a copy of the list of records as they were before any date swapping, so that we can
     # produce diagnostics only on those transactions entered manually; i.e. not forecasts
     # note that because we copy the list at this point (i.e. *before* period filtering),
@@ -148,31 +154,24 @@ def main() -> None:
                    replace(r, entry_date=r.ex_date, ex_date=None) for
                    r in records]
 
+    if not args['--without-forecast']:
+        # produce forecasted transactions dated into the future
+        records.extend(scheduled_transactions(records))
+
     # for reporting, keep only dividend transactions
     transactions = [r for r in records if r.amount is not None]
 
-    if not args['--without-forecast']:
-        # produce forecasted transactions dated into the future
-        transactions.extend(scheduled_transactions(records))
-
-    exchange_symbol = args['--in-currency']
-    if exchange_symbol is not None:
-        # forcefully apply an exchange to currency before any filtering, as we expect the
-        # latest rate to be applied in all cases, no matter the period, ticker or other criteria
-        # (e.g. if we filtered down to only ticker ABC, we could end up using an outdated rate if
-        #  there were more recent transactions by other tickers)
-        transactions = convert_to_currency(transactions, symbol=exchange_symbol)
-
-    ticker = args['--by-ticker']
-    if ticker is not None:
-        # filter down to only include transactions by ticker
-        transactions = list(r for r in transactions if r.ticker == ticker)
-
     if interval is not None:
-        # filter down to only transactions within period interval (after any date swapping)
+        # filter down to only transactions within period interval
         transactions = list(in_period(transactions, interval))
     # (redundantly) sort for good measure
     transactions = sorted(transactions)
+
+    exchange_symbol = args['--in-currency']
+    if exchange_symbol is not None:
+        # forcefully apply an exchange to given currency
+        transactions = convert_to_currency(
+            transactions, symbol=exchange_symbol, rates=exchange_rates)
 
     if args['report']:
         # finally produce and print a report
