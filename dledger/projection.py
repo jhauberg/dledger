@@ -349,6 +349,14 @@ def estimated_transactions(records: List[Transaction]) \
     conversion_factors = symbol_conversion_factors(records)
 
     for ticker in tickers(records):
+        latest_record = latest(by_ticker(records, ticker), by_exdividend=True)
+
+        assert latest_record is not None
+
+        if not latest_record.position > 0:
+            # don't project closed positions
+            continue
+
         # weed out position-only records
         transactions = list(r for r in by_ticker(records, ticker) if r.amount is not None)
 
@@ -386,7 +394,8 @@ def estimated_transactions(records: List[Transaction]) \
 
             if not future_position > 0:
                 # don't project closed positions
-                break
+                # but keep going until we've filled the schedule
+                continue
 
             reference_records = trailing(
                 by_ticker(transactions, ticker), since=future_date, months=12)
