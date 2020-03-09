@@ -60,14 +60,21 @@ class Transaction:
     entry_attr: Optional[EntryAttributes] = None
 
     def __lt__(self, other):  # type: ignore
+        def is_nondividend_transaction(r: Transaction) -> bool:
+            return r.amount is None and r.dividend is None
+
+        def literal_location(r: Transaction) -> Tuple[str, int]:
+            return r.entry_attr.location if r.entry_attr is not None else ('', 0)
         # sort by primary date and always put buy/sell transactions later if on same date
         # e.g.  2019/01/01 ABC (+10)
         #       2019/01/01 ABC (10)  $ 1
         #   =>
         #       2019/01/01 ABC (10)  $ 1
         #       2019/01/01 ABC (+10)
-        return (self.entry_date, self.amount is None and self.dividend is None) < \
-               (other.entry_date, other.amount is None and other.dividend is None)
+        # thirdly, take literal order in journal into account (both linenumber and path)
+        # finally, to stabilize sorting in all cases, use ticker for alphabetical ordering
+        return (self.entry_date, is_nondividend_transaction(self), literal_location(self), self.ticker) < \
+               (other.entry_date, is_nondividend_transaction(other), literal_location(other), other.ticker)
 
 
 class ParseError(Exception):
