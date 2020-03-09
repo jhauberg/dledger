@@ -6,6 +6,7 @@ from dledger.journal import (
     Transaction, EntryAttributes, Amount,
     read, remove_redundant_journal_transactions
 )
+from dledger.projection import scheduled_transactions
 from dledger.localeutil import trysetlocale
 from dledger.formatutil import decimalplaces
 
@@ -470,3 +471,50 @@ def test_remove_redundant_entries():
     records = remove_redundant_journal_transactions(records)
 
     assert len(records) == 3
+
+
+def test_stable_sort():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    path = '../example/sorting.journal'
+
+    records = read(path, kind='journal')
+
+    assert len(records) == 8
+
+    for _ in range(5):
+        records.sort()
+
+        assert records[0].ticker == 'A'
+        assert records[1].ticker == 'B'
+        assert records[2].ticker == 'A'
+        assert records[3].ticker == 'B'
+        assert records[4].ticker == 'A'
+        assert records[5].ticker == 'B'
+        assert records[6].ticker == 'A'
+        assert records[7].ticker == 'B'
+
+    records.extend(scheduled_transactions(records, since=date(2019, 12, 15)))
+
+    assert len(records) == 16
+
+    for _ in range(5):
+        records.sort()
+
+        assert records[0].ticker == 'A'
+        assert records[1].ticker == 'B'
+        assert records[2].ticker == 'A'
+        assert records[3].ticker == 'B'
+        assert records[4].ticker == 'A'
+        assert records[5].ticker == 'B'
+        assert records[6].ticker == 'A'
+        assert records[7].ticker == 'B'
+
+        assert records[8].ticker == 'A'
+        assert records[9].ticker == 'B'
+        assert records[10].ticker == 'A'
+        assert records[11].ticker == 'B'
+        assert records[12].ticker == 'A'
+        assert records[13].ticker == 'B'
+        assert records[14].ticker == 'A'
+        assert records[15].ticker == 'B'
