@@ -372,45 +372,42 @@ def split_amount_date(text: str) \
 
 def split_amount(amount: str, *, location: Tuple[str, int]) \
         -> Amount:
+    def isbeginning(char: str) -> bool:
+        return char.isdecimal() or (char == '+' or
+                                    char == '-')
     symbol: Optional[str] = None
+    # accumulate left-hand side of string by going through each character
     lhs = ''
-
     for c in amount:
-        if c.isdigit() or (c == '+' or
-                           c == '-'):
+        # until finding the first occurrence of beginning of an amount
+        if isbeginning(c):
             break
         lhs += c
-
+    # assume remainder of string is the amount and lhs is the symbol
     amount = amount[len(lhs):]
-
+    # now do the same thing, but in reverse
     rhs = ''
-
     for c in reversed(amount):
-        if c.isdigit() or (c == '+' or
-                           c == '-'):
+        if isbeginning(c):
             break
         rhs = c + rhs
-
+    # assume first part of string the amount and remainder the symbol
     amount = amount[:len(amount) - len(rhs)]
-
+    # parse out symbol using left/right-hand sides of the string
     if len(lhs) > 0:
         symbol = lhs.strip()
     if len(rhs) > 0:
         if symbol is not None:
+            # a symbol can exist on both sides of the string, but then which one do we use?
             raise ParseError(f'ambiguous symbol definition (\'{symbol}\' or \'{rhs.strip()}\'?)', location)
         symbol = rhs.strip()
-
     if symbol is None or len(symbol) == 0:
         raise ParseError(f'missing symbol definition', location)
-
-    value: Optional[float] = None
 
     try:
         value = locale.atof(amount)
     except ValueError:
         raise ParseError(f'invalid value (\'{amount}\')', location)
-
-    assert value is not None
 
     return Amount(value, places=decimalplaces(amount), symbol=symbol, fmt=f'{lhs}%s{rhs}')
 
