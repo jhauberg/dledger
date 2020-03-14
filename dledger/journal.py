@@ -390,7 +390,9 @@ def parse_amount(amount: str, *, location: Tuple[str, int]) \
         -> Amount:
     def isbeginning(char: str) -> bool:
         return char.isdecimal() or (char == '+' or
-                                    char == '-')
+                                    char == '-' or
+                                    char == '.' or
+                                    char == ',')
     symbol: Optional[str] = None
     # accumulate right-hand side of string by going through each character, in reverse
     rhs = ''
