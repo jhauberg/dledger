@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, date
 from decimal import Decimal
 
-from typing import List, Tuple, Optional, Any, Dict, Iterable
+from typing import List, Union, Tuple, Optional, Any, Dict, Iterable
 from enum import Enum
 
 SUPPORTED_TYPES = ['journal', 'nordnet']
@@ -33,7 +33,7 @@ class Distribution(Enum):
 class Amount:
     """ Represents a cash amount. """
 
-    value: float
+    value: Union[float, int]
     places: Optional[int] = None
     symbol: Optional[str] = None
     fmt: Optional[str] = None
@@ -43,6 +43,7 @@ class Amount:
 class EntryAttributes:
     location: Tuple[str, int]  # journal:linenumber
     is_preliminary: bool = False  # True if amount component left blank intentionally
+    preliminary_amount: Optional[Amount] = None
 
 
 @dataclass(frozen=True, unsafe_hash=True)
@@ -212,12 +213,20 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                 raise ParseError(f'payout date dated earlier than ex-date', location)
 
         is_incomplete = False
-        if amount is None and dividend is not None:
+        prelim_amount = None
+        if (amount is None or amount is not None and amount.value == 0) and dividend is not None:
+            prelim_amount = amount
             is_incomplete = True
 
+        entry_attribs = EntryAttributes(
+            location, is_preliminary=is_incomplete, preliminary_amount=prelim_amount)
+
         records.append(
-            Transaction(d, ticker, p, amount, dividend, kind, payout_date=d2, ex_date=d3,
-                        entry_attr=EntryAttributes(location, is_preliminary=is_incomplete)))
+            Transaction(d, ticker, p,
+                        amount if prelim_amount is None else None,
+                        dividend, kind,
+                        payout_date=d2, ex_date=d3,
+                        entry_attr=entry_attribs))
 
     records = remove_redundant_journal_transactions(records)
 
@@ -268,7 +277,6 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         raise ParseError('invalid transaction', location)
     datestamp_end_index = condensed_line.index(' ')
     datestamp = condensed_line[:datestamp_end_index]
-    d: Optional[date] = None
     try:
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
@@ -278,7 +286,6 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
                         '[',   # secondary date opener
                         '  ',  # manually spaced (or automatically spaced by newline)
                         '\t']  # manually tabbed
-    break_index: Optional[int] = None
     try:
         # note that by including [ as a breaker, we allow additional formatting options
         # but it also requires any position () to always be the next component after ticker
@@ -331,9 +338,9 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     dividend: Optional[Amount] = None
     d3: Optional[date] = None
     if len(amount_components) > 1:
-        dividend_str, dividend_datestamp = split_amount_date(amount_components[1].strip())
+        dividend_str, dividend_datestamp = parse_amount_date(amount_components[1].strip())
         if len(dividend_str) > 0:
-            dividend = split_amount(dividend_str, location=location)
+            dividend = parse_amount(dividend_str, location=location)
             if dividend.value <= 0:
                 raise ParseError(f'negative or zero dividend (\'{dividend.value}\')', location)
         if dividend_datestamp is not None:
@@ -344,11 +351,11 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     amount: Optional[Amount] = None
     d2: Optional[date] = None
     if len(amount_components) > 0:
-        amount_str, amount_datestamp = split_amount_date(amount_components[0].strip())
+        amount_str, amount_datestamp = parse_amount_date(amount_components[0].strip())
         if len(amount_str) > 0:
-            amount = split_amount(amount_str, location=location)
-            if amount.value <= 0:
-                raise ParseError(f'negative or zero amount (\'{amount.value}\')', location)
+            amount = parse_amount(amount_str, location=location)
+            if amount.value < 0:
+                raise ParseError(f'negative amount (\'{amount.value}\')', location)
         else:
             if dividend is None:
                 raise ParseError(f'missing amount', location)
@@ -360,7 +367,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     return d, d2, d3, ticker, (position, position_change_direction), amount, dividend, kind, location
 
 
-def split_amount_date(text: str) \
+def parse_amount_date(text: str) \
         -> Tuple[str, Optional[str]]:
     m = re.search(r'\[(.*)\]', text)  # match anything encapsulated by []
     if m is None:
@@ -370,46 +377,56 @@ def split_amount_date(text: str) \
     return text.strip(), d
 
 
-def split_amount(amount: str, *, location: Tuple[str, int]) \
+def parse_amount(amount: str, *, location: Tuple[str, int]) \
         -> Amount:
     def isbeginning(char: str) -> bool:
         return char.isdecimal() or (char == '+' or
                                     char == '-')
     symbol: Optional[str] = None
-    # accumulate left-hand side of string by going through each character
-    lhs = ''
-    for c in amount:
-        # until finding the first occurrence of beginning of an amount
-        if isbeginning(c):
-            break
-        lhs += c
-    # assume remainder of string is the amount and lhs is the symbol
-    amount = amount[len(lhs):]
-    # now do the same thing, but in reverse
+    # accumulate right-hand side of string by going through each character, in reverse
     rhs = ''
     for c in reversed(amount):
+        # until finding the first occurrence of beginning of an amount
         if isbeginning(c):
             break
         rhs = c + rhs
     # assume first part of string the amount and remainder the symbol
     amount = amount[:len(amount) - len(rhs)]
+    # accumulate left-hand side of string by going through each character
+    lhs = ''
+    for c in amount:
+        if isbeginning(c):
+            break
+        lhs += c
+    # assume remainder of string is the amount and lhs is the symbol
+    amount = amount[len(lhs):]
     # parse out symbol using left/right-hand sides of the string
-    if len(lhs) > 0:
-        symbol = lhs.strip()
     if len(rhs) > 0:
+        symbol = rhs.strip()
+    if len(lhs) > 0:
         if symbol is not None:
             # a symbol can exist on both sides of the string, but then which one do we use?
-            raise ParseError(f'ambiguous symbol definition (\'{symbol}\' or \'{rhs.strip()}\'?)', location)
-        symbol = rhs.strip()
+            raise ParseError(f'ambiguous symbol definition (\'{symbol}\' or \'{lhs.strip()}\'?)', location)
+        symbol = lhs.strip()
     if symbol is None or len(symbol) == 0:
         raise ParseError(f'missing symbol definition', location)
 
-    try:
-        value = locale.atof(amount)
-    except ValueError:
-        raise ParseError(f'invalid value (\'{amount}\')', location)
+    # user-entered format; either lhs or rhs will always be empty at this point
+    fmt = f'{lhs}%s{rhs}'
 
-    return Amount(value, places=decimalplaces(amount), symbol=symbol, fmt=f'{lhs}%s{rhs}')
+    if len(amount) > 0:
+        # an amount has been entered
+        try:
+            value = locale.atof(amount)
+        except ValueError:
+            raise ParseError(f'invalid value (\'{amount}\')', location)
+    else:
+        value = int(0)  # note int-type
+        # default/fallback format
+        # (when no entered amount, no formatting can be determined other than symbol)
+        fmt = f'%s {symbol}'
+
+    return Amount(value, places=decimalplaces(amount), symbol=symbol, fmt=fmt)
 
 
 def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \

@@ -193,21 +193,29 @@ def convert_estimates(records: List[Transaction],
     for rec in estimate_records:
         conversion_factor = 1.0
         assert rec.dividend is not None
-        estimate_symbol = rec.dividend.symbol
-        estimate_format = rec.dividend.fmt
-        latest_transaction = latest(by_ticker(transactions, rec.ticker))
-        if latest_transaction is not None:
-            assert latest_transaction.amount is not None
-            estimate_symbol = latest_transaction.amount.symbol
-            estimate_format = latest_transaction.amount.fmt
-            if rec.dividend.symbol != latest_transaction.amount.symbol:
-                assert rec.dividend.symbol is not None
-                assert latest_transaction.amount.symbol is not None
-                conversion_factor = rates[(rec.dividend.symbol,
-                                           latest_transaction.amount.symbol)]
+        if rec.entry_attr is not None and rec.entry_attr.preliminary_amount is not None:
+            estimate_symbol = rec.entry_attr.preliminary_amount.symbol
+            estimate_format = rec.entry_attr.preliminary_amount.fmt
+            estimate_places = rec.entry_attr.preliminary_amount.places  # todo: will alwyas be 0
+            conversion_factor = rates[(rec.dividend.symbol, estimate_symbol)]
+        else:
+            estimate_symbol = rec.dividend.symbol
+            estimate_format = rec.dividend.fmt
+            estimate_places = rec.dividend.places
+            latest_transaction = latest(by_ticker(transactions, rec.ticker))
+            if latest_transaction is not None:
+                assert latest_transaction.amount is not None
+                estimate_symbol = latest_transaction.amount.symbol
+                estimate_format = latest_transaction.amount.fmt
+                estimate_places = latest_transaction.amount.places
+                if rec.dividend.symbol != latest_transaction.amount.symbol:
+                    assert rec.dividend.symbol is not None
+                    assert latest_transaction.amount.symbol is not None
+                    conversion_factor = rates[(rec.dividend.symbol,
+                                               latest_transaction.amount.symbol)]
         estimate_amount = GeneratedAmount(
             value=(rec.position * rec.dividend.value) * conversion_factor,
-            symbol=estimate_symbol, fmt=estimate_format)
+            places=None, symbol=estimate_symbol, fmt=estimate_format)
         estimate = replace(rec, amount=estimate_amount)
         i = records.index(rec)
         records.pop(i)
