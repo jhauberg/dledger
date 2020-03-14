@@ -480,16 +480,18 @@ def test_preliminary_expected_currency():
 
     records = read(path, kind='journal')
 
-    assert len(records) == 3
+    assert len(records) == 4
 
-    assert records[0].entry_attr.is_preliminary == False
-    assert records[1].entry_attr.is_preliminary == True
-    assert records[2].entry_attr.is_preliminary == True
+    assert records[0].entry_attr.is_preliminary is False
+    assert records[1].entry_attr.is_preliminary is True
+    assert records[2].entry_attr.is_preliminary is True
+    assert records[3].entry_attr.is_preliminary is True
 
     transactions = convert_estimates(records)
 
-    assert transactions[1].amount == GeneratedAmount(10, places=0, symbol='$', fmt='$ %s')
-    assert transactions[2].amount == GeneratedAmount(100, places=0, symbol='DKK', fmt='%s DKK')
+    assert transactions[1].amount == GeneratedAmount(10, places=None, symbol='$', fmt='$ %s')
+    assert transactions[2].amount == GeneratedAmount(100, places=None, symbol='DKK', fmt='%s DKK')
+    assert transactions[3].amount == GeneratedAmount(134.4, places=None, symbol='DKK', fmt='%s DKK')
 
 
 def test_stable_sort():
