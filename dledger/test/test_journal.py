@@ -6,7 +6,7 @@ from dledger.journal import (
     Transaction, EntryAttributes, Amount,
     read, remove_redundant_journal_transactions
 )
-from dledger.projection import scheduled_transactions
+from dledger.projection import GeneratedAmount, scheduled_transactions, convert_estimates
 from dledger.localeutil import trysetlocale
 from dledger.formatutil import decimalplaces
 
@@ -471,6 +471,25 @@ def test_remove_redundant_entries():
     records = remove_redundant_journal_transactions(records)
 
     assert len(records) == 3
+
+
+def test_preliminary_expected_currency():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    path = '../example/preliminaryrecords.journal'
+
+    records = read(path, kind='journal')
+
+    assert len(records) == 3
+
+    assert records[0].entry_attr.is_preliminary == False
+    assert records[1].entry_attr.is_preliminary == True
+    assert records[2].entry_attr.is_preliminary == True
+
+    transactions = convert_estimates(records)
+
+    assert transactions[1].amount == GeneratedAmount(10, places=0, symbol='$', fmt='$ %s')
+    assert transactions[2].amount == GeneratedAmount(100, places=0, symbol='DKK', fmt='%s DKK')
 
 
 def test_stable_sort():
