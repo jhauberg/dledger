@@ -4,7 +4,7 @@ from datetime import date
 
 from dledger.journal import (
     Transaction, EntryAttributes, Amount,
-    read, remove_redundant_journal_transactions
+    read, remove_redundant_journal_transactions, parse_amount
 )
 from dledger.projection import GeneratedAmount, scheduled_transactions, convert_estimates
 from dledger.localeutil import trysetlocale
@@ -46,6 +46,35 @@ def test_decimal_places():
     # note that we won't keep the trailing zero here
     assert decimalplaces(12.34560) == 4
     assert decimalplaces(0.77) == 2
+
+
+def test_parse_amount():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    loc = ('', 0)
+
+    assert parse_amount('$', location=loc) == Amount(0, places=0, symbol='$', fmt='%s $')
+
+    assert parse_amount('$10', location=loc) == Amount(10, places=0, symbol='$', fmt='$%s')
+    assert parse_amount('$ 10', location=loc) == Amount(10, places=0, symbol='$', fmt='$ %s')
+    assert parse_amount('$  10', location=loc) == Amount(10, places=0, symbol='$', fmt='$  %s')
+    assert parse_amount('10 kr', location=loc) == Amount(10, places=0, symbol='kr', fmt='%s kr')
+
+    assert parse_amount('$ 0.50', location=loc) == Amount(0.5, places=2, symbol='$', fmt='$ %s')
+    assert parse_amount('0.50 kr', location=loc) == Amount(0.5, places=2, symbol='kr', fmt='%s kr')
+    assert parse_amount('0.00 kr', location=loc) == Amount(0, places=2, symbol='kr', fmt='%s kr')
+
+    assert parse_amount('$ .50', location=loc) == Amount(0.5, places=2, symbol='$', fmt='$ %s')
+    assert parse_amount('.50 kr', location=loc) == Amount(0.5, places=2, symbol='kr', fmt='%s kr')
+
+    trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
+
+    assert parse_amount('$ 0,50', location=loc) == Amount(0.5, places=2, symbol='$', fmt='$ %s')
+    assert parse_amount('0,50 kr', location=loc) == Amount(0.5, places=2, symbol='kr', fmt='%s kr')
+    assert parse_amount('0,00 kr', location=loc) == Amount(0, places=2, symbol='kr', fmt='%s kr')
+
+    assert parse_amount('$ ,50', location=loc) == Amount(0.5, places=2, symbol='$', fmt='$ %s')
+    assert parse_amount(',50 kr', location=loc) == Amount(0.5, places=2, symbol='kr', fmt='%s kr')
 
 
 def test_empty_journal():
