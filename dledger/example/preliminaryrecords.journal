@@ -1,0 +1,12 @@
+# this file serves as an example journal for dledger
+
+# this journal assumes a system locale using period as decimal separator
+
+2020/01/10 C (10)     # required record to establish exchange rate $/DKK
+  100 DKK @ $ 1
+
+2020/02/13 A (10)
+  [2020/03/12] @ $ 1 [2020/02/13]
+
+2020/02/13 B (10)
+  [2020/03/12] DKK @ $ 1 [2020/02/13]
