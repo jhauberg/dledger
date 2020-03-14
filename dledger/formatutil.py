@@ -40,13 +40,15 @@ def format_amount(amount: float, *,
     return f'{d:n}'
 
 
-def decimalplaces(value: Union[str, float]) -> int:
+def decimalplaces(value: Union[str, float, int]) -> int:
     """ Return the number of places after a decimal separator.
 
     Use 'decimal_point' from current system locale to determine decimal separator.
     """
-    separator: str = locale.localeconv()['decimal_point']  # type: ignore
     places = 0
+    if isinstance(value, int):
+        return places
+    separator: str = locale.localeconv()['decimal_point']  # type: ignore
     if isinstance(value, float):
         separator = '.'  # assume always period separator for non-string values
         value = str(Decimal(f'{value}'))
@@ -56,5 +58,4 @@ def decimalplaces(value: Union[str, float]) -> int:
         separator_index = value[::-1].find(separator)
         if separator_index != -1:
             places = separator_index
-
     return places
