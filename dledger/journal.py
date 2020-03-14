@@ -41,6 +41,15 @@ class Amount:
 
 @dataclass(frozen=True)
 class EntryAttributes:
+    """ Represents a set of attributes describing some facts about a journal entry.
+
+    These are properties that can only be known at parse-time, as a journal entry may undergo
+    several processing steps ultimately changing its final representation.
+
+    For example, whether a record is preliminary or not cannot be deduced after processing,
+    as it will end up having a generated amount attached to it (where it would otherwise be None).
+    """
+
     location: Tuple[str, int]  # journal:linenumber
     is_preliminary: bool = False  # True if amount component left blank intentionally
     preliminary_amount: Optional[Amount] = None
