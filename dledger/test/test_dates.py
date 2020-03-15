@@ -1,5 +1,8 @@
+import locale
+
 from datetime import datetime, date, timedelta
 
+from dledger.localeutil import trysetlocale
 from dledger.dateutil import (
     months_between, in_months,
     next_month, previous_month, last_of_month,
@@ -172,9 +175,25 @@ def test_parse_period():
     yesterday = today + timedelta(days=-1)
 
     assert parse_period('today') == (today, tomorrow)
+    assert parse_period('Today') == (today, tomorrow)
     assert parse_period('tomorrow') == (tomorrow, tomorrow + timedelta(days=1))
     assert parse_period('yesterday') == (yesterday, today)
 
     assert parse_period('today:tomorrow') == (today, tomorrow)
     assert parse_period('tomorrow:tomorrow') == (tomorrow, tomorrow)
     assert parse_period('yesterday:tomorrow') == (yesterday, tomorrow)
+
+    trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
+
+    assert parse_period('november') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('November') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('nov') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('no') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('n') == (date(today.year, 11, 1), date(today.year, 12, 1))
+
+    assert parse_period('nov:dec') == (date(today.year, 11, 1), date(today.year, 12, 1))
+
+    trysetlocale(locale.LC_TIME, ['da_DK', 'da-DK', 'da'])
+
+    assert parse_period('marts') == (date(today.year, 3, 1), date(today.year, 4, 1))
+    assert parse_period('feb') == (date(today.year, 2, 1), date(today.year, 3, 1))
