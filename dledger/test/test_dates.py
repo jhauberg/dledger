@@ -163,6 +163,11 @@ def test_parse_period():
                                                      date(2019, 11, 11))
 
     today = datetime.today().date()
+
+    assert parse_period('11') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('11:12') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('6:1') == (date(today.year, 1, 1), date(today.year, 6, 1))
+
     tomorrow = today + timedelta(days=1)
     yesterday = today + timedelta(days=-1)
 
