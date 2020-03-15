@@ -202,12 +202,14 @@ def main() -> None:
             if args['--by-payout-date']:
                 skipped_transactions = [r for r in journaled_transactions if r.payout_date is None]
                 for transaction in skipped_transactions:
+                    assert transaction.entry_attr is not None
                     journal, linenumber = transaction.entry_attr.location
                     print(f'{journal}:{linenumber} transaction is missing payout date',
                           file=sys.stderr)
             elif args['--by-ex-date']:
                 skipped_transactions = [r for r in journaled_transactions if r.ex_date is None]
                 for transaction in skipped_transactions:
+                    assert transaction.entry_attr is not None
                     journal, linenumber = transaction.entry_attr.location
                     print(f'{journal}:{linenumber} transaction is missing ex-dividend date',
                           file=sys.stderr)

@@ -196,6 +196,8 @@ def convert_estimates(records: List[Transaction],
         if rec.entry_attr is not None and rec.entry_attr.preliminary_amount is not None:
             estimate_symbol = rec.entry_attr.preliminary_amount.symbol
             estimate_format = rec.entry_attr.preliminary_amount.fmt
+            assert rec.dividend.symbol is not None
+            assert estimate_symbol is not None
             conversion_factor = rates[(rec.dividend.symbol, estimate_symbol)]
         else:
             estimate_symbol = rec.dividend.symbol

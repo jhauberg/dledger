@@ -195,7 +195,6 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     # might reconsider later
     if len(matching_month_names) == 1:  # ambiguous if more than one match; move on
         for month_index, month_name in enumerate(calendar.month_name):
-            print(month_name)
             if month_name == matching_month_names[0]:
                 starting = date(today.year, month_index, 1)
                 return starting, next_month(starting)
