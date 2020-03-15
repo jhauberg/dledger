@@ -170,12 +170,7 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     date interval will range from 2019/01/01 to 2020/01/01, including the full year period of 2019.
     """
     today = datetime.today().date()
-    if component == 'today':
-        return today, today + timedelta(days=1)
-    if component == 'tomorrow':
-        return today + timedelta(days=1), today + timedelta(days=2)
-    if component == 'yesterday':
-        return today + timedelta(days=-1), today
+    component = component.lower()
     try:
         month = int(component)  # if component is a single number, then it might indicate month
         if 0 < month <= 12:  # component assumed to indicate month
@@ -183,9 +178,28 @@ def parse_period_component(component: str) -> Tuple[date, date]:
             return starting, next_month(starting)
         else:  # component assumed to indicate year; parsed as normal datestamp later
             pass
-    except ValueError:  # component assumed to be typical datestamp
+    except ValueError:  # component assumed to be typical datestamp or textual key
         pass
-    # assume component is datestamp, as none of the textual keys matched
+    if component == 'today':
+        return today, today + timedelta(days=1)
+    if component == 'tomorrow':
+        return today + timedelta(days=1), today + timedelta(days=2)
+    if component == 'yesterday':
+        return today + timedelta(days=-1), today
+    # check against month names (both abbreviated and full e.g. 'march', 'jun', etc.)
+    matching_month_names = [month_name for month_name in calendar.month_name if
+                            month_name.lower().startswith(component)]
+    # note that a combination of component types is not supported for the time being
+    # as it would require parse_datestamp() to include this bit and automatically
+    # letting the format loose in journal entries as well; e.g. `2019/mar/14 A  $ 2`
+    # might reconsider later
+    if len(matching_month_names) == 1:  # ambiguous if more than one match; move on
+        for month_index, month_name in enumerate(calendar.month_name):
+            print(month_name)
+            if month_name == matching_month_names[0]:
+                starting = date(today.year, month_index, 1)
+                return starting, next_month(starting)
+    # assume component is typical datestamp, as no textual keys match
     starting = parse_datestamp(component)
     # determine number of datestamp components
     # (assuming valid datestamp; i.e. only one separator kind, no combination)
