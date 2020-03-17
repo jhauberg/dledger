@@ -180,6 +180,11 @@ def parse_period_component(component: str) -> Tuple[date, date]:
             pass
     except ValueError:  # component assumed to be typical datestamp or textual key
         pass
+    textual_keys = ['today', 'tomorrow', 'yesterday']
+    matching_keys = [k for k in textual_keys if
+                     k.startswith(component)]
+    if len(matching_keys) == 1:
+        component = matching_keys[0]
     if component == 'today':
         return today, today + timedelta(days=1)
     if component == 'tomorrow':
