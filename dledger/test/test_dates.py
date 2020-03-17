@@ -175,13 +175,18 @@ def test_parse_period():
     yesterday = today + timedelta(days=-1)
 
     assert parse_period('today') == (today, tomorrow)
+    assert parse_period('tod') == (today, tomorrow)
     assert parse_period('Today') == (today, tomorrow)
     assert parse_period('tomorrow') == (tomorrow, tomorrow + timedelta(days=1))
+    assert parse_period('tom') == (tomorrow, tomorrow + timedelta(days=1))
     assert parse_period('yesterday') == (yesterday, today)
+    assert parse_period('yest') == (yesterday, today)
+    assert parse_period('y') == (yesterday, today)
 
     assert parse_period('today:tomorrow') == (today, tomorrow)
     assert parse_period('tomorrow:tomorrow') == (tomorrow, tomorrow)
     assert parse_period('yesterday:tomorrow') == (yesterday, tomorrow)
+    assert parse_period('y:tom') == (yesterday, tomorrow)
 
     trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
 
