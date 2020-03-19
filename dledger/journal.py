@@ -210,6 +210,9 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         if p is None:
             raise ParseError(f'position could not be inferred', location)
 
+        if amount is not None and p == 0:
+            raise ParseError(f'payout on closed position', location)
+
         if amount is not None and dividend is None:
             inferred_dividend = truncate_floating_point(amount.value / p, places=2)
             dividend = Amount(inferred_dividend,
