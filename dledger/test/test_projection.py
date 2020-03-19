@@ -255,6 +255,18 @@ def test_quarterly_frequency():
 
     assert frequency(records) == 3
 
+    records = [
+        Transaction(date(2019, 9, 5), 'ABC', 1),
+        Transaction(date(2019, 12, 5), 'ABC', 1),
+        Transaction(date(2020, 2, 27), 'ABC', 1),
+    ]
+
+    #assert frequency(records) == 3
+    # todo: note that this would correctly result in quarterly frequency if
+    #       the last record was dated in march instead of february
+    #       but because it isnt, there's ambiguity in timespan
+    assert frequency(records) == 6
+
 
 def test_monthly_frequency():
     records = [
