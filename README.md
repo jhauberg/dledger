@@ -7,13 +7,11 @@ In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accou
 ---
 
 | [Latest release (0.3.1)](https://github.com/jhauberg/dledger/releases/tag/0.3.1) | Download the latest stable release.                 |
-| :----------------------------------------------------------- | --------------------------------------------------- |
-| [Issue tracker](https://github.com/jhauberg/dledger/issues)  | Contribute your bugs, comments or feature requests. |
-| [Manual](MANUAL.md)                                          | Instructions on setup and detailed usage.           |
+| :------------------------------------------------------------------------------- | :-------------------------------------------------- |
+| [Issue tracker](https://github.com/jhauberg/dledger/issues)                      | Contribute your bugs, comments or feature requests. |
+| [Manual](MANUAL.md)                                                              | Instructions on setup and detailed usage.           |
 
----
-
-#### Example
+## Example
 
 Here's a journal that tracks a position of 100 shares of Apple over 3 transactions:
 
@@ -45,10 +43,12 @@ $ dledger report ~/.journal
 
 Read the [manual](MANUAL.md#reports) to learn more about reporting.
 
+<br />
+
 <table>
   <tr>
     <td>
-      This is a Free and Open-Source software project released under the <a href="LICENSE">MIT License</a>.
+      This is a Free and Open-Source Software project released under the <a href="LICENSE">MIT License</a>.
     </td>
   </tr>
 </table>
