@@ -1,12 +1,19 @@
-# dledger
+# $ dledger
 
 `dledger` is a local-first, command-line tool for tracking and forecasting dividend income.
 
 In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accounting-apps) and [plain-text accounting](https://plaintextaccounting.org), `dledger` is small, portable and reliable, and operates on plain-text journals that are both easy to read and quick to edit- and most importantly, all yours.
 
-**Requires Python 3.8+**
+---
+
+| [Latest release (0.3.1)](https://github.com/jhauberg/dledger/releases/tag/0.3.1) | Download the latest stable release.                 |
+| :----------------------------------------------------------- | --------------------------------------------------- |
+| [Issue tracker](https://github.com/jhauberg/dledger/issues)  | Contribute your bugs, comments or feature requests. |
+| [Manual](MANUAL.md)                                          | Instructions on setup and detailed usage.           |
 
 ---
+
+#### Example
 
 Here's a journal that tracks a position of 100 shares of Apple over 3 transactions:
 
@@ -21,7 +28,7 @@ Here's a journal that tracks a position of 100 shares of Apple over 3 transactio
   $ 77
 ```
 
-Running `dledger` shows all dividends received, including forecasts for the next 12 months:
+Running a report shows all dividend income, including forecasts for the next 12 months:
 
 ```shell
 $ dledger report ~/.journal
@@ -36,18 +43,12 @@ $ dledger report ~/.journal
 ~               $ 77  < 2020/08/15 AAPL
 ```
 
-Using the `--annual` flag will sum up dividends by year:
+Read the [manual](MANUAL.md#reports) to learn more about reporting.
 
-```shell
-$ dledger report ~/.journal --annual
-```
-```console
-~              $ 304    2019
-~              $ 231  < 2020/08
-```
-
-Read the [manual](MANUAL.md) to learn more.
-
-## License
-
-This is a Free and Open-Source software project released under the [MIT License](LICENSE).
+<table>
+  <tr>
+    <td>
+      This is a Free and Open-Source software project released under the <a href="LICENSE">MIT License</a>.
+    </td>
+  </tr>
+</table>
