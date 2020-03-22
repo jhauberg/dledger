@@ -377,6 +377,8 @@ def estimated_transactions(records: List[Transaction]) \
         if latest_transaction is None:
             continue
 
+        assert latest_transaction.amount is not None
+
         sched = estimated_schedule(transactions, latest_transaction)
 
         scheduled_months = sched.months
@@ -385,12 +387,6 @@ def estimated_transactions(records: List[Transaction]) \
         future_date = latest_transaction.entry_date
         # estimate timeframe by latest actual record
         future_timeframe = projected_timeframe(future_date)
-
-        can_convert_from_dividend = False
-        if (latest_transaction.dividend is not None and
-                latest_transaction.dividend.symbol != latest_transaction.amount.symbol):
-            # todo: would be great to get rid of this variable
-            can_convert_from_dividend = True
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
@@ -419,7 +415,7 @@ def estimated_transactions(records: List[Transaction]) \
             future_dividend_value: Optional[float] = None
             future_dividend_places: Optional[int] = None
             if future_dividend is not None:
-                if can_convert_from_dividend:
+                if future_dividend.symbol != latest_transaction.amount.symbol:
                     assert future_dividend.symbol is not None
                     assert latest_transaction.amount.symbol is not None
                     conversion_factor = conversion_factors[(future_dividend.symbol,
@@ -436,7 +432,7 @@ def estimated_transactions(records: List[Transaction]) \
 
                 aps = [amount_per_share(r) for r in reference_records]
 
-                if len(divs) > 0 and can_convert_from_dividend:
+                if len(divs) > 0:
                     assert latest_transaction.amount.symbol is not None
                     assert latest_transaction.dividend.symbol is not None
                     conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
@@ -465,7 +461,7 @@ def estimated_transactions(records: List[Transaction]) \
                                                      places=future_dividend_places,
                                                      symbol=latest_transaction.dividend.symbol,
                                                      fmt=latest_transaction.dividend.fmt)
-                                                           if can_convert_from_dividend else
+                                                           if future_dividend_value is not None else
                                                            None))
 
             scheduled_records.append(future_record)

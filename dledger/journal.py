@@ -528,8 +528,6 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
 
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
-    dividend_rate: Optional[float] = None
-
     try:
         dividend_rate = locale.atof(dividend_rate_str)
     except ValueError:
