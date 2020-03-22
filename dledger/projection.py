@@ -475,7 +475,9 @@ def estimated_transactions(records: List[Transaction]) \
     return sorted(approximate_records)
 
 
-def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount]:
+def next_linear_dividend(records: List[Transaction],
+                         *, kind: Distribution = Distribution.FINAL) \
+        -> Optional[GeneratedAmount]:
     """ Return the next linearly projected dividend if any, None otherwise. """
 
     transactions = list(r for r in records if r.amount is not None)
@@ -487,9 +489,9 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount
     if latest_transaction.dividend is not None:
         comparable_transactions: List[Transaction] = []
         for comparable_transaction in reversed(transactions):
-            if comparable_transaction.kind is not Distribution.FINAL:
-                # don't include interim/special dividends as they do not necessarily follow
-                # the same policy or pattern as final dividends
+            if comparable_transaction.kind is not kind:
+                # skip if not same kind, as different kinds of distributions
+                # might follow different schedules
                 continue
             if (comparable_transaction.dividend is None or
                     comparable_transaction.dividend.symbol != latest_transaction.dividend.symbol):
@@ -552,14 +554,10 @@ def future_transactions(records: List[Transaction]) \
             # don't project closed positions
             continue
 
-        if transaction.kind == Distribution.INTERIM:
-            # todo: still ramp, but using past interim dividends
-            future_dividend = transaction.dividend
-        else:
-            future_dividend = next_linear_dividend(matching_transactions)
+        future_dividend = next_linear_dividend(matching_transactions, kind=transaction.kind)
 
-            if future_dividend is None:
-                future_dividend = transaction.dividend
+        if future_dividend is None:
+            future_dividend = transaction.dividend
 
         future_amount = future_position * amount_per_share(transaction)
 
