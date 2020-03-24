@@ -221,7 +221,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
             raise ParseError(f'payout on closed position', location)
 
         if amount is not None and dividend is None:
-            inferred_dividend = truncate_floating_point(amount.value / p, places=2)
+            inferred_dividend = truncate_floating_point(amount.value / p)
             dividend = Amount(inferred_dividend,
                               places=decimalplaces(inferred_dividend),
                               symbol=amount.symbol,

@@ -21,6 +21,7 @@ def test_decimal_places():
     assert decimalplaces('12.3456') == 4
     assert decimalplaces('12.34560') == 5
     assert decimalplaces('0.77') == 2
+    assert decimalplaces('1.0') == 0
 
     assert decimalplaces(123) == 0
     assert decimalplaces(123.4) == 1
@@ -30,6 +31,7 @@ def test_decimal_places():
     # note that we won't keep the trailing zero here
     assert decimalplaces(12.34560) == 4
     assert decimalplaces(0.77) == 2
+    assert decimalplaces(1.0) == 0
 
     trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
 
@@ -37,6 +39,7 @@ def test_decimal_places():
     assert decimalplaces('123,45') == 2
     assert decimalplaces('123,456') == 3
     assert decimalplaces('12,3456') == 4
+    assert decimalplaces('1,0') == 0
 
     assert decimalplaces(123) == 0
     assert decimalplaces(123.4) == 1
@@ -46,6 +49,7 @@ def test_decimal_places():
     # note that we won't keep the trailing zero here
     assert decimalplaces(12.34560) == 4
     assert decimalplaces(0.77) == 2
+    assert decimalplaces(1.0) == 0
 
 
 def test_parse_amount():

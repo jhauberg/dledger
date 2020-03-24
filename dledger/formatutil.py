@@ -58,4 +58,6 @@ def decimalplaces(value: Union[str, float, int]) -> int:
         separator_index = value[::-1].find(separator)
         if separator_index != -1:
             places = separator_index
+        if places == 1 and value.endswith('0'):
+            places = 0
     return places
