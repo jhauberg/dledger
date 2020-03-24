@@ -71,6 +71,10 @@ class Transaction:
 
     @property
     def ispositional(self):
+        """ Return True if transaction only records a position component, False otherwise.
+
+        This is typically the case for a buy/sell transaction.
+        """
         return self.amount is None and self.dividend is None
 
     def __lt__(self, other):  # type: ignore
@@ -98,7 +102,6 @@ def read(path: str, kind: str) \
     """ Return a list of records imported from a file. """
 
     encoding = fileencoding(path)
-
     if encoding is None or len(encoding) == 0:
         raise ValueError(f'Path could not be read: \'{path}\'')
 
@@ -106,7 +109,6 @@ def read(path: str, kind: str) \
         return read_journal_transactions(path, encoding)
     elif kind == 'nordnet':
         return read_nordnet_transactions(path, encoding)
-
     return []
 
 
@@ -179,10 +181,9 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
         if p is None or p_directive != POSITION_SET:
             # infer position from previous entries
-            # todo: this sorting rule occurs in multiple places; should consolidate
             by_ex_date = sorted(records, key=lambda r: (
                 r.ex_date if r.ex_date is not None else r.entry_date,
-                r.amount is None and r.dividend is None
+                r.ispositional
             ))
             for previous_record in reversed(by_ex_date):
                 if previous_record.ticker == ticker:
@@ -263,33 +264,31 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
         recs = list(r for r in records if r.ticker == ticker)
         # find all entries that only record a change in position
         position_records = list(r for r in recs if r.ispositional)
-
         if len(position_records) == 0:
             continue
-
         # find all dividend transactions (e.g. cash received or earned)
-        realized_records = list(r for r in recs if not r.ispositional)
-
-        if len(realized_records) > 0:
-            latest_record = realized_records[-1]
-            # at this point we no longer need to keep some of the position entries around,
-            # as we have already used them to infer and determine position for each realized entry
-            for record in position_records:
-                # so each position entry dated prior to a dividend entry is basically redundant
-                if record.position == 0:
-                    # unless it's a closer, in which case we have to keep it around in any case
-                    # (e.g. see example/strategic.journal)
-                    continue
-                if latest_record.ex_date is not None and record.entry_date >= latest_record.ex_date:
-                    continue
-                is_redundant = False
-                if record.entry_date < latest_record.entry_date:
-                    is_redundant = True
-                elif record.entry_date == latest_record.entry_date and \
-                        math.isclose(record.position, latest_record.position, abs_tol=0.000001):
-                    is_redundant = True
-                if is_redundant:
-                    records.remove(record)
+        realized_records = list(r for r in recs if r not in position_records)
+        if len(realized_records) == 0:
+            continue
+        latest_record = realized_records[-1]
+        # at this point we no longer need to keep some of the position entries around,
+        # as we have already used them to infer and determine position for each realized entry
+        for record in position_records:
+            # so each position entry dated prior to a dividend entry is basically redundant
+            if record.position == 0:
+                # unless it's a closer, in which case we have to keep it around in any case
+                # (e.g. see example/strategic.journal)
+                continue
+            if latest_record.ex_date is not None and record.entry_date >= latest_record.ex_date:
+                continue
+            is_redundant = False
+            if record.entry_date < latest_record.entry_date:
+                is_redundant = True
+            elif record.entry_date == latest_record.entry_date and \
+                    math.isclose(record.position, latest_record.position, abs_tol=0.000001):
+                is_redundant = True
+            if is_redundant:
+                records.remove(record)
 
     return records
 
