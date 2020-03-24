@@ -221,6 +221,10 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                               symbol=amount.symbol,
                               fmt=amount.fmt)
 
+        if amount is None and dividend is None:
+            if d2 is not None or d3 is not None:
+                raise ParseError(f'associated date on positional record', location)
+
         if d2 is not None and d3 is not None:
             if d2 < d3:
                 raise ParseError(f'payout date dated earlier than ex-date', location)
