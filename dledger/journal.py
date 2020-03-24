@@ -69,10 +69,11 @@ class Transaction:
     ex_date: Optional[date] = None
     entry_attr: Optional[EntryAttributes] = None
 
-    def __lt__(self, other):  # type: ignore
-        def is_nondividend_transaction(r: Transaction) -> bool:
-            return r.amount is None and r.dividend is None
+    @property
+    def ispositional(self):
+        return self.amount is None and self.dividend is None
 
+    def __lt__(self, other):  # type: ignore
         def literal_location(r: Transaction) -> Tuple[str, int]:
             return r.entry_attr.location if r.entry_attr is not None else ('', 0)
         # sort by primary date and always put buy/sell transactions later if on same date
@@ -83,8 +84,8 @@ class Transaction:
         #       2019/01/01 ABC (+10)
         # thirdly, take literal order in journal into account (both linenumber and path)
         # finally, to stabilize sorting in all cases, use ticker for alphabetical ordering
-        return (self.entry_date, is_nondividend_transaction(self), literal_location(self), self.ticker) < \
-               (other.entry_date, is_nondividend_transaction(other), literal_location(other), other.ticker)
+        return (self.entry_date, self.ispositional, literal_location(self), self.ticker) < \
+               (other.entry_date, other.ispositional, literal_location(other), other.ticker)
 
 
 class ParseError(Exception):
@@ -233,12 +234,13 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         entry_attribs = EntryAttributes(
             location, is_preliminary=is_incomplete, preliminary_amount=prelim_amount)
 
-        records.append(
-            Transaction(d, ticker, p,
-                        amount if prelim_amount is None else None,
-                        dividend, kind,
-                        payout_date=d2, ex_date=d3,
-                        entry_attr=entry_attribs))
+        transaction = Transaction(
+            d, ticker, p,
+            amount if prelim_amount is None else None,
+            dividend, kind,
+            payout_date=d2, ex_date=d3, entry_attr=entry_attribs)
+
+        records.append(transaction)
 
     records = remove_redundant_journal_transactions(records)
 
@@ -250,13 +252,13 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
     for ticker in set([record.ticker for record in records]):
         recs = list(r for r in records if r.ticker == ticker)
         # find all entries that only record a change in position
-        position_records = list(r for r in recs if r.amount is None and r.dividend is None)
+        position_records = list(r for r in recs if r.ispositional)
 
         if len(position_records) == 0:
             continue
 
         # find all dividend transactions (e.g. cash received or earned)
-        realized_records = list(r for r in recs if r.amount is not None or r.dividend is not None)
+        realized_records = list(r for r in recs if not r.ispositional)
 
         if len(realized_records) > 0:
             latest_record = realized_records[-1]

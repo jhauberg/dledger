@@ -400,6 +400,7 @@ def test_strategic_journal():
                                      amount=Amount(2, places=0, symbol='$', fmt='$ %s'),
                                      dividend=Amount(0.2, places=1, symbol='$', fmt='$ %s'),
                                      entry_attr=EntryAttributes(location=(path, 16)))
+    assert records[4].ispositional
     assert records[4] == Transaction(date(2020, 1, 19), 'ABC', 0,
                                      entry_attr=EntryAttributes(location=(path, 19)))
     assert records[5] == Transaction(date(2020, 2, 1), 'ABC', 10,
@@ -512,7 +513,9 @@ def test_preliminary_expected_currency():
     assert len(records) == 4
 
     assert records[0].entry_attr.is_preliminary is False
+    assert records[0].amount is not None
     assert records[1].entry_attr.is_preliminary is True
+    assert records[1].amount is None
     assert records[2].entry_attr.is_preliminary is True
     assert records[3].entry_attr.is_preliminary is True
 
