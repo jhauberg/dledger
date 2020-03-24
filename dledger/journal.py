@@ -158,7 +158,8 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     # so they must be sorted prior to inferring positions/currencies
     # note that position change entries are always sorted to occur *after*
     # any realized transaction on the same date (see Transaction.__lt__)
-    journal_entries = sorted(journal_entries, key=lambda r: (r[0], r[5] is None and r[6] is None))
+    journal_entries = sorted(
+        journal_entries, key=lambda r: (r.entry_date, r.amount is None and r.dividend is None))
 
     records: List[Transaction] = []
 
@@ -168,10 +169,15 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         return float(v)
 
     for entry in journal_entries:
-        d, d2, d3, ticker, position, amount, dividend, kind, location = entry
-        p, p_direction = position
+        # todo: hackily pack, then unpack to get mutable copies of each attribute
+        #       part of easing refactoring, but should be done in cleaner fashion; maybe replace()?
+        d, d2, d3, ticker, amount, dividend, kind, location = (entry.entry_date, entry.payout_date,
+                                                               entry.ex_date, entry.ticker,
+                                                               entry.amount, entry.dividend,
+                                                               entry.kind, entry.location)
+        p, p_directive = entry.positioning
 
-        if p is None or p_direction != 0:
+        if p is None or p_directive != POSITION_SET:
             # infer position from previous entries
             # todo: this sorting rule occurs in multiple places; should consolidate
             by_ex_date = sorted(records, key=lambda r: (
@@ -186,7 +192,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                         continue
                     if p is None:
                         p = 0
-                    p = truncate_floating_point(previous_record.position + p * p_direction)
+                    p = truncate_floating_point(previous_record.position + p * p_directive)
                     if p < 0:
                         raise ParseError(f'position change to negative position ({p})', location)
                     break
@@ -288,8 +294,28 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
     return records
 
 
+@dataclass(frozen=True)
+class Entry:
+    # todo: this class is almost identical to Transaction, but includes 'positioning' info
+    #       we should look into a consolidation here to avoid excessive amounts of datastructures
+    entry_date: date
+    ticker: str
+    kind: Distribution
+    location: Tuple[str, int]
+    positioning: Tuple[Optional[float], int]
+    payout_date: Optional[date] = None
+    ex_date: Optional[date] = None
+    amount: Optional[Amount] = None
+    dividend: Optional[Amount] = None
+
+
+POSITION_SET = 0  # directive to set absolute position
+POSITION_ADD = 1  # directive/multiplier to add to previous position
+POSITION_SUB = -1  # directive/multiplier to subtract from previous position
+
+
 def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
-        -> Tuple[date, Optional[date], Optional[date], str, Tuple[Optional[float], int], Optional[Amount], Optional[Amount], Distribution, Tuple[str, int]]:
+        -> Entry:
     condensed_line = '  '.join(lines)
     if len(condensed_line) < 10:  # the shortest starting transaction line is "YYYY/M/D X"
         raise ParseError('invalid transaction', location)
@@ -332,25 +358,25 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     if ticker is None or len(ticker) == 0:
         raise ParseError('invalid ticker format', location)
     position: Optional[float] = None
-    position_change_direction = 0
+    position_change_directive = POSITION_SET
     if ')' in condensed_line:
         break_index = condensed_line.index(')') + 1
         position_str = condensed_line[:break_index].strip()
         position_str = position_str[1:-1].strip()
         if position_str.startswith('+'):
-            position_change_direction = 1
+            position_change_directive = POSITION_ADD
             position_str = position_str[1:]
         elif position_str.startswith('-'):
-            position_change_direction = -1
+            position_change_directive = POSITION_SUB
             position_str = position_str[1:]
         try:
             position = locale.atof(position_str)
         except ValueError:
             raise ParseError(f'invalid position (\'{position_str}\')', location)
         condensed_line = condensed_line[break_index:].strip()
-
     if len(condensed_line) == 0:
-        return d, None, None, ticker, (position, position_change_direction), None, None, kind, location
+        return Entry(d, ticker, kind, location,
+                     positioning=(position, position_change_directive))
 
     amount_components = condensed_line.split('@')
     dividend: Optional[Amount] = None
@@ -382,7 +408,9 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
                 d2 = parse_datestamp(amount_datestamp, strict=True)
             except ValueError:
                 raise ParseError(f'invalid date format (\'{amount_datestamp}\')', location)
-    return d, d2, d3, ticker, (position, position_change_direction), amount, dividend, kind, location
+    return Entry(d, ticker, kind, location,
+                 positioning=(position, position_change_directive),
+                 payout_date=d2, ex_date=d3, amount=amount, dividend=dividend)
 
 
 def parse_amount_date(text: str) \
