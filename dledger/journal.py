@@ -9,7 +9,7 @@ from dledger.formatutil import format_amount, decimalplaces
 from dledger.fileutil import fileencoding
 from dledger.dateutil import parse_datestamp
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, date
 from decimal import Decimal
 
@@ -19,6 +19,10 @@ from enum import Enum
 SUPPORTED_TYPES = ['journal', 'nordnet']
 
 IMPORT_EX_DATE = False  # whether to import ex- or payout date when reading non-journal transactions
+
+POSITION_SET = 0  # directive to set or infer absolute position
+POSITION_ADD = 1  # directive/multiplier to add to previous position
+POSITION_SUB = -1  # directive/multiplier to subtract from previous position
 
 
 class Distribution(Enum):
@@ -46,11 +50,17 @@ class EntryAttributes:
     These are properties that can only be known at parse-time, as a journal entry may undergo
     several processing steps ultimately changing its final representation.
 
-    For example, whether a record is preliminary or not cannot be deduced after processing,
+    For example, whether a record is preliminary or not cannot be deduced after processing
     as it will end up having a generated amount attached to it (where it would otherwise be None).
     """
 
     location: Tuple[str, int]  # journal:linenumber
+    # todo: we need this information during parsing in order to infer an absolute position,
+    #       however, once we're done parsing, this field rarely becomes very useful later on,
+    #       as it will generally always equal (position, POSITION_SET)
+    #       this is the case since because positional records are typically redundant and will
+    #       be pruned anyway. consider whether we can do something to make this more useful?
+    positioning: Tuple[Optional[float], int]  # position/change:directive
     is_preliminary: bool = False  # True if amount component left blank intentionally
     preliminary_amount: Optional[Amount] = None
 
@@ -61,7 +71,7 @@ class Transaction:
 
     entry_date: date  # no assumption whether this is payout, ex-date or other
     ticker: str
-    position: float
+    position: float  # absolute position
     amount: Optional[Amount] = None
     dividend: Optional[Amount] = None
     kind: Distribution = Distribution.FINAL
@@ -172,12 +182,15 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
     for entry in journal_entries:
         # todo: hackily pack, then unpack to get mutable copies of each attribute
-        #       part of easing refactoring, but should be done in cleaner fashion; maybe replace()?
-        d, d2, d3, ticker, amount, dividend, kind, location = (entry.entry_date, entry.payout_date,
-                                                               entry.ex_date, entry.ticker,
-                                                               entry.amount, entry.dividend,
-                                                               entry.kind, entry.location)
-        p, p_directive = entry.positioning
+        d, d2, d3, ticker, amount, dividend, attr = (entry.entry_date, entry.payout_date,
+                                                     entry.ex_date, entry.ticker,
+                                                     entry.amount, entry.dividend,
+                                                     entry.entry_attr)
+
+        assert attr is not None
+
+        p, p_directive = attr.positioning
+        location = attr.location
 
         if p is None or p_directive != POSITION_SET:
             # infer position from previous entries
@@ -185,6 +198,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                 r.ex_date if r.ex_date is not None else r.entry_date,
                 r.ispositional
             ))
+
             for previous_record in reversed(by_ex_date):
                 if previous_record.ticker == ticker:
                     if previous_record.position is None:
@@ -193,7 +207,8 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                         continue
                     if p is None:
                         p = 0
-                    p = truncate_floating_point(previous_record.position + p * p_directive)
+                    p_delta = p * p_directive
+                    p = truncate_floating_point(previous_record.position + p_delta)
                     if p < 0:
                         raise ParseError(f'position change to negative position ({p})', location)
                     break
@@ -242,14 +257,15 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
             prelim_amount = amount
             is_incomplete = True
 
-        entry_attribs = EntryAttributes(
-            location, is_preliminary=is_incomplete, preliminary_amount=prelim_amount)
+        transaction_attribs = replace(attr,
+                                      preliminary_amount=prelim_amount,
+                                      is_preliminary=is_incomplete)
 
-        transaction = Transaction(
-            d, ticker, p,
-            amount if prelim_amount is None else None,
-            dividend, kind,
-            payout_date=d2, ex_date=d3, entry_attr=entry_attribs)
+        transaction = replace(entry,
+                              amount=amount if prelim_amount is None else None,
+                              entry_attr=transaction_attribs,
+                              position=p,
+                              dividend=dividend)
 
         records.append(transaction)
 
@@ -293,28 +309,8 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
     return records
 
 
-@dataclass(frozen=True)
-class Entry:
-    # todo: this class is almost identical to Transaction, but includes 'positioning' info
-    #       we should look into a consolidation here to avoid excessive amounts of datastructures
-    entry_date: date
-    ticker: str
-    kind: Distribution
-    location: Tuple[str, int]
-    positioning: Tuple[Optional[float], int]
-    payout_date: Optional[date] = None
-    ex_date: Optional[date] = None
-    amount: Optional[Amount] = None
-    dividend: Optional[Amount] = None
-
-
-POSITION_SET = 0  # directive to set absolute position
-POSITION_ADD = 1  # directive/multiplier to add to previous position
-POSITION_SUB = -1  # directive/multiplier to subtract from previous position
-
-
 def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
-        -> Entry:
+        -> Transaction:
     condensed_line = '  '.join(lines)
     if len(condensed_line) < 10:  # the shortest starting transaction line is "YYYY/M/D X"
         raise ParseError('invalid transaction', location)
@@ -374,8 +370,9 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
             raise ParseError(f'invalid position (\'{position_str}\')', location)
         condensed_line = condensed_line[break_index:].strip()
     if len(condensed_line) == 0:
-        return Entry(d, ticker, kind, location,
-                     positioning=(position, position_change_directive))
+        return Transaction(d, ticker, -1,  # note -1 position; consider this None
+                           entry_attr=EntryAttributes(
+                               location, positioning=(position, position_change_directive)))
 
     amount_components = condensed_line.split('@')
     dividend: Optional[Amount] = None
@@ -407,9 +404,10 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
                 d2 = parse_datestamp(amount_datestamp, strict=True)
             except ValueError:
                 raise ParseError(f'invalid date format (\'{amount_datestamp}\')', location)
-    return Entry(d, ticker, kind, location,
-                 positioning=(position, position_change_directive),
-                 payout_date=d2, ex_date=d3, amount=amount, dividend=dividend)
+    return Transaction(d, ticker, -1,  # note -1 position; consider this None
+                       kind=kind, payout_date=d2, ex_date=d3, amount=amount, dividend=dividend,
+                       entry_attr=EntryAttributes(
+                               location, positioning=(position, position_change_directive)))
 
 
 def parse_amount_date(text: str) \
