@@ -132,7 +132,6 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     transaction_start = re.compile(r'[0-9]+[-/][0-9]+[-/][0-9]+')
 
     with open(path, newline='', encoding=encoding) as file:
-        starting_line_number = -1
         line_number = 0
         lines: List[str] = []
         # start reading, line by line; each line read representing part of the current transaction
@@ -141,30 +140,31 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         # that line), and then repeat until end of file
         while line := file.readline():
             line_number += 1
-            # remove any surrounding whitespace
-            line = line.strip()
             # strip any comment
             if '#' in line:
                 line = line[:line.index('#')]
             # determine start of next transaction
-            if transaction_start.match(line) is not None:
-                if len(lines) > 0:
-                    # parse all lines read up to this point (e.g. parse previous transaction)
-                    journal_entries.append(read_journal_transaction(
-                        lines, location=(path, starting_line_number)))
-                    lines.clear()
-                # we will reach this line *before* parsing the first actual transaction,
-                # even if zero lines above it, which means starting_line_number can only equal -1
-                # if we never reach a valid transaction
-                starting_line_number = line_number
-            if len(line) > 0:
-                lines.append(line)
+            if transaction_start.match(line.strip()) is not None:
+                for n, previous_line in enumerate(reversed(lines)):
+                    if transaction_start.match(previous_line.strip()) is not None:
+                        lines = lines[len(lines) - 1 - n:]
+
+                        journal_entries.append(read_journal_transaction(
+                            lines, location=(path, line_number - len(lines))))
+                        lines.clear()
+
+                        break
+
+            lines.append(line)
         if len(lines) > 0:
-            if starting_line_number == -1:
-                # find the line number of the first line with content
-                starting_line_number = line_number - len(lines) + 1
-            journal_entries.append(read_journal_transaction(
-                lines, location=(path, starting_line_number)))
+            for n, previous_line in enumerate(reversed(lines)):
+                if transaction_start.match(previous_line.strip()) is not None:
+                    lines = lines[len(lines) - 1 - n:]
+
+                    journal_entries.append(read_journal_transaction(
+                        lines, location=(path, line_number - n)))
+
+                    break
 
     # transactions are not necessarily ordered by date in a journal
     # so they must be sorted prior to inferring positions/currencies
