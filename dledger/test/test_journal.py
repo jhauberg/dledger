@@ -92,6 +92,22 @@ def test_empty_journal():
     assert len(records) == 0
 
 
+def test_single_journal():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
+    path = '../example/single.journal'
+
+    records = read(path, kind='journal')
+
+    assert len(records) == 1
+
+    assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
+                                     amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.73, places=2, symbol='$', fmt='$ %s'),
+                                     entry_attr=EntryAttributes(location=(path, 3),
+                                                                positioning=(100, POSITION_SET)))
+
+
 def test_simple_journal():
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
 
