@@ -133,7 +133,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
 
     with open(path, newline='', encoding=encoding) as file:
         line_number = 0
-        lines: List[str] = []
+        lines: List[Tuple[int, str]] = []
         # start reading, line by line; each line read representing part of the current transaction
         # once we encounter a line starting with what looks like a date, we take that to indicate
         # the beginning of next transaction and parse all lines read up to this point (excluding
@@ -145,24 +145,27 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                 line = line[:line.index('#')]
             # determine start of next transaction
             if transaction_start.match(line.strip()) is not None:
-                for n, previous_line in enumerate(reversed(lines)):
+                for n, (previous_line_number, previous_line) in enumerate(reversed(lines)):
                     if transaction_start.match(previous_line.strip()) is not None:
-                        lines = lines[len(lines) - 1 - n:]
-
+                        offset = n + 1
+                        lines = lines[len(lines) - offset:]
+                        print(lines)
                         journal_entries.append(read_journal_transaction(
-                            lines, location=(path, line_number - len(lines))))
+                            [l for (j, l) in lines], location=(path, previous_line_number)))
                         lines.clear()
 
                         break
 
-            lines.append(line)
+            lines.append((line_number, line))  # todo: also attach info, e.g. TRANSACTION_START
+                                               #       so we don't have to do regex check twice
         if len(lines) > 0:
-            for n, previous_line in enumerate(reversed(lines)):
+            for n, (previous_line_number, previous_line) in enumerate(reversed(lines)):
                 if transaction_start.match(previous_line.strip()) is not None:
-                    lines = lines[len(lines) - 1 - n:]
+                    offset = n + 1
+                    lines = lines[len(lines) - offset:]
 
                     journal_entries.append(read_journal_transaction(
-                        lines, location=(path, line_number - n)))
+                        [l for (j, l) in lines], location=(path, previous_line_number)))
 
                     break
 
@@ -311,7 +314,11 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
 
 def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         -> Transaction:
-    condensed_line = '  '.join(lines)
+    # todo: this process assumes lines that are sanitized and not a bunch of empty space
+    #       - this impedes our ability to determine precise line number/column
+    lines = [l.strip() for l in lines if len(l.strip()) > 0]
+    condensed_line = '  '.join(lines)  # todo: similarly, this alter the original representation
+                                       #       and makes it difficult to deduce original location
     if len(condensed_line) < 10:  # the shortest starting transaction line is "YYYY/M/D X"
         raise ParseError('invalid transaction', location)
     datestamp_end_index = condensed_line.index(' ')
