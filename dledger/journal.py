@@ -149,7 +149,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                     if transaction_start.match(previous_line.strip()) is not None:
                         offset = n + 1
                         lines = lines[len(lines) - offset:]
-                        print(lines)
+                        
                         journal_entries.append(read_journal_transaction(
                             [l for (j, l) in lines], location=(path, previous_line_number)))
                         lines.clear()
