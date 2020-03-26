@@ -311,6 +311,10 @@ def test_positions_journal():
                                      entry_attr=EntryAttributes(location=(path, 9),
                                                                 positioning=(140, POSITION_SET)))
 
+
+def test_positions_format_journal():
+    trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
+
     path = '../example/positions-oddformat.journal'
 
     records = read(path, kind='journal')

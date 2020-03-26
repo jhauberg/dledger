@@ -149,7 +149,7 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                     if transaction_start.match(previous_line.strip()) is not None:
                         offset = n + 1
                         lines = lines[len(lines) - offset:]
-                        
+
                         journal_entries.append(read_journal_transaction(
                             [l for (j, l) in lines], location=(path, previous_line_number)))
                         lines.clear()
@@ -314,25 +314,31 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
 
 def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         -> Transaction:
-    # todo: this process assumes lines that are sanitized and not a bunch of empty space
-    #       - this impedes our ability to determine precise line number/column
-    lines = [l.strip() for l in lines if len(l.strip()) > 0]
-    condensed_line = '  '.join(lines)  # todo: similarly, this alter the original representation
-                                       #       and makes it difficult to deduce original location
-    if len(condensed_line) < 10:  # the shortest starting transaction line is "YYYY/M/D X"
+    if len(lines) == 0 or len(lines[0]) < 10:
         raise ParseError('invalid transaction', location)
-    datestamp_end_index = condensed_line.index(' ')
+
+    def anyindex(string: str, sub: List[str]) -> int:
+        return min([string.index(s) for s in sub if s in string])
+
+    condensed_line = ''.join(lines)  # combine all lines into single string
+    condensed_line = condensed_line.lstrip()  # strip leading whitespace
+    try:
+        # date must be followed by either of the following separators (one or more)
+        datestamp_end_index = anyindex(condensed_line, [' ', '\n', '\t'])
+    except ValueError:
+        raise ParseError(f'invalid transaction', location)
     datestamp = condensed_line[:datestamp_end_index]
     try:
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
         raise ParseError(f'invalid date format (\'{datestamp}\')', location)
-    condensed_line = condensed_line[datestamp_end_index:].strip()
-    break_separators = ['(',   # position opener
-                        '[',   # secondary date opener
-                        '  ',  # manually spaced (or automatically spaced by newline)
-                        '\t']  # manually tabbed
+    condensed_line = condensed_line[datestamp_end_index:]
+    # todo: at this point, any stripping done will make us lose ability to figure out which line
+    #       we're really on; e.g. linebreaks are lost
+    #       - count \n's before lstrip? e.g. before and after = linebreaks
+    condensed_line = condensed_line.lstrip()
     try:
+        # determine where ticker ends by the first appearance of any of the following separators
         # note that by including [ as a breaker, we allow additional formatting options
         # but it also requires any position () to always be the next component after ticker
         # e.g. this format is allowed:
@@ -342,22 +348,19 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         # it must instead be:
         #   "2019/12/31 ABC (10) [2020/01/15] $ 1"
         # (the secondary date is like a tag attached to the cash amount)
-        break_index = min([condensed_line.index(sep) for sep in break_separators
-                           if sep in condensed_line])
+        break_index = anyindex(condensed_line, ['(', '[', '  ', '\n', '\t'])
     except ValueError:
         raise ParseError(f'invalid transaction', location)
-    ticker = None
     kind = Distribution.FINAL
-    if break_index is not None:
-        ticker = condensed_line[:break_index].strip()
-        if ticker.startswith('*'):
-            kind = Distribution.SPECIAL
-            ticker = ticker[1:].strip()
-        elif ticker.startswith('^'):
-            kind = Distribution.INTERIM
-            ticker = ticker[1:].strip()
-        condensed_line = condensed_line[break_index:].strip()
-    if ticker is None or len(ticker) == 0:
+    ticker = condensed_line[:break_index].strip()
+    if ticker.startswith('*'):
+        kind = Distribution.SPECIAL
+        ticker = ticker[1:].strip()
+    elif ticker.startswith('^'):
+        kind = Distribution.INTERIM
+        ticker = ticker[1:].strip()
+    condensed_line = condensed_line[break_index:].strip()
+    if len(ticker) == 0:
         raise ParseError('invalid ticker format', location)
     position: Optional[float] = None
     position_change_directive = POSITION_SET
