@@ -21,3 +21,8 @@ $ 77
 
 
   $ 107.8
+
+2019/12/01 * AAPL  $ 107.8
+
+#2019/12/01 *  # note that this transaction is seemingly identical to the one above
+#AAPL $ 107.8  # however, this format is not supported; ticker and kind must be on same line

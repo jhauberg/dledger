@@ -3,7 +3,7 @@ import locale
 from datetime import date
 
 from dledger.journal import (
-    Transaction, EntryAttributes, Amount,
+    Transaction, EntryAttributes, Amount, Distribution,
     POSITION_SET, POSITION_ADD, POSITION_SUB,
     read, remove_redundant_journal_transactions, parse_amount
 )
@@ -319,7 +319,7 @@ def test_positions_format_journal():
 
     records = read(path, kind='journal')
 
-    assert len(records) == 4
+    assert len(records) == 5
 
     assert records[0] == Transaction(date(2019, 2, 14), 'AAPL', 100,
                                      amount=Amount(73, places=0, symbol='$', fmt='$ %s'),
@@ -341,6 +341,12 @@ def test_positions_format_journal():
                                      dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'),
                                      entry_attr=EntryAttributes(location=(path, 19),
                                                                 positioning=(140, POSITION_SET)))
+    assert records[4] == Transaction(date(2019, 12, 1), 'AAPL', 140,
+                                     kind=Distribution.SPECIAL,
+                                     amount=Amount(107.8, places=1, symbol='$', fmt='$ %s'),
+                                     dividend=Amount(0.77, places=2, symbol='$', fmt='$ %s'),
+                                     entry_attr=EntryAttributes(location=(path, 25),
+                                                                positioning=(None, POSITION_SET)))
 
 
 def test_position_inference_journal():
