@@ -143,29 +143,32 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
             # strip any comment
             if '#' in line:
                 line = line[:line.index('#')]
+            # remove leading and trailing whitespace
+            line = line.strip()
             # determine start of next transaction
-            if transaction_start.match(line.strip()) is not None:
+            if transaction_start.match(line) is not None:
                 for n, (previous_line_number, previous_line) in enumerate(reversed(lines)):
-                    if transaction_start.match(previous_line.strip()) is not None:
+                    if transaction_start.match(previous_line) is not None:
                         offset = n + 1
                         lines = lines[len(lines) - offset:]
 
                         journal_entries.append(read_journal_transaction(
-                            [l for (j, l) in lines], location=(path, previous_line_number)))
+                            lines, location=(path, previous_line_number)))
                         lines.clear()
 
                         break
 
-            lines.append((line_number, line))  # todo: also attach info, e.g. TRANSACTION_START
-                                               #       so we don't have to do regex check twice
+            if len(line) > 0:
+                lines.append((line_number, line))  # todo: also attach info, e.g. TRANSACTION_START
+                                                   #       so we don't have to do regex check twice
         if len(lines) > 0:
             for n, (previous_line_number, previous_line) in enumerate(reversed(lines)):
-                if transaction_start.match(previous_line.strip()) is not None:
+                if transaction_start.match(previous_line) is not None:
                     offset = n + 1
                     lines = lines[len(lines) - offset:]
 
                     journal_entries.append(read_journal_transaction(
-                        [l for (j, l) in lines], location=(path, previous_line_number)))
+                        lines, location=(path, previous_line_number)))
 
                     break
 
@@ -312,16 +315,19 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
     return records
 
 
-def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
+def read_journal_transaction(lines: List[Tuple[int, str]], *, location: Tuple[str, int]) \
         -> Transaction:
-    if len(lines) == 0 or len(lines[0]) < 10:
+    if len(lines) == 0:
         raise ParseError('invalid transaction', location)
 
     def anyindex(string: str, sub: List[str]) -> int:
+        """ Return the first index of any matching string in a list of substrings. """
         return min([string.index(s) for s in sub if s in string])
 
-    condensed_line = ''.join(lines)  # combine all lines into single string
-    condensed_line = condensed_line.lstrip()  # strip leading whitespace
+    # combine all lines into single string, adding double-space to replace linebreak
+    full_line = '  '.join([l for (_, l) in lines])
+    # strip leading and trailing whitespace; we don't need to keep edging linebreaks
+    condensed_line = full_line.strip()
     try:
         # date must be followed by either of the following separators (one or more)
         datestamp_end_index = anyindex(condensed_line, [' ', '\n', '\t'])
@@ -332,11 +338,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
         raise ParseError(f'invalid date format (\'{datestamp}\')', location)
-    condensed_line = condensed_line[datestamp_end_index:]
-    # todo: at this point, any stripping done will make us lose ability to figure out which line
-    #       we're really on; e.g. linebreaks are lost
-    #       - count \n's before lstrip? e.g. before and after = linebreaks
-    condensed_line = condensed_line.lstrip()
+    condensed_line = condensed_line[datestamp_end_index:].strip()
     try:
         # determine where ticker ends by the first appearance of any of the following separators
         # note that by including [ as a breaker, we allow additional formatting options
@@ -352,7 +354,7 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     except ValueError:
         raise ParseError(f'invalid transaction', location)
     kind = Distribution.FINAL
-    ticker = condensed_line[:break_index].strip()
+    ticker = condensed_line[:break_index].strip()  # todo: incorrect if */^ followed by newline
     if ticker.startswith('*'):
         kind = Distribution.SPECIAL
         ticker = ticker[1:].strip()
@@ -403,7 +405,16 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     if len(amount_components) > 0:
         amount_str, amount_datestamp = parse_amount_date(amount_components[0].strip())
         if len(amount_str) > 0:
-            amount = parse_amount(amount_str, location=location)
+            try:
+                amount = parse_amount(amount_str, location=location)
+            except ParseError as e:
+                lx = -1
+                for (linenumber, line) in lines:
+                    # todo: this is absolutely not bulletproof
+                    if amount_components[0] in line:
+                        lx = linenumber
+                assert lx != -1
+                raise ParseError(e.args[0], location=(location[0], lx))
             if amount.value < 0:
                 raise ParseError(f'negative amount (\'{amount.value}\')', location)
         else:
