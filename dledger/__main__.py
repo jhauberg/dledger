@@ -43,7 +43,7 @@ from dledger import __version__
 from dledger.dateutil import parse_period
 from dledger.localeutil import trysetlocale
 from dledger.printutil import enable_color_escapes
-from dledger.record import in_period
+from dledger.record import in_period, tickers
 from dledger.report import (
     print_simple_report,
     print_simple_rolling_report,
@@ -124,6 +124,14 @@ def main() -> None:
     exchange_rates = symbol_conversion_factors(records)
     ticker = args['--by-ticker']
     if ticker is not None:
+        unique_tickers = tickers(records)
+        # first look for exact match
+        if ticker not in unique_tickers:
+            # otherwise look for partial matches
+            matching_tickers = [t for t in unique_tickers if
+                                t.startswith(ticker)]  # note case-sensitive
+            if len(matching_tickers) == 1:  # unambiguous match
+                ticker = matching_tickers[0]
         # filter down to only include records by ticker
         records = list(r for r in records if r.ticker == ticker)
     # produce estimate amounts for preliminary or incomplete records,
@@ -202,12 +210,14 @@ def main() -> None:
             if args['--by-payout-date']:
                 skipped_transactions = [r for r in journaled_transactions if r.payout_date is None]
                 for transaction in skipped_transactions:
+                    assert transaction.entry_attr is not None
                     journal, linenumber = transaction.entry_attr.location
                     print(f'{journal}:{linenumber} transaction is missing payout date',
                           file=sys.stderr)
             elif args['--by-ex-date']:
                 skipped_transactions = [r for r in journaled_transactions if r.ex_date is None]
                 for transaction in skipped_transactions:
+                    assert transaction.entry_attr is not None
                     journal, linenumber = transaction.entry_attr.location
                     print(f'{journal}:{linenumber} transaction is missing ex-dividend date',
                           file=sys.stderr)

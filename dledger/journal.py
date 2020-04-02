@@ -9,16 +9,20 @@ from dledger.formatutil import format_amount, decimalplaces
 from dledger.fileutil import fileencoding
 from dledger.dateutil import parse_datestamp
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, date
 from decimal import Decimal
 
-from typing import List, Tuple, Optional, Any, Dict, Iterable
+from typing import List, Union, Tuple, Optional, Any, Dict, Iterable
 from enum import Enum
 
 SUPPORTED_TYPES = ['journal', 'nordnet']
 
 IMPORT_EX_DATE = False  # whether to import ex- or payout date when reading non-journal transactions
+
+POSITION_SET = 0  # directive to set or infer absolute position
+POSITION_ADD = 1  # directive/multiplier to add to previous position
+POSITION_SUB = -1  # directive/multiplier to subtract from previous position
 
 
 class Distribution(Enum):
@@ -33,7 +37,7 @@ class Distribution(Enum):
 class Amount:
     """ Represents a cash amount. """
 
-    value: float
+    value: Union[float, int]
     places: Optional[int] = None
     symbol: Optional[str] = None
     fmt: Optional[str] = None
@@ -41,8 +45,24 @@ class Amount:
 
 @dataclass(frozen=True)
 class EntryAttributes:
+    """ Represents a set of attributes describing some facts about a journal entry.
+
+    These are properties that can only be known at parse-time, as a journal entry may undergo
+    several processing steps ultimately changing its final representation.
+
+    For example, whether a record is preliminary or not cannot be deduced after processing
+    as it will end up having a generated amount attached to it (where it would otherwise be None).
+    """
+
     location: Tuple[str, int]  # journal:linenumber
+    # todo: we need this information during parsing in order to infer an absolute position,
+    #       however, once we're done parsing, this field rarely becomes very useful later on,
+    #       as it will generally always equal (position, POSITION_SET)
+    #       this is the case since because positional records are typically redundant and will
+    #       be pruned anyway. consider whether we can do something to make this more useful?
+    positioning: Tuple[Optional[float], int]  # position/change:directive
     is_preliminary: bool = False  # True if amount component left blank intentionally
+    preliminary_amount: Optional[Amount] = None
 
 
 @dataclass(frozen=True, unsafe_hash=True)
@@ -51,7 +71,7 @@ class Transaction:
 
     entry_date: date  # no assumption whether this is payout, ex-date or other
     ticker: str
-    position: float
+    position: float  # absolute position
     amount: Optional[Amount] = None
     dividend: Optional[Amount] = None
     kind: Distribution = Distribution.FINAL
@@ -59,15 +79,27 @@ class Transaction:
     ex_date: Optional[date] = None
     entry_attr: Optional[EntryAttributes] = None
 
+    @property
+    def ispositional(self):
+        """ Return True if transaction only records a position component, False otherwise.
+
+        This is typically the case for a buy/sell transaction.
+        """
+        return self.amount is None and self.dividend is None
+
     def __lt__(self, other):  # type: ignore
+        def literal_location(r: Transaction) -> Tuple[str, int]:
+            return r.entry_attr.location if r.entry_attr is not None else ('', 0)
         # sort by primary date and always put buy/sell transactions later if on same date
         # e.g.  2019/01/01 ABC (+10)
         #       2019/01/01 ABC (10)  $ 1
         #   =>
         #       2019/01/01 ABC (10)  $ 1
         #       2019/01/01 ABC (+10)
-        return (self.entry_date, self.amount is None and self.dividend is None) < \
-               (other.entry_date, other.amount is None and other.dividend is None)
+        # thirdly, take literal order in journal into account (both linenumber and path)
+        # finally, to stabilize sorting in all cases, use ticker for alphabetical ordering
+        return (self.entry_date, self.ispositional, literal_location(self), self.ticker) < \
+               (other.entry_date, other.ispositional, literal_location(other), other.ticker)
 
 
 class ParseError(Exception):
@@ -80,7 +112,6 @@ def read(path: str, kind: str) \
     """ Return a list of records imported from a file. """
 
     encoding = fileencoding(path)
-
     if encoding is None or len(encoding) == 0:
         raise ValueError(f'Path could not be read: \'{path}\'')
 
@@ -88,7 +119,6 @@ def read(path: str, kind: str) \
         return read_journal_transactions(path, encoding)
     elif kind == 'nordnet':
         return read_nordnet_transactions(path, encoding)
-
     return []
 
 
@@ -102,45 +132,52 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
     transaction_start = re.compile(r'[0-9]+[-/][0-9]+[-/][0-9]+')
 
     with open(path, newline='', encoding=encoding) as file:
-        starting_line_number = -1
         line_number = 0
-        lines: List[str] = []
+        lines: List[Tuple[int, str]] = []
         # start reading, line by line; each line read representing part of the current transaction
         # once we encounter a line starting with what looks like a date, we take that to indicate
         # the beginning of next transaction and parse all lines read up to this point (excluding
         # that line), and then repeat until end of file
         while line := file.readline():
             line_number += 1
-            # remove any surrounding whitespace
-            line = line.strip()
             # strip any comment
             if '#' in line:
                 line = line[:line.index('#')]
+            # remove leading and trailing whitespace
+            line = line.strip()
             # determine start of next transaction
             if transaction_start.match(line) is not None:
-                if len(lines) > 0:
-                    # parse all lines read up to this point (e.g. parse previous transaction)
-                    journal_entries.append(read_journal_transaction(
-                        lines, location=(path, starting_line_number)))
-                    lines.clear()
-                # we will reach this line *before* parsing the first actual transaction,
-                # even if zero lines above it, which means starting_line_number can only equal -1
-                # if we never reach a valid transaction
-                starting_line_number = line_number
+                for n, (previous_line_number, previous_line) in enumerate(reversed(lines)):
+                    if transaction_start.match(previous_line) is not None:
+                        offset = n + 1
+                        lines = lines[len(lines) - offset:]
+
+                        journal_entries.append(read_journal_transaction(
+                            lines, location=(path, previous_line_number)))
+                        lines.clear()
+
+                        break
+
             if len(line) > 0:
-                lines.append(line)
+                lines.append((line_number, line))  # todo: also attach info, e.g. TRANSACTION_START
+                                                   #       so we don't have to do regex check twice
         if len(lines) > 0:
-            if starting_line_number == -1:
-                # find the line number of the first line with content
-                starting_line_number = line_number - len(lines) + 1
-            journal_entries.append(read_journal_transaction(
-                lines, location=(path, starting_line_number)))
+            for n, (previous_line_number, previous_line) in enumerate(reversed(lines)):
+                if transaction_start.match(previous_line) is not None:
+                    offset = n + 1
+                    lines = lines[len(lines) - offset:]
+
+                    journal_entries.append(read_journal_transaction(
+                        lines, location=(path, previous_line_number)))
+
+                    break
 
     # transactions are not necessarily ordered by date in a journal
     # so they must be sorted prior to inferring positions/currencies
     # note that position change entries are always sorted to occur *after*
     # any realized transaction on the same date (see Transaction.__lt__)
-    journal_entries = sorted(journal_entries, key=lambda r: (r[0], r[5] is None and r[6] is None))
+    journal_entries = sorted(
+        journal_entries, key=lambda r: (r.entry_date, r.amount is None and r.dividend is None))
 
     records: List[Transaction] = []
 
@@ -150,16 +187,24 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         return float(v)
 
     for entry in journal_entries:
-        d, d2, d3, ticker, position, amount, dividend, kind, location = entry
-        p, p_direction = position
+        # todo: hackily pack, then unpack to get mutable copies of each attribute
+        d, d2, d3, ticker, amount, dividend, attr = (entry.entry_date, entry.payout_date,
+                                                     entry.ex_date, entry.ticker,
+                                                     entry.amount, entry.dividend,
+                                                     entry.entry_attr)
 
-        if p is None or p_direction != 0:
+        assert attr is not None
+
+        p, p_directive = attr.positioning
+        location = attr.location
+
+        if p is None or p_directive != POSITION_SET:
             # infer position from previous entries
-            # todo: this sorting rule occurs in multiple places; should consolidate
             by_ex_date = sorted(records, key=lambda r: (
                 r.ex_date if r.ex_date is not None else r.entry_date,
-                r.amount is None and r.dividend is None
+                r.ispositional
             ))
+
             for previous_record in reversed(by_ex_date):
                 if previous_record.ticker == ticker:
                     if previous_record.position is None:
@@ -168,7 +213,8 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
                         continue
                     if p is None:
                         p = 0
-                    p = truncate_floating_point(previous_record.position + p * p_direction)
+                    p_delta = p * p_directive
+                    p = truncate_floating_point(previous_record.position + p_delta)
                     if p < 0:
                         raise ParseError(f'position change to negative position ({p})', location)
                     break
@@ -193,24 +239,41 @@ def read_journal_transactions(path: str, encoding: str = 'utf-8') \
         if p is None:
             raise ParseError(f'position could not be inferred', location)
 
+        if amount is not None and p == 0:
+            raise ParseError(f'payout on closed position', location)
+
         if amount is not None and dividend is None:
-            inferred_dividend = truncate_floating_point(amount.value / p, places=2)
+            inferred_dividend = truncate_floating_point(amount.value / p)
             dividend = Amount(inferred_dividend,
                               places=decimalplaces(inferred_dividend),
                               symbol=amount.symbol,
                               fmt=amount.fmt)
+
+        if amount is None and dividend is None:
+            if d2 is not None or d3 is not None:
+                raise ParseError(f'associated date on positional record', location)
 
         if d2 is not None and d3 is not None:
             if d2 < d3:
                 raise ParseError(f'payout date dated earlier than ex-date', location)
 
         is_incomplete = False
-        if amount is None and dividend is not None:
+        prelim_amount = None
+        if (amount is None or amount is not None and amount.value == 0) and dividend is not None:
+            prelim_amount = amount
             is_incomplete = True
 
-        records.append(
-            Transaction(d, ticker, p, amount, dividend, kind, payout_date=d2, ex_date=d3,
-                        entry_attr=EntryAttributes(location, is_preliminary=is_incomplete)))
+        transaction_attribs = replace(attr,
+                                      preliminary_amount=prelim_amount,
+                                      is_preliminary=is_incomplete)
+
+        transaction = replace(entry,
+                              amount=amount if prelim_amount is None else None,
+                              entry_attr=transaction_attribs,
+                              position=p,
+                              dividend=dividend)
+
+        records.append(transaction)
 
     records = remove_redundant_journal_transactions(records)
 
@@ -222,57 +285,62 @@ def remove_redundant_journal_transactions(records: List[Transaction]) \
     for ticker in set([record.ticker for record in records]):
         recs = list(r for r in records if r.ticker == ticker)
         # find all entries that only record a change in position
-        position_records = list(r for r in recs if r.amount is None and r.dividend is None)
-
+        position_records = list(r for r in recs if r.ispositional)
         if len(position_records) == 0:
             continue
-
         # find all dividend transactions (e.g. cash received or earned)
-        realized_records = list(r for r in recs if r.amount is not None or r.dividend is not None)
-
-        if len(realized_records) > 0:
-            latest_record = realized_records[-1]
-            # at this point we no longer need to keep some of the position entries around,
-            # as we have already used them to infer and determine position for each realized entry
-            for record in position_records:
-                # so each position entry dated prior to a dividend entry is basically redundant
-                if record.position == 0:
-                    # unless it's a closer, in which case we have to keep it around in any case
-                    # (e.g. see example/strategic.journal)
-                    continue
-                if latest_record.ex_date is not None and record.entry_date >= latest_record.ex_date:
-                    continue
-                is_redundant = False
-                if record.entry_date < latest_record.entry_date:
-                    is_redundant = True
-                elif record.entry_date == latest_record.entry_date and \
-                        math.isclose(record.position, latest_record.position, abs_tol=0.000001):
-                    is_redundant = True
-                if is_redundant:
-                    records.remove(record)
+        realized_records = list(r for r in recs if r not in position_records)
+        if len(realized_records) == 0:
+            continue
+        latest_record = realized_records[-1]
+        # at this point we no longer need to keep some of the position entries around,
+        # as we have already used them to infer and determine position for each realized entry
+        for record in position_records:
+            # so each position entry dated prior to a dividend entry is basically redundant
+            if record.position == 0:
+                # unless it's a closer, in which case we have to keep it around in any case
+                # (e.g. see example/strategic.journal)
+                continue
+            if latest_record.ex_date is not None and record.entry_date >= latest_record.ex_date:
+                continue
+            is_redundant = False
+            if record.entry_date < latest_record.entry_date:
+                is_redundant = True
+            elif record.entry_date == latest_record.entry_date and \
+                    math.isclose(record.position, latest_record.position, abs_tol=0.000001):
+                is_redundant = True
+            if is_redundant:
+                records.remove(record)
 
     return records
 
 
-def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
-        -> Tuple[date, Optional[date], Optional[date], str, Tuple[Optional[float], int], Optional[Amount], Optional[Amount], Distribution, Tuple[str, int]]:
-    condensed_line = '  '.join(lines)
-    if len(condensed_line) < 10:  # the shortest starting transaction line is "YYYY/M/D X"
+def read_journal_transaction(lines: List[Tuple[int, str]], *, location: Tuple[str, int]) \
+        -> Transaction:
+    if len(lines) == 0:
         raise ParseError('invalid transaction', location)
-    datestamp_end_index = condensed_line.index(' ')
+
+    def anyindex(string: str, sub: List[str]) -> int:
+        """ Return the first index of any matching string in a list of substrings. """
+        return min([string.index(s) for s in sub if s in string])
+
+    # combine all lines into single string, adding double-space to replace linebreak
+    full_line = '  '.join([l for (_, l) in lines])
+    # strip leading and trailing whitespace; we don't need to keep edging linebreaks
+    condensed_line = full_line.strip()
+    try:
+        # date must be followed by either of the following separators (one or more)
+        datestamp_end_index = anyindex(condensed_line, [' ', '\n', '\t'])
+    except ValueError:
+        raise ParseError(f'invalid transaction', location)
     datestamp = condensed_line[:datestamp_end_index]
-    d: Optional[date] = None
     try:
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
         raise ParseError(f'invalid date format (\'{datestamp}\')', location)
     condensed_line = condensed_line[datestamp_end_index:].strip()
-    break_separators = ['(',   # position opener
-                        '[',   # secondary date opener
-                        '  ',  # manually spaced (or automatically spaced by newline)
-                        '\t']  # manually tabbed
-    break_index: Optional[int] = None
     try:
+        # determine where ticker ends by the first appearance of any of the following separators
         # note that by including [ as a breaker, we allow additional formatting options
         # but it also requires any position () to always be the next component after ticker
         # e.g. this format is allowed:
@@ -282,51 +350,49 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
         # it must instead be:
         #   "2019/12/31 ABC (10) [2020/01/15] $ 1"
         # (the secondary date is like a tag attached to the cash amount)
-        break_index = min([condensed_line.index(sep) for sep in break_separators
-                           if sep in condensed_line])
+        break_index = anyindex(condensed_line, ['(', '[', '  ', '\n', '\t'])
     except ValueError:
         raise ParseError(f'invalid transaction', location)
-    ticker = None
     kind = Distribution.FINAL
-    if break_index is not None:
-        ticker = condensed_line[:break_index].strip()
-        if ticker.startswith('*'):
-            kind = Distribution.SPECIAL
-            ticker = ticker[1:].strip()
-        elif ticker.startswith('^'):
-            kind = Distribution.INTERIM
-            ticker = ticker[1:].strip()
-        condensed_line = condensed_line[break_index:].strip()
-    if ticker is None or len(ticker) == 0:
+    ticker = condensed_line[:break_index].strip()  # todo: incorrect if */^ followed by newline
+    if ticker.startswith('*'):
+        kind = Distribution.SPECIAL
+        ticker = ticker[1:].strip()
+    elif ticker.startswith('^'):
+        kind = Distribution.INTERIM
+        ticker = ticker[1:].strip()
+    condensed_line = condensed_line[break_index:].strip()
+    if len(ticker) == 0:
         raise ParseError('invalid ticker format', location)
     position: Optional[float] = None
-    position_change_direction = 0
+    position_change_directive = POSITION_SET
     if ')' in condensed_line:
         break_index = condensed_line.index(')') + 1
         position_str = condensed_line[:break_index].strip()
         position_str = position_str[1:-1].strip()
         if position_str.startswith('+'):
-            position_change_direction = 1
+            position_change_directive = POSITION_ADD
             position_str = position_str[1:]
         elif position_str.startswith('-'):
-            position_change_direction = -1
+            position_change_directive = POSITION_SUB
             position_str = position_str[1:]
         try:
             position = locale.atof(position_str)
         except ValueError:
             raise ParseError(f'invalid position (\'{position_str}\')', location)
         condensed_line = condensed_line[break_index:].strip()
-
     if len(condensed_line) == 0:
-        return d, None, None, ticker, (position, position_change_direction), None, None, kind, location
+        return Transaction(d, ticker, -1,  # note -1 position; consider this None
+                           entry_attr=EntryAttributes(
+                               location, positioning=(position, position_change_directive)))
 
     amount_components = condensed_line.split('@')
     dividend: Optional[Amount] = None
     d3: Optional[date] = None
     if len(amount_components) > 1:
-        dividend_str, dividend_datestamp = split_amount_date(amount_components[1].strip())
+        dividend_str, dividend_datestamp = parse_amount_date(amount_components[1].strip())
         if len(dividend_str) > 0:
-            dividend = split_amount(dividend_str, location=location)
+            dividend = parse_amount(dividend_str, location=location)
             if dividend.value <= 0:
                 raise ParseError(f'negative or zero dividend (\'{dividend.value}\')', location)
         if dividend_datestamp is not None:
@@ -337,11 +403,20 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
     amount: Optional[Amount] = None
     d2: Optional[date] = None
     if len(amount_components) > 0:
-        amount_str, amount_datestamp = split_amount_date(amount_components[0].strip())
+        amount_str, amount_datestamp = parse_amount_date(amount_components[0].strip())
         if len(amount_str) > 0:
-            amount = split_amount(amount_str, location=location)
-            if amount.value <= 0:
-                raise ParseError(f'negative or zero amount (\'{amount.value}\')', location)
+            try:
+                amount = parse_amount(amount_str, location=location)
+            except ParseError as e:
+                lx = -1
+                for (linenumber, line) in lines:
+                    # todo: this is absolutely not bulletproof
+                    if amount_components[0] in line:
+                        lx = linenumber
+                assert lx != -1
+                raise ParseError(e.args[0], location=(location[0], lx))
+            if amount.value < 0:
+                raise ParseError(f'negative amount (\'{amount.value}\')', location)
         else:
             if dividend is None:
                 raise ParseError(f'missing amount', location)
@@ -350,10 +425,13 @@ def read_journal_transaction(lines: List[str], *, location: Tuple[str, int]) \
                 d2 = parse_datestamp(amount_datestamp, strict=True)
             except ValueError:
                 raise ParseError(f'invalid date format (\'{amount_datestamp}\')', location)
-    return d, d2, d3, ticker, (position, position_change_direction), amount, dividend, kind, location
+    return Transaction(d, ticker, -1,  # note -1 position; consider this None
+                       kind=kind, payout_date=d2, ex_date=d3, amount=amount, dividend=dividend,
+                       entry_attr=EntryAttributes(
+                               location, positioning=(position, position_change_directive)))
 
 
-def split_amount_date(text: str) \
+def parse_amount_date(text: str) \
         -> Tuple[str, Optional[str]]:
     m = re.search(r'\[(.*)\]', text)  # match anything encapsulated by []
     if m is None:
@@ -363,49 +441,58 @@ def split_amount_date(text: str) \
     return text.strip(), d
 
 
-def split_amount(amount: str, *, location: Tuple[str, int]) \
+def parse_amount(amount: str, *, location: Tuple[str, int]) \
         -> Amount:
+    def isbeginning(char: str) -> bool:
+        return char.isdecimal() or (char == '+' or
+                                    char == '-' or
+                                    char == '.' or
+                                    char == ',')
     symbol: Optional[str] = None
-    lhs = ''
-
-    for c in amount:
-        if c.isdigit() or (c == '+' or
-                           c == '-'):
-            break
-        lhs += c
-
-    amount = amount[len(lhs):]
-
+    # accumulate right-hand side of string by going through each character, in reverse
     rhs = ''
-
     for c in reversed(amount):
-        if c.isdigit() or (c == '+' or
-                           c == '-'):
+        # until finding the first occurrence of beginning of an amount
+        if isbeginning(c):
             break
         rhs = c + rhs
-
+    # assume first part of string the amount and remainder the symbol
     amount = amount[:len(amount) - len(rhs)]
-
-    if len(lhs) > 0:
-        symbol = lhs.strip()
+    # accumulate left-hand side of string by going through each character
+    lhs = ''
+    for c in amount:
+        if isbeginning(c):
+            break
+        lhs += c
+    # assume remainder of string is the amount and lhs is the symbol
+    amount = amount[len(lhs):]
+    # parse out symbol using left/right-hand sides of the string
     if len(rhs) > 0:
-        if symbol is not None:
-            raise ParseError(f'ambiguous symbol definition (\'{symbol}\' or \'{rhs.strip()}\'?)', location)
         symbol = rhs.strip()
-
+    if len(lhs) > 0:
+        if symbol is not None:
+            # a symbol can exist on both sides of the string, but then which one do we use?
+            raise ParseError(f'ambiguous symbol definition (\'{symbol}\' or \'{lhs.strip()}\'?)', location)
+        symbol = lhs.strip()
     if symbol is None or len(symbol) == 0:
         raise ParseError(f'missing symbol definition', location)
 
-    value: Optional[float] = None
+    # user-entered format; either lhs or rhs will always be empty at this point
+    fmt = f'{lhs}%s{rhs}'
 
-    try:
-        value = locale.atof(amount)
-    except ValueError:
-        raise ParseError(f'invalid value (\'{amount}\')', location)
+    if len(amount) > 0:
+        # an amount has been entered
+        try:
+            value = locale.atof(amount)
+        except ValueError:
+            raise ParseError(f'invalid value (\'{amount}\')', location)
+    else:
+        value = int(0)  # note int-type
+        # default/fallback format
+        # (when no entered amount, no formatting can be determined other than symbol)
+        fmt = f'%s {symbol}'
 
-    assert value is not None
-
-    return Amount(value, places=decimalplaces(amount), symbol=symbol, fmt=f'{lhs}%s{rhs}')
+    return Amount(value, places=decimalplaces(amount), symbol=symbol, fmt=fmt)
 
 
 def read_nordnet_transactions(path: str, encoding: str = 'utf-8') \
@@ -492,8 +579,6 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     dividend_rate_str = dividend_rate_str.replace(',', '.')
 
     trysetlocale(locale.LC_NUMERIC, ['en_US', 'en-US', 'en'])
-
-    dividend_rate: Optional[float] = None
 
     try:
         dividend_rate = locale.atof(dividend_rate_str)

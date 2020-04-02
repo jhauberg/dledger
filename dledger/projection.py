@@ -193,18 +193,25 @@ def convert_estimates(records: List[Transaction],
     for rec in estimate_records:
         conversion_factor = 1.0
         assert rec.dividend is not None
-        estimate_symbol = rec.dividend.symbol
-        estimate_format = rec.dividend.fmt
-        latest_transaction = latest(by_ticker(transactions, rec.ticker))
-        if latest_transaction is not None:
-            assert latest_transaction.amount is not None
-            estimate_symbol = latest_transaction.amount.symbol
-            estimate_format = latest_transaction.amount.fmt
-            if rec.dividend.symbol != latest_transaction.amount.symbol:
-                assert rec.dividend.symbol is not None
-                assert latest_transaction.amount.symbol is not None
-                conversion_factor = rates[(rec.dividend.symbol,
-                                           latest_transaction.amount.symbol)]
+        if rec.entry_attr is not None and rec.entry_attr.preliminary_amount is not None:
+            estimate_symbol = rec.entry_attr.preliminary_amount.symbol
+            estimate_format = rec.entry_attr.preliminary_amount.fmt
+            assert rec.dividend.symbol is not None
+            assert estimate_symbol is not None
+            conversion_factor = rates[(rec.dividend.symbol, estimate_symbol)]
+        else:
+            estimate_symbol = rec.dividend.symbol
+            estimate_format = rec.dividend.fmt
+            latest_transaction = latest(by_ticker(transactions, rec.ticker))
+            if latest_transaction is not None:
+                assert latest_transaction.amount is not None
+                estimate_symbol = latest_transaction.amount.symbol
+                estimate_format = latest_transaction.amount.fmt
+                if rec.dividend.symbol != latest_transaction.amount.symbol:
+                    assert rec.dividend.symbol is not None
+                    assert latest_transaction.amount.symbol is not None
+                    conversion_factor = rates[(rec.dividend.symbol,
+                                               latest_transaction.amount.symbol)]
         estimate_amount = GeneratedAmount(
             value=(rec.position * rec.dividend.value) * conversion_factor,
             symbol=estimate_symbol, fmt=estimate_format)
@@ -370,6 +377,8 @@ def estimated_transactions(records: List[Transaction]) \
         if latest_transaction is None:
             continue
 
+        assert latest_transaction.amount is not None
+
         sched = estimated_schedule(transactions, latest_transaction)
 
         scheduled_months = sched.months
@@ -378,12 +387,6 @@ def estimated_transactions(records: List[Transaction]) \
         future_date = latest_transaction.entry_date
         # estimate timeframe by latest actual record
         future_timeframe = projected_timeframe(future_date)
-
-        can_convert_from_dividend = False
-        if (latest_transaction.dividend is not None and
-                latest_transaction.dividend.symbol != latest_transaction.amount.symbol):
-            # todo: would be great to get rid of this variable
-            can_convert_from_dividend = True
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
@@ -412,7 +415,7 @@ def estimated_transactions(records: List[Transaction]) \
             future_dividend_value: Optional[float] = None
             future_dividend_places: Optional[int] = None
             if future_dividend is not None:
-                if can_convert_from_dividend:
+                if future_dividend.symbol != latest_transaction.amount.symbol:
                     assert future_dividend.symbol is not None
                     assert latest_transaction.amount.symbol is not None
                     conversion_factor = conversion_factors[(future_dividend.symbol,
@@ -429,7 +432,7 @@ def estimated_transactions(records: List[Transaction]) \
 
                 aps = [amount_per_share(r) for r in reference_records]
 
-                if len(divs) > 0 and can_convert_from_dividend:
+                if len(divs) > 0:
                     assert latest_transaction.amount.symbol is not None
                     assert latest_transaction.dividend.symbol is not None
                     conversion_factor = conversion_factors[(latest_transaction.dividend.symbol,
@@ -458,7 +461,7 @@ def estimated_transactions(records: List[Transaction]) \
                                                      places=future_dividend_places,
                                                      symbol=latest_transaction.dividend.symbol,
                                                      fmt=latest_transaction.dividend.fmt)
-                                                           if can_convert_from_dividend else
+                                                           if future_dividend_value is not None else
                                                            None))
 
             scheduled_records.append(future_record)
@@ -468,7 +471,9 @@ def estimated_transactions(records: List[Transaction]) \
     return sorted(approximate_records)
 
 
-def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount]:
+def next_linear_dividend(records: List[Transaction],
+                         *, kind: Distribution = Distribution.FINAL) \
+        -> Optional[GeneratedAmount]:
     """ Return the next linearly projected dividend if any, None otherwise. """
 
     transactions = list(r for r in records if r.amount is not None)
@@ -480,9 +485,9 @@ def next_linear_dividend(records: List[Transaction]) -> Optional[GeneratedAmount
     if latest_transaction.dividend is not None:
         comparable_transactions: List[Transaction] = []
         for comparable_transaction in reversed(transactions):
-            if comparable_transaction.kind is not Distribution.FINAL:
-                # don't include interim/special dividends as they do not necessarily follow
-                # the same policy or pattern as final dividends
+            if comparable_transaction.kind is not kind:
+                # skip if not same kind, as different kinds of distributions
+                # might follow different schedules
                 continue
             if (comparable_transaction.dividend is None or
                     comparable_transaction.dividend.symbol != latest_transaction.dividend.symbol):
@@ -545,14 +550,10 @@ def future_transactions(records: List[Transaction]) \
             # don't project closed positions
             continue
 
-        if transaction.kind == Distribution.INTERIM:
-            # todo: still ramp, but using past interim dividends
-            future_dividend = transaction.dividend
-        else:
-            future_dividend = next_linear_dividend(matching_transactions)
+        future_dividend = next_linear_dividend(matching_transactions, kind=transaction.kind)
 
-            if future_dividend is None:
-                future_dividend = transaction.dividend
+        if future_dividend is None:
+            future_dividend = transaction.dividend
 
         future_amount = future_position * amount_per_share(transaction)
 

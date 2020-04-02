@@ -4,7 +4,7 @@ This document provides a reference to the usage and inner workings of the [`dled
 
 ## Introduction
 
-`dledger` is a local-first, command-line tool for tracking and forecasting dividend income, hence the name "dividend ledger".
+`dledger` is a local-first, command-line tool for tracking and forecasting dividend income, hence the name "dividend" or "dollar ledger", both "dledger" for short.
 
 In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accounting-apps) and [plain-text accounting](https://plaintextaccounting.org), `dledger` is small, portable and reliable, and operates on plain-text journals that are both easy to read and quick to edit- and most importantly, all yours.
 
@@ -21,31 +21,67 @@ $ python3 setup.py install
 ```
 
 | Dependency                   | Description                                  | Version | License |
-| ---------------------------- | -------------------------------------------- | ------- | ------- |
+| :--------------------------- | :------------------------------------------- | :------ | :------ |
 | [docopt](http://docopt.org/) | Describe and parse a command-line interface. | 0.6.2   | MIT     |
 
 ### Usage
+
+The `dledger` program has many commands, flags and arguments.
+
+You can explore and get a full overview of all usage patterns through `--help`:
 
 ```shell
 $ dledger --help
 ```
 
+This might seem overwhelming, but the typical usage pattern is `$ dledger <command> <journal> <flags>`, where `<flags>` are always optional.
+
+For example, the simplest and most useful command-line is simply:
+
+```shell
+$ dledger report ~/.journal
+```
+
+This invokes `dledger` using the `report` command on the journal-file located at `~/.journal`.
+
 # Journals
 
 In the ledger-like universe, a journal is a simple plain-text file that you edit and format manually- by hand.
 
-The journal is where you keep all your transactions. Each transaction is recorded in a compatible format and `dledger` is simply a tool to produce reports on these transactions.
+The journal is where you keep all your transactions. Each transaction is recorded in a compatible format and `dledger` is simply a tool to process or produce reports on these transactions.
 
 There are no requirements on how you name your journal files, nor which extension to use. A common practice is to apply the `.journal` extension.
 
+Here's a [complete example journal-file](dledger/example/simple.journal), for reference:
+
+```
+# this file serves as an example journal for dledger
+
+2019/02/14 AAPL (100)
+  $ 73
+
+2019/05/16 AAPL
+  $ 77
+
+2019/08/15 AAPL
+  $ 77
+
+2019/11/14 AAPL
+  $ 77
+```
+
+*Note that the hashtag/pound-symbol here indicates a line that is a comment for the human reader; the program will just ignore it.*
+
 ## Transactions
 
-A `dledger` compatible transaction consist of the following elements:
+A `dledger` compatible transaction consist (at minimum) of the following elements:
 
 1) A date
 2) A ticker
 3) A position
-4) A cash amount
+4) A cash amount\*
+
+<sup>\*only on dividend transactions</sup>
 
 Here's an example of a genesis transaction (the first record for any given ticker), where $1 was received in dividends for a position of 10 shares in ABC (a fictional company in this context):
 

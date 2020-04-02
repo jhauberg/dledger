@@ -1,5 +1,8 @@
+import locale
+
 from datetime import datetime, date, timedelta
 
+from dledger.localeutil import trysetlocale
 from dledger.dateutil import (
     months_between, in_months,
     next_month, previous_month, last_of_month,
@@ -163,13 +166,39 @@ def test_parse_period():
                                                      date(2019, 11, 11))
 
     today = datetime.today().date()
+
+    assert parse_period('11') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('11:12') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('6:1') == (date(today.year, 1, 1), date(today.year, 6, 1))
+
     tomorrow = today + timedelta(days=1)
     yesterday = today + timedelta(days=-1)
 
     assert parse_period('today') == (today, tomorrow)
+    assert parse_period('tod') == (today, tomorrow)
+    assert parse_period('Today') == (today, tomorrow)
     assert parse_period('tomorrow') == (tomorrow, tomorrow + timedelta(days=1))
+    assert parse_period('tom') == (tomorrow, tomorrow + timedelta(days=1))
     assert parse_period('yesterday') == (yesterday, today)
+    assert parse_period('yest') == (yesterday, today)
+    assert parse_period('y') == (yesterday, today)
 
     assert parse_period('today:tomorrow') == (today, tomorrow)
     assert parse_period('tomorrow:tomorrow') == (tomorrow, tomorrow)
     assert parse_period('yesterday:tomorrow') == (yesterday, tomorrow)
+    assert parse_period('y:tom') == (yesterday, tomorrow)
+
+    trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
+
+    assert parse_period('november') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('November') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('nov') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('no') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period('n') == (date(today.year, 11, 1), date(today.year, 12, 1))
+
+    assert parse_period('nov:dec') == (date(today.year, 11, 1), date(today.year, 12, 1))
+
+    trysetlocale(locale.LC_TIME, ['da_DK', 'da-DK', 'da'])
+
+    assert parse_period('marts') == (date(today.year, 3, 1), date(today.year, 4, 1))
+    assert parse_period('feb') == (date(today.year, 2, 1), date(today.year, 3, 1))
