@@ -195,6 +195,15 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                     line = f'{line}    {d} {transaction.ticker.ljust(8)}'
 
         if detailed:
+            p_decimal_places = position_decimal_places[transaction.ticker]
+            if p_decimal_places is not None:
+                p = format_amount(transaction.position, trailing_zero=False,
+                                  places=p_decimal_places)
+            else:
+                p = format_amount(transaction.position, trailing_zero=False, rounded=False)
+            position = f'({p})'.rjust(18)
+            line = f'{line} {position}'
+
             if transaction.dividend is not None:
                 div_decimal_places = dividend_decimal_places[transaction.ticker]
                 if div_decimal_places is not None:
@@ -203,19 +212,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                 else:
                     dividend = format_amount(transaction.dividend.value)
                 dividend = transaction.dividend.fmt % dividend
-
-                line = f'{line} {dividend.rjust(18)}'
-            else:
-                line = f'{line} ' + (' ' * 18)
-
-            p_decimal_places = position_decimal_places[transaction.ticker]
-            if p_decimal_places is not None:
-                p = format_amount(transaction.position, trailing_zero=False, places=p_decimal_places)
-            else:
-                p = format_amount(transaction.position, trailing_zero=False, rounded=False)
-            position = f'({p})'.rjust(16)
-
-            line = f'{line} {position}'
+                line = f'{line} {dividend.rjust(16)}'
 
         if should_colorize_expired_transaction:
             line = colored(line, COLOR_NEGATIVE)
