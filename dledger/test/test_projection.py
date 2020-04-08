@@ -868,12 +868,13 @@ def test_scheduled_transactions_sampling():
         # note 5 days earlier than in the past; this leads to an additional projection
         # since there's not more than 12m between; e.g. records sampled will range from:
         #  2019/03/05 (exclusive) - 2020/03/05 (inclusive)
+        #   e.g. 2019/03/10 => 2020/03/15, but this one will be discarded (as it has been realized)
         Transaction(date(2020, 3, 5), 'ABC', 1, Amount(100)),
     ]
 
     scheduled = scheduled_transactions(records, since=date(2020, 3, 12))
 
-    assert len(scheduled) == 3
+    assert len(scheduled) == 4
     assert scheduled[0].entry_date == date(2020, 6, 15)
 
     records = [
@@ -891,6 +892,7 @@ def test_scheduled_transactions_sampling():
 
     assert len(scheduled) == 4
     assert scheduled[0].entry_date == GeneratedDate(2020, 6, 15)
+    assert scheduled[3].entry_date == GeneratedDate(2021, 3, 15)
 
     records = [
         Transaction(date(2019, 3, 10), 'ABC', 1, Amount(100)),
@@ -984,8 +986,9 @@ def test_scheduled_transactions_sampling():
 
     scheduled = scheduled_transactions(records, since=date(2019, 1, 3))
 
-    assert len(scheduled) == 11
+    assert len(scheduled) == 12
     assert scheduled[0].entry_date == GeneratedDate(2019, 2, 15)
+    assert scheduled[11].entry_date == GeneratedDate(2020, 1, 15)
 
     records = [
         Transaction(date(2019, 4, 30), 'ABC', 1, Amount(100)),
@@ -1239,3 +1242,19 @@ def test_secondary_date_quarterly():
 
     assert transactions[2].entry_date == date(2020, 1, 13)
     assert transactions[3].entry_date == date(2020, 4, 30)
+
+
+def test_12month_projection():
+    records = [
+        Transaction(date(2019, 4, 4), 'TOP', 1, amount=Amount(1), dividend=Amount(1)),
+        Transaction(date(2020, 4, 3), 'TOP', 2, amount=Amount(2), dividend=Amount(1), payout_date=date(2020, 4, 7))
+    ]
+    # here we expect 2020/4/3 => 2021/4/15, but since that is more than 365 days away
+    # this test reveals whether projections count by days or months;
+    # e.g. we expect a forecast to include any projections within remainder of current month, all
+    # up until next month, a year ahead: e.g. 2020/4/8 (inclusive) to 2021/5/1 (exclusive)
+    projections = scheduled_transactions(records, since=date(2020, 4, 8))
+
+    assert len(projections) == 1
+
+    assert projections[0].entry_date == date(2021, 4, 15)
