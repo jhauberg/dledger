@@ -7,6 +7,8 @@ usage: dledger report  <journal>... [--period=<interval>] [-V]
                                     [--by-ticker=<ticker>]
                                     [--by-payout-date | --by-ex-date]
                                     [--in-currency=<symbol>]
+       dledger balance <journal>... [--by-payout-date | --by-ex-date]
+                                    [--in-currency=<symbol>]
        dledger stats   <journal>... [--period=<interval>] [-V]
        dledger print   <journal>... [--condensed] [-V]
        dledger convert <file>...    [--type=<name>] [-V]
@@ -49,6 +51,7 @@ from dledger.report import (
     print_simple_rolling_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
     print_simple_sum_report, print_simple_weight_by_ticker,
+    print_balance_report,
     print_stats
 )
 from dledger.projection import (
@@ -108,7 +111,7 @@ def main() -> None:
         write(records, file=sys.stdout, condensed=args['--condensed'])
         sys.exit(0)
 
-    interval = args['--period']
+    interval = args['--period'] if not args['balance'] else 'tomorrow:'
     if interval is not None:
         interval = parse_period(interval)
 
@@ -180,6 +183,9 @@ def main() -> None:
         # forcefully apply an exchange to given currency
         transactions = convert_to_currency(
             transactions, symbol=exchange_symbol, rates=exchange_rates)
+
+    if args['balance']:
+        print_balance_report(transactions)
 
     if args['report']:
         # finally produce and print a report

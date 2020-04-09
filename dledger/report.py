@@ -365,3 +365,57 @@ def print_simple_rolling_report(records: List[Transaction]):
 
         if commodity != commodities[-1] and should_breakline:
             print()
+
+
+def print_balance_report(records: List[Transaction]):
+    commodities = sorted(symbols(records, excluding_dividends=True))
+
+    for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, records))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+        total_income = income(matching_transactions)
+        ticks = tickers(matching_transactions)
+        target_weight = 100 / len(ticks)
+        target_income = total_income * target_weight / 100
+        weights = []
+        for ticker in ticks:
+            filtered_records = list(by_ticker(records, ticker))
+            latest_transaction_by_ticker = latest(filtered_records)
+            assert latest_transaction_by_ticker is not None
+            position = latest_transaction_by_ticker.position
+            income_by_ticker = income(filtered_records)
+            number_of_payouts = len(filtered_records)
+            amount = format_amount(income_by_ticker, trailing_zero=False)
+            amount = latest_transaction.amount.fmt % amount
+            weight = income_by_ticker / total_income * 100
+            # weight_drift = target_weight - weight
+            amount_drift = target_income - income_by_ticker
+            aps = income_by_ticker / position
+            position_drift = amount_drift / aps
+            drift = position_drift
+            has_estimate = any(isinstance(r.amount, GeneratedAmount) for r in filtered_records)
+            weights.append((ticker, amount, weight, position, drift, number_of_payouts, has_estimate))
+        weights.sort(key=lambda w: w[2], reverse=True)
+        for weight in weights:
+            ticker, amount, pct, p, drift, n, has_estimate = weight
+            pct = f'{format_amount(pct)}%'
+            freq = f'{n}'
+            if has_estimate:
+                line = f'~ {amount.rjust(18)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}'
+            else:
+                line = f'{amount.rjust(20)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}'
+            p = format_amount(p, places=decimalplaces(p))
+            position = f'({p})'.rjust(18)
+            if drift >= 0:
+                # increase position (buy)
+                drift = f'(+{format_amount(drift)})'.rjust(16)
+            else:
+                # decrease position (sell)
+                drift = f'(-{format_amount(abs(drift))})'.rjust(16)
+            line = f'{line} {position} {drift}'
+            print(line)
+        if commodity != commodities[-1]:
+            print()
