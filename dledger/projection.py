@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from statistics import multimode, fmean
 
 from dledger.journal import Transaction, Distribution, Amount
-from dledger.dateutil import last_of_month, months_between, in_months
+from dledger.dateutil import last_of_month, months_between, in_months, next_month
 from dledger.formatutil import decimalplaces
 from dledger.record import (
     by_ticker, tickers, trailing, latest, before, monthly_schedule, dividends, deltas,
@@ -288,6 +288,8 @@ def scheduled_transactions(records: List[Transaction],
             continue
         # otherwise, add the trailing 12 months of transactions by this ticker
         sample_records.extend(
+            # note using latest_record dating as that potentially adds to the amount of information
+            # we'll have available (frequency etc.), and then rely on filtering out older ones later
             trailing(recs, since=latest_record.entry_date, months=12))
     # don't include special dividend transactions
     sample_records = [r for r in sample_records if r.kind is not Distribution.SPECIAL]
@@ -311,10 +313,15 @@ def scheduled_transactions(records: List[Transaction],
         # it does not, so use this estimate to fill out gap
         scheduled.append(future_record)
     # weed out projections in the past or later than 12 months into the future
-    cutoff_date = in_months(since, months=12)
-    # add a grace period
+    # note that we potentially include more than 365 days here;
+    #   e.g. remainder of current month + 12 full months
+    cutoff_date = next_month(in_months(since, months=12))
+    # and with a grace period going back in time, keeping unrealized projections around for a while
     earliest_date = since + timedelta(days=-EARLY_LATE_THRESHOLD)
-    scheduled = [r for r in scheduled if cutoff_date >= r.entry_date >= earliest_date]
+    # example timespan: since=2020/04/08
+    #   [2020/03/23] inclusive, up to
+    #   [2021/05/01] exclusive
+    scheduled = [r for r in scheduled if cutoff_date > r.entry_date >= earliest_date]
     for sample_record in sample_records:
         if sample_record.amount is None:
             # skip buy/sell transactions; they should not have any effect on this bit of filtering

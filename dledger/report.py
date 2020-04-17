@@ -195,6 +195,15 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                     line = f'{line}    {d} {transaction.ticker.ljust(8)}'
 
         if detailed:
+            p_decimal_places = position_decimal_places[transaction.ticker]
+            if p_decimal_places is not None:
+                p = format_amount(transaction.position, trailing_zero=False,
+                                  places=p_decimal_places)
+            else:
+                p = format_amount(transaction.position, trailing_zero=False, rounded=False)
+            position = f'({p})'.rjust(18)
+            line = f'{line} {position}'
+
             if transaction.dividend is not None:
                 div_decimal_places = dividend_decimal_places[transaction.ticker]
                 if div_decimal_places is not None:
@@ -203,19 +212,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                 else:
                     dividend = format_amount(transaction.dividend.value)
                 dividend = transaction.dividend.fmt % dividend
-
-                line = f'{line} {dividend.rjust(18)}'
-            else:
-                line = f'{line} ' + (' ' * 18)
-
-            p_decimal_places = position_decimal_places[transaction.ticker]
-            if p_decimal_places is not None:
-                p = format_amount(transaction.position, trailing_zero=False, places=p_decimal_places)
-            else:
-                p = format_amount(transaction.position, trailing_zero=False, rounded=False)
-            position = f'({p})'.rjust(16)
-
-            line = f'{line} {position}'
+                line = f'{line} {dividend.rjust(16)}'
 
         if should_colorize_expired_transaction:
             line = colored(line, COLOR_NEGATIVE)
@@ -367,4 +364,80 @@ def print_simple_rolling_report(records: List[Transaction]):
             should_breakline = True
 
         if commodity != commodities[-1] and should_breakline:
+            print()
+
+
+DRIFT_BY_WEIGHT = 0
+DRIFT_BY_AMOUNT = 1
+DRIFT_BY_POSITION = 2
+
+
+def print_balance_report(records: List[Transaction], *, deviance: int = DRIFT_BY_WEIGHT):
+    commodities = sorted(symbols(records, excluding_dividends=True))
+
+    for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, records))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+        total_income = income(matching_transactions)
+        ticks = tickers(matching_transactions)
+        target_weight = 100 / len(ticks)
+        target_income = total_income * target_weight / 100
+        weights = []
+        for ticker in ticks:
+            filtered_records = list(by_ticker(records, ticker))
+            latest_transaction_by_ticker = latest(filtered_records)
+            assert latest_transaction_by_ticker is not None
+            position = latest_transaction_by_ticker.position
+            income_by_ticker = income(filtered_records)
+            number_of_payouts = len(filtered_records)
+            # amount = format_amount(income_by_ticker, trailing_zero=False)
+            # amount = latest_transaction.amount.fmt % amount
+            weight = income_by_ticker / total_income * 100
+            weight_drift = target_weight - weight
+            amount_drift = target_income - income_by_ticker
+            # amount_drift = format_amount(amount_drift, trailing_zero=False)
+            # amount_drift = latest_transaction.amount.fmt % amount_drift
+            aps = income_by_ticker / position
+            position_drift = amount_drift / aps
+            drift = (weight_drift, amount_drift, position_drift)
+            has_estimate = any(isinstance(r.amount, GeneratedAmount) for r in filtered_records)
+            weights.append((ticker, income_by_ticker, latest_transaction.amount.fmt, weight,
+                            position, drift, number_of_payouts, has_estimate))
+        weights.sort(key=lambda w: w[1], reverse=True)
+        for weight in weights:
+            ticker, amount, fmt, pct, p, drift, n, has_estimate = weight
+            wdrift, adrift, pdrift = drift
+            pct = f'{format_amount(pct)}%'
+            freq = f'{n}'
+            amount = fmt % format_amount(amount, trailing_zero=False)
+            if has_estimate:
+                line = f'~ {amount.rjust(18)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}'
+            else:
+                line = f'{amount.rjust(20)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}'
+            p = format_amount(p, places=decimalplaces(p))
+            position = f'({p})'.rjust(18)
+            if deviance == DRIFT_BY_WEIGHT:
+                if wdrift >= 0:
+                    drift = f'+ {format_amount(wdrift)}%'.rjust(16)
+                else:
+                    drift = f'- {format_amount(abs(wdrift))}%'.rjust(16)
+            elif deviance == DRIFT_BY_AMOUNT:
+                amount_drift = fmt % format_amount(abs(adrift), trailing_zero=False)
+                if adrift >= 0:
+                    drift = f'+ {amount_drift}'.rjust(16)
+                else:
+                    drift = f'- {amount_drift}'.rjust(16)
+            elif deviance == DRIFT_BY_POSITION:
+                if pdrift >= 0:
+                    # increase position (buy)
+                    drift = f'+ {format_amount(pdrift)}'.rjust(16)
+                else:
+                    # decrease position (sell)
+                    drift = f'- {format_amount(abs(pdrift))}'.rjust(16)
+            line = f'{line} {position} {drift}'
+            print(line)
+        if commodity != commodities[-1]:
             print()

@@ -18,8 +18,6 @@ from enum import Enum
 
 SUPPORTED_TYPES = ['journal', 'nordnet']
 
-IMPORT_EX_DATE = False  # whether to import ex- or payout date when reading non-journal transactions
-
 POSITION_SET = 0  # directive to set or infer absolute position
 POSITION_ADD = 1  # directive/multiplier to add to previous position
 POSITION_SUB = -1  # directive/multiplier to subtract from previous position
@@ -534,7 +532,9 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     if len(record) < 12:
         raise ParseError(f'unexpected number of columns ({len(record)} > 12)', location)
 
-    date_value = str(record[2 if IMPORT_EX_DATE else 3]).strip()
+    entry_date_value = str(record[1]).strip()
+    ex_date_value = str(record[2]).strip()
+    payout_date_value = str(record[3]).strip()
     ticker = str(record[5]).strip()
     position_str = str(record[8]).strip()
     dividend_str = str(record[9]).strip()
@@ -549,8 +549,17 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
     amount_str = amount_str.replace('.', '')
     dividend_str = dividend_str.replace('.', '')
 
+    today = datetime.today().date()
     # parse date; expects format '2018-03-19'
-    d = datetime.strptime(date_value, "%Y-%m-%d").date()
+    entry_date = datetime.strptime(entry_date_value, "%Y-%m-%d").date()
+    if entry_date > today:
+        raise ParseError(f'entry date set in future ({entry_date_value})', location)
+    ex_date = datetime.strptime(ex_date_value, "%Y-%m-%d").date()
+    if ex_date > today:
+        raise ParseError(f'ex-dividend date set in future ({ex_date_value})', location)
+    payout_date = datetime.strptime(payout_date_value, "%Y-%m-%d").date()
+    if payout_date > today:
+        raise ParseError(f'payout date set in future ({payout_date_value})', location)
 
     prev = locale.getlocale(locale.LC_NUMERIC)
 
@@ -593,9 +602,10 @@ def read_nordnet_transaction(record: List[str], *, location: Tuple[str, int]) \
         raise ParseError(f'ambiguous dividend ({dividend} or {dividend_rate}?)', location)
 
     return Transaction(
-        d, ticker, position,
+        entry_date, ticker, position,
         Amount(amount, places=decimalplaces(amount_str), symbol=amount_symbol, fmt=f'%s {amount_symbol}'),
-        Amount(dividend, places=decimalplaces(dividend_str), symbol=dividend_symbol, fmt=f'%s {dividend_symbol}'))
+        Amount(dividend, places=decimalplaces(dividend_str), symbol=dividend_symbol, fmt=f'%s {dividend_symbol}'),
+        ex_date=ex_date, payout_date=payout_date)
 
 
 def max_decimal_places(amounts: Iterable[Optional[Amount]]) -> Optional[int]:

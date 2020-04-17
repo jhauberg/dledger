@@ -200,15 +200,15 @@ You can run the [`stats`](#stats) command to see which locale `dledger` is using
 $ dledger convert transactions.csv --type=nordnet
 ```
 
-This process is not perfect. It is very likely that the transactional data will contain errors such as inconsistent use of decimal separator, incorrect dates or similar. `dledger` will do its best to import data correctly and will always inform you instead of making assumptions, letting you fix/correct any invalid or ambiguous data before proceeding.
+This process is not perfect. It is very likely that the transactional data will contain errors such as inconsistent use of decimal separator, incorrect dates or similar. However, `dledger` will do its best to import data correctly and will always inform you instead of making assumptions, letting you fix/correct any invalid or ambiguous data before proceeding.
 
-Once your data has successfully been imported, your work is not necessarily done. The import process does not take buy/sell transactions into account. Because of this, if you want better forecasts, the next step for you is to comb through `$ dledger report your.journal` and look for unexpected transactions for positions that should be closed and then close them (by editing your journal).
+Though many inconsistencies will automatically be discovered, not all will be. For example, your transaction data might contain shredded/erroneous or duplicate entries. These will still be imported. For the best results, you should always go through the resulting journal to make sure everything looks right.
 
-You don't *have* to do this, as the transactions will naturally fade away as time passes (12 months).
+Additionally, the import process does not take buy/sell transactions into account. Because of this, if you want better forecasts, the next step (optional) for you is to comb through `$ dledger report your.journal` and look for unexpected transactions for positions that should be closed, and then close them (by editing your journal). This is not required as closed positions will naturally fade as time passes.
 
 ## Tracking methods
 
-Whenever you enter a record in your journal, you must associate a primary date with the entry. This date is the _entry date_. The date can be anything that makes sense to you, but it is also the date that forecasts will be based on.
+Whenever you enter a record in your journal, you must associate a primary date with the entry. This date is the _entry date_. The date can be anything that makes sense to you, but it is also the date that forecasts will be based on*.
 
 In general, there are typically two methods to track your dividend income:
 
@@ -217,6 +217,8 @@ In general, there are typically two methods to track your dividend income:
 2. By ex-dividend date
 
 Both methods involve recording the cash you receive, the difference being *when* record it and which date you associate with each transaction. However, picking one method does not rule out benefits of the other; it's mostly a matter of preference.
+
+<sup>\*You can base forecasts by payout- or ex-dividend dates instead with the `--by-payout-date` and `--by-ex-date` flags</sup>
 
 ### By payout date
 
@@ -553,6 +555,16 @@ dledger report ~/.journal --without-forecast | tail -n 5
 ```
 
 *Note the use of `--without-forecast` to exclude any forecasted transactions.*
+
+# Balance
+
+The `balance` command provides an overview of your projected future income over the next full 12 months, per ticker, along with an indication of drift from ideal weightings.
+
+The "ideal" weight is considered to be the percentage split equally among every holding; i.e. if you have a portfolio of 100 different companies, then the ideal income weight for each ticker is 1%.
+
+This is a conservative approach that is grounded in the belief that you cannot predict winners vs. losers, and thus should spread your risk equally. This approach should only be viewed as a guideline; it is not advice, and it is subject to personal consideration based on your own beliefs and convictions.
+
+By default, drift is indicated by the percentage difference/deviance from ideal weight. You can show drift by amount (cash), or position (shares), by setting either `--by-amount`, or `--by-position`, respectively.
 
 # Stats
 

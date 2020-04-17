@@ -7,6 +7,9 @@ usage: dledger report  <journal>... [--period=<interval>] [-V]
                                     [--by-ticker=<ticker>]
                                     [--by-payout-date | --by-ex-date]
                                     [--in-currency=<symbol>]
+       dledger balance <journal>... [--by-position | --by-amount]
+                                    [--by-payout-date | --by-ex-date]
+                                    [--in-currency=<symbol>]
        dledger stats   <journal>... [--period=<interval>] [-V]
        dledger print   <journal>... [--condensed] [-V]
        dledger convert <file>...    [--type=<name>] [-V]
@@ -21,6 +24,8 @@ OPTIONS:
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
      --in-currency=<symbol>   Show income as if exchanged to currency
+     --by-position            Show drift from target position
+     --by-amount              Show drift from target income
   -y --annual                 Show income by year
   -q --quarterly              Show income by quarter
   -m --monthly                Show income by month
@@ -49,7 +54,9 @@ from dledger.report import (
     print_simple_rolling_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
     print_simple_sum_report, print_simple_weight_by_ticker,
-    print_stats
+    print_balance_report,
+    print_stats,
+    DRIFT_BY_WEIGHT, DRIFT_BY_AMOUNT, DRIFT_BY_POSITION
 )
 from dledger.projection import (
     scheduled_transactions, convert_estimates, convert_to_currency, symbol_conversion_factors
@@ -108,7 +115,7 @@ def main() -> None:
         write(records, file=sys.stdout, condensed=args['--condensed'])
         sys.exit(0)
 
-    interval = args['--period']
+    interval = args['--period'] if not args['balance'] else 'tomorrow:'
     if interval is not None:
         interval = parse_period(interval)
 
@@ -180,6 +187,14 @@ def main() -> None:
         # forcefully apply an exchange to given currency
         transactions = convert_to_currency(
             transactions, symbol=exchange_symbol, rates=exchange_rates)
+
+    if args['balance']:
+        if args['--by-position']:
+            print_balance_report(transactions, deviance=DRIFT_BY_POSITION)
+        elif args['--by-amount']:
+            print_balance_report(transactions, deviance=DRIFT_BY_AMOUNT)
+        else:
+            print_balance_report(transactions, deviance=DRIFT_BY_WEIGHT)
 
     if args['report']:
         # finally produce and print a report
