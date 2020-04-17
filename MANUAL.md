@@ -554,6 +554,16 @@ dledger report ~/.journal --without-forecast | tail -n 5
 
 *Note the use of `--without-forecast` to exclude any forecasted transactions.*
 
+# Balance
+
+The `balance` command provides an overview of your projected future income over the next full 12 months, per ticker, along with an indication of drift from ideal weightings.
+
+The "ideal" weight is considered to be the percentage split equally among every holding; i.e. if you have a portfolio of 100 different companies, then the ideal income weight for each ticker is 1%.
+
+This is a conservative approach that is grounded in the belief that you cannot predict winners vs. losers, and thus should spread your risk equally. This approach should only be viewed as a guideline; it is not advice, and it is subject to personal consideration based on your own beliefs and convictions.
+
+By default, drift is indicated by the percentage difference/deviance from ideal weight. You can show drift by amount (cash), or position (shares), by setting either `--by-amount`, or `--by-position`, respectively.
+
 # Stats
 
 The nifty little command `stats` will show you information on one or more journals.
