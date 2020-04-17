@@ -11,6 +11,8 @@ In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accou
 | [Issue tracker](https://github.com/jhauberg/dledger/issues)                      | Contribute your bugs, comments or feature requests. |
 | [Manual](MANUAL.md)                                                              | Instructions on [setup](MANUAL.md#install) and detailed usage.           |
 
+<br />
+
 *Note that `dledger` does not use any external data; projections are based entirely on your own input.*
 
 ## Example
