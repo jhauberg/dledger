@@ -171,7 +171,7 @@ def main() -> None:
 
     if not args['--without-forecast']:
         # produce forecasted transactions dated into the future
-        records.extend(scheduled_transactions(records))
+        records.extend(scheduled_transactions(records, rates=exchange_rates))
 
     # for reporting, keep only dividend transactions
     transactions = [r for r in records if r.amount is not None]
