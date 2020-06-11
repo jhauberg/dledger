@@ -171,6 +171,8 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         if transaction.entry_attr is not None and transaction.entry_attr.is_preliminary:
             should_colorize_expired_transaction = True
             # call attention as it is a preliminary record, not completed yet
+            # note that we can't rely on color being supported,
+            # so a textual indication must also be applied
             line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
 
             if not detailed:
@@ -183,10 +185,12 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                 if transaction.entry_date < today:
                     should_colorize_expired_transaction = True
                     # call attention as it may be a payout about to happen, or a closed position
-                    line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
+                    line = f'{line}  ~ {d} {transaction.ticker.ljust(8)}'
                 else:
-                    line = f'{line}  < {d} {transaction.ticker.ljust(8)}'
+                    # indicate that the transaction is expected before, or by, date
+                    line = f'{line} <~ {d} {transaction.ticker.ljust(8)}'
             else:
+                # todo: we're ignoring these indicators for preliminary records; is that right?
                 if transaction.kind is Distribution.INTERIM:
                     line = f'{line}  ^ {d} {transaction.ticker.ljust(8)}'
                 elif transaction.kind is Distribution.SPECIAL:
