@@ -5,7 +5,12 @@ from datetime import datetime, date
 
 from dledger.journal import Transaction, Distribution, max_decimal_places
 from dledger.formatutil import format_amount, decimalplaces
-from dledger.printutil import colored, COLOR_NEGATIVE, COLOR_MARKED
+from dledger.printutil import (
+    colored,
+    COLOR_NEGATIVE, COLOR_NEGATIVE_UNDERLINED,
+    COLOR_UNDERLINED,
+    COLOR_MARKED
+)
 from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import (
     GeneratedAmount, GeneratedTransaction,
@@ -152,6 +157,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             position_decimal_places[ticker] = max(
                 decimalplaces(r.position) for r in records if r.ticker == ticker
             )
+    underlined_record = next(x for x in reversed(records) if x.entry_date < today)
     for transaction in records:
         should_colorize_expired_transaction = False
         amount_decimal_places = payout_decimal_places[transaction.ticker]
@@ -219,9 +225,12 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                 line = f'{line} {dividend.rjust(16)}'
 
         if should_colorize_expired_transaction:
-            line = colored(line, COLOR_NEGATIVE)
-        elif transaction.entry_date == today:
-            line = colored(line, COLOR_MARKED)
+            if transaction is underlined_record:
+                line = colored(line, COLOR_NEGATIVE_UNDERLINED)
+            else:
+                line = colored(line, COLOR_NEGATIVE)
+        elif transaction is underlined_record:
+            line = colored(line, COLOR_UNDERLINED)
 
         print(line)
 
