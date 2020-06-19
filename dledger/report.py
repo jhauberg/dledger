@@ -157,7 +157,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             position_decimal_places[ticker] = max(
                 decimalplaces(r.position) for r in records if r.ticker == ticker
             )
-    underlined_record = next(x for x in reversed(records) if x.entry_date < today)
+    underlined_record = next((x for x in reversed(records) if x.entry_date < today), None)
     for transaction in records:
         should_colorize_expired_transaction = False
         amount_decimal_places = payout_decimal_places[transaction.ticker]
