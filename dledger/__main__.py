@@ -102,6 +102,10 @@ def main() -> None:
             default_journal_path = os.path.expanduser("~/.dledger.journal")
             input_paths = [default_journal_path]
 
+    for path in input_paths:
+        if not os.path.isfile(path):
+            sys.exit(f'{path}: journal not found')
+
     input_type = args['--type']
     is_verbose = args['--verbose']
 
