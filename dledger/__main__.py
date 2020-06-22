@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report  <journal>... [--period=<interval>] [-V]
-                                    [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
-                                    [--without-forecast]
-                                    [--by-ticker=<ticker>]
-                                    [--by-payout-date | --by-ex-date]
-                                    [--in-currency=<symbol>]
-       dledger balance <journal>... [--by-position | --by-amount]
-                                    [--by-payout-date | --by-ex-date]
-                                    [--in-currency=<symbol>]
-       dledger stats   <journal>... [--period=<interval>] [-V]
-       dledger print   <journal>... [--condensed] [-V]
-       dledger convert <file>...    [--type=<name>] [-V]
-                                    [--output=<journal>]
+usage: dledger report  [<journal>]... [--period=<interval>] [-V]
+                                      [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
+                                      [--without-forecast]
+                                      [--by-ticker=<ticker>]
+                                      [--by-payout-date | --by-ex-date]
+                                      [--in-currency=<symbol>]
+       dledger balance [<journal>]... [--by-position | --by-amount]
+                                      [--by-payout-date | --by-ex-date]
+                                      [--in-currency=<symbol>]
+       dledger stats   [<journal>]... [--period=<interval>] [-V]
+       dledger print   [<journal>]... [--condensed] [-V]
+       dledger convert <file>...      [--type=<name>] [-V]
+                                      [--output=<journal>]
 
 OPTIONS:
      --type=<name>            Specify type of transaction data [default: journal]
@@ -39,6 +39,7 @@ OPTIONS:
 See https://github.com/jhauberg/dledger for additional details.
 """
 
+import os
 import sys
 import locale
 
@@ -90,6 +91,15 @@ def main() -> None:
     input_paths = (args['<file>']
                    if args['convert'] else
                    args['<journal>'])
+
+    if len(input_paths) == 0:
+        try:
+            default_journal_path = os.environ['DLEDGER_FILE']
+            default_journal_path = os.path.expandvars(default_journal_path)
+            default_journal_path = os.path.expanduser(default_journal_path)
+            input_paths = [default_journal_path]
+        except KeyError:
+            sys.exit(1)
 
     input_type = args['--type']
     is_verbose = args['--verbose']
