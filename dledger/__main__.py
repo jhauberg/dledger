@@ -94,12 +94,13 @@ def main() -> None:
 
     if len(input_paths) == 0:
         try:
-            default_journal_path = os.environ['DLEDGER_FILE']
-            default_journal_path = os.path.expandvars(default_journal_path)
-            default_journal_path = os.path.expanduser(default_journal_path)
-            input_paths = [default_journal_path]
+            env_journal_path = os.environ['DLEDGER_FILE']
+            env_journal_path = os.path.expandvars(env_journal_path)
+            env_journal_path = os.path.expanduser(env_journal_path)
+            input_paths = [env_journal_path]
         except KeyError:
-            sys.exit(1)
+            default_journal_path = os.path.expanduser("~/.dledger.journal")
+            input_paths = [default_journal_path]
 
     input_type = args['--type']
     is_verbose = args['--verbose']
