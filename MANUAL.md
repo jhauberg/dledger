@@ -24,6 +24,18 @@ $ python3 setup.py install
 | :--------------------------- | :------------------------------------------- | :------ | :------ |
 | [docopt](http://docopt.org/) | Describe and parse a command-line interface. | 0.6.2   | MIT     |
 
+If the installation is successful, you should now be able to run `dledger`:
+
+```shell
+$ dledger
+```
+
+Depending on your Python setup, you might have to run it as a module:
+
+```shell
+$ python3 -m dledger
+```
+
 ### Usage
 
 The `dledger` program has many commands, flags and arguments.
