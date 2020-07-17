@@ -38,9 +38,7 @@ $ python3 -m dledger
 
 ### Usage
 
-The `dledger` program has many commands, flags and arguments.
-
-You can explore and get a full overview of all usage patterns through `--help`:
+The `dledger` program has many commands, flags and arguments. You can explore and get a full overview of all usage patterns through `--help`:
 
 ```shell
 $ dledger --help
@@ -139,7 +137,7 @@ This particular example establishes an [exchange rate](#exchange-rates) between 
 
 A diligent investor will not only record their dividend transactions, but also their buy and sell transactions.
 
-This will improve [forecasts](#forecasts) inbetween periods of dividend transactions, as payout estimates are essentially based on the calculation `position * dividend` (e.g. if you change your position but don't record it, it won't be noticeable until the next time you receive a dividend- *or don't*). 
+This will improve [forecasts](#forecasts) inbetween periods of dividend transactions, as payout estimates are essentially based on the calculation `position * dividend` (e.g. if you change your position but don't record it, it won't be noticeable until the next time you receive a dividend). 
 
 A buy or sell transaction looks exactly like a dividend transaction, except it does not specify any cash amounts.
 
@@ -220,7 +218,7 @@ Additionally, the import process does not take buy/sell transactions into accoun
 
 ## Tracking methods
 
-Whenever you enter a record in your journal, you must associate a primary date with the entry. This date is the _entry date_. The date can be anything that makes sense to you, but it is also the date that forecasts will be based on*.
+Whenever you enter a record in your journal, you must associate a primary date with the entry. This date is the _entry date_. The date can be anything that makes sense to you, but it is also the date that forecasts will be based on\*.
 
 In general, there are typically two methods to track your dividend income:
 
@@ -380,7 +378,8 @@ $ dledger report example/simple.journal --quarterly
 
 The flag `--trailing` can be used to show you the total income rolling over trailing 12-month periods. This total is listed for every month passed since the very first transaction, through today.
 
-This is a popular metric among dividend growth investors, as it (assuming that the strategy is implemented correctly), reveals a consistently rising amount of income over time.
+This is a popular metric among dividend growth investors, as it can serve as a benchmark in performance of cashflow.
+
 
 ```shell
 $ dledger report example/simple.journal --trailing
@@ -407,7 +406,19 @@ For example, in the above report, the first row represents the total income of t
 
 The report will include forecasted transactions unless `--without-forecast` is set.
 
-The last row stands out, as it does not correspond to a trailing 12-month period, but instead represent the forecasted and future 12-month period, starting from today (inclusive).
+The last row stands out, as it does not correspond to a trailing 12-month period, but instead represent the forecasted and future 12-month period, starting from today (inclusive), and is effectively the sum of all future\* transactions.
+
+<sup>\*Not including forecasted transactions dated prior to today.</sup>
+
+If you're only interested in the last row, the result is effectively identical to applying [`--sum`](#sum) on the future period report:
+
+```shell
+$ dledger report example/simply.journal --sum --period=today:
+```
+
+```console
+~              $ 308
+```
 
 ### Weight
 
@@ -437,17 +448,29 @@ $ dledger report example/simple.journal --weight --period=tomorrow:
 
 ### Sum
 
-The flag `--sum` can be used to calculate the total (sum) of all income.
+The flag `--sum` can be used to calculate the total (sum) of the transactions in a report.
+
+```shell
+$ dledger report example/simple.journal --sum
+```
+
+Since reports by default include forecasted transactions, the sum also counts these:
+
+```
+~              $ 608
+```
+
+You can apply `--without-forecast` to sum without forecasted transactions:
 
 ```shell
 $ dledger report example/simple.journal --sum --without-forecast
 ```
 
-*Note the use of `--without-forecast` to exclude any forecasted transactions.*
-
 ```
                $ 304
 ```
+
+Similarly, you can reduce the number of transactions further by applying either `--period` or `--by-ticker`.
 
 ## Detailed transactions
 
@@ -502,19 +525,21 @@ Income is not converted if an exchange rate is not available for a given currenc
 
 ## Common/useful reports
 
-### Report only forecasted transactions
+### Report only future transactions
 
-This can be achieved simply by using the [`--period`](#periods) flag. If you specify a period that only includes future dates, then the report will, by definition, only include forecasted transactions.
+This can be achieved by using the [`--period`](#periods) flag. Simply specify a period that only include future dates:
 
 ```shell
 $ dledger report ~/.journal --period=tomorrow:
 ```
 
-In this example, the period will stretch from tomorrow (inclusive) through the last forecasted transaction.
+In this example, the period will stretch from tomorrow (inclusive) through the last transaction in the report.
 
-### Report forecasted income weights
+*Note that this also includes pending transactions; i.e. transactions entered into the journal, but have yet to be realized.*
 
-Building on the [previous tip](#report-only-forecasted-transactions), you can apply a future period to weigh your forecasted income sources:
+### Report future income weights
+
+Building on the [previous tip](#report-only-future-transactions), you can apply a future period to weigh your future income sources:
 
 ```shell
 $ dledger report ~/.journal --period=tomorrow: --weight
@@ -574,9 +599,9 @@ The `balance` command provides an overview of your projected future income over 
 
 The "ideal" weight is considered to be the percentage split equally among every holding; i.e. if you have a portfolio of 100 different companies, then the ideal income weight for each ticker is 1%.
 
-This is a conservative approach that is grounded in the belief that you cannot predict winners vs. losers, and thus should spread your risk equally. This approach should only be viewed as a guideline; it is not advice, and it is subject to personal consideration based on your own beliefs and convictions.
+This is a conservative approach that is grounded in the belief that you cannot predict winners vs. losers, and thus should spread your risk equally. This approach should only be viewed as a guideline; it is not advice, and it is subject to personal consideration based on own beliefs and convictions.
 
-By default, drift is indicated by the percentage difference/deviance from ideal weight. You can show drift by amount (cash), or position (shares), by setting either `--by-amount`, or `--by-position`, respectively.
+By default, drift is indicated by the percentage difference/deviance from the ideal weight. You can show drift by amount (cash), or position (shares), by setting either `--by-amount`, or `--by-position`, respectively.
 
 # Stats
 
