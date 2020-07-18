@@ -1,8 +1,11 @@
 import calendar
+import locale
 
 from datetime import datetime, timedelta, date
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
+
+from dledger.localeutil import trysetlocale
 
 
 def months_between(a: date, b: date,
@@ -191,18 +194,27 @@ def parse_period_component(component: str) -> Tuple[date, date]:
         return today + timedelta(days=1), today + timedelta(days=2)
     if component == 'yesterday':
         return today + timedelta(days=-1), today
+
+    def month_if_any(name: str) -> Optional[int]:
+        matches = [n for n, m in enumerate(calendar.month_name) if m.lower().startswith(name)]
+        # ambiguous if more than one match; return None
+        return None if len(matches) != 1 else matches[0]
     # check against month names (both abbreviated and full e.g. 'march', 'jun', etc.)
-    matching_month_names = [month_name for month_name in calendar.month_name if
-                            month_name.lower().startswith(component)]
+    # bias toward english month names first, then try localized month names
+    prev_locale = locale.getlocale(locale.LC_TIME)
+    trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
+    # enumerate every month name for this locale so we can capture
+    month = month_if_any(component)
+    locale.setlocale(locale.LC_TIME, prev_locale)
+    if month is None:
+        month = month_if_any(component)
     # note that a combination of component types is not supported for the time being
     # as it would require parse_datestamp() to include this bit and automatically
     # letting the format loose in journal entries as well; e.g. `2019/mar/14 A  $ 2`
     # might reconsider later
-    if len(matching_month_names) == 1:  # ambiguous if more than one match; move on
-        for month_index, month_name in enumerate(calendar.month_name):
-            if month_name == matching_month_names[0]:
-                starting = date(today.year, month_index, 1)
-                return starting, next_month(starting)
+    if month is not None:
+        starting = date(today.year, month, 1)
+        return starting, next_month(starting)
     # assume component is typical datestamp, as no textual keys match
     starting = parse_datestamp(component)
     # determine number of datestamp components

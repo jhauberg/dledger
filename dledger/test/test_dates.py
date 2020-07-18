@@ -202,3 +202,4 @@ def test_parse_period():
 
     assert parse_period('marts') == (date(today.year, 3, 1), date(today.year, 4, 1))
     assert parse_period('feb') == (date(today.year, 2, 1), date(today.year, 3, 1))
+    assert parse_period('oct') == (date(today.year, 10, 1), date(today.year, 11, 1))
