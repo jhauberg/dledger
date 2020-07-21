@@ -456,6 +456,12 @@ def parse_amount(amount: str, *, location: Tuple[str, int]) \
         rhs = c + rhs
     # assume first part of string the amount and remainder the symbol
     amount = amount[:len(amount) - len(rhs)]
+    # trim trailing whitespace; leading whitespace considered intentional
+    rhs = rhs.rstrip()
+    # allow up to one leading whitespace
+    rhs = (rhs[len(rhs) - len(rhs.lstrip()) - 1:]
+           if len(rhs) > len(rhs.lstrip()) else
+           rhs)
     # accumulate left-hand side of string by going through each character
     lhs = ''
     for c in amount:
@@ -464,6 +470,12 @@ def parse_amount(amount: str, *, location: Tuple[str, int]) \
         lhs += c
     # assume remainder of string is the amount and lhs is the symbol
     amount = amount[len(lhs):]
+    # trim leading whitespace; trailing whitespace considered intentional
+    lhs = lhs.lstrip()
+    # allow up to one trailing whitespace
+    lhs = (lhs[:len(lhs.rstrip()) + 1]
+           if len(lhs) > len(lhs.rstrip()) else
+           lhs)
     # parse out symbol using left/right-hand sides of the string
     if len(rhs) > 0:
         symbol = rhs.strip()
