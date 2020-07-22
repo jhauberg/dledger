@@ -98,7 +98,10 @@ def deltas(amounts: List[Amount], *, normalized: bool = True) -> List[Union[int,
 
 def tickers(records: Iterable[Transaction]) \
         -> List[str]:
-    """ Return a list of unique ticker components in a set of records. """
+    """ Return a list of unique ticker components in a set of records.
+
+    Does not guarantee original ordering.
+    """
 
     return list(set([record.ticker for record in records]))
 

@@ -54,6 +54,8 @@ def print_simple_annual_report(records: List[Transaction]):
                     line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
             else:
                 line = f'{amount.rjust(20)}    {d.ljust(11)}'
+            payers = formatted_prominent_payers(yearly_transactions)
+            line = f'{line}{payers}'
             if today.year == year:
                 print(colored(line, COLOR_MARKED))
             else:
@@ -90,6 +92,8 @@ def print_simple_monthly_report(records: List[Transaction]):
                     line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
                 else:
                     line = f'{amount.rjust(20)}    {d.ljust(11)}'
+                payers = formatted_prominent_payers(monthly_transactions)
+                line = f'{line}{payers}'
                 if today.year == year and today.month == month:
                     print(colored(line, COLOR_MARKED))
                 else:
@@ -132,6 +136,8 @@ def print_simple_quarterly_report(records: List[Transaction]):
                     line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
                 else:
                     line = f'{amount.rjust(20)}    {d.ljust(11)}'
+                payers = formatted_prominent_payers(quarterly_transactions)
+                line = f'{line}{payers}'
                 if today.year == year and ending_month > today.month >= starting_month:
                     print(colored(line, COLOR_MARKED))
                 else:
@@ -163,11 +169,12 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         underlined_record = None
     for transaction in records:
         should_colorize_expired_transaction = False
+        payout = transaction.amount.value
         amount_decimal_places = payout_decimal_places[transaction.ticker]
         if amount_decimal_places is not None:
-            amount = format_amount(transaction.amount.value, places=amount_decimal_places)
+            amount = format_amount(payout, places=amount_decimal_places)
         else:
-            amount = format_amount(transaction.amount.value)
+            amount = format_amount(payout)
         amount = transaction.amount.fmt % amount
 
         d = transaction.entry_date.strftime('%Y/%m/%d')
@@ -217,15 +224,16 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             position = f'({p})'.rjust(18)
             line = f'{line} {position}'
 
-            if transaction.dividend is not None:
-                div_decimal_places = dividend_decimal_places[transaction.ticker]
-                if div_decimal_places is not None:
-                    dividend = format_amount(transaction.dividend.value,
-                                             places=div_decimal_places)
-                else:
-                    dividend = format_amount(transaction.dividend.value)
-                dividend = transaction.dividend.fmt % dividend
-                line = f'{line} {dividend.rjust(16)}'
+            assert transaction.dividend is not None
+
+            div_decimal_places = dividend_decimal_places[transaction.ticker]
+            if div_decimal_places is not None:
+                dividend = format_amount(transaction.dividend.value,
+                                         places=div_decimal_places)
+            else:
+                dividend = format_amount(transaction.dividend.value)
+            dividend = transaction.dividend.fmt % dividend
+            line = f'{line} {dividend.rjust(16)}'
 
         if should_colorize_expired_transaction:
             if transaction is underlined_record:
@@ -289,9 +297,12 @@ def print_simple_sum_report(records: List[Transaction]) -> None:
         amount = latest_transaction.amount.fmt % amount
 
         if any(isinstance(r.amount, GeneratedAmount) for r in matching_transactions):
-            print(f'~ {amount.rjust(18)}')
+            line = f'~ {amount.rjust(18)}'
         else:
-            print(f'{amount.rjust(20)}')
+            line = f'{amount.rjust(20)}'
+        payers = formatted_prominent_payers(matching_transactions)
+        line = f'{line}               {payers}'
+        print(line)
         if commodity != commodities[-1]:
             print()
 
@@ -331,6 +342,28 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
                 print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate_amount}')
 
 
+def most_prominent_payers(records: List[Transaction]) \
+        -> List[str]:
+    combined_income_per_ticker = []
+    for ticker in tickers(records):
+        filtered_records = list(by_ticker(records, ticker))
+        combined_income_per_ticker.append((ticker, income(filtered_records)))
+    combined_income_per_ticker.sort(key=lambda x: x[1], reverse=True)
+    return [ticker for ticker, _ in combined_income_per_ticker]
+
+
+def formatted_prominent_payers(records: List[Transaction], *, limit: int = 3) -> str:
+    payers = most_prominent_payers(records)
+    top = payers[:limit]
+    bottom = [payer for payer in payers if payer not in top]
+    formatted = ', '.join(top)
+    formatted = (formatted[:30] + '…') if len(formatted) > 30 else formatted
+    if len(bottom) > 0:
+        additionals = f'(+{len(bottom)})'
+        formatted = f'{formatted} {additionals}'
+    return formatted
+
+
 def print_simple_rolling_report(records: List[Transaction]):
     today = datetime.today().date()
     years = range(earliest(records).entry_date.year,
@@ -365,6 +398,8 @@ def print_simple_rolling_report(records: List[Transaction]):
                     line = f'~ {amount.rjust(18)}  < {d.ljust(11)}'
                 else:
                     line = f'{amount.rjust(20)}  < {d.ljust(11)}'
+                payers = formatted_prominent_payers(rolling_transactions)
+                line = f'{line}{payers}'
                 if today.year == year and today.month == month:
                     print(colored(line, COLOR_MARKED))
                 else:
@@ -376,7 +411,8 @@ def print_simple_rolling_report(records: List[Transaction]):
             total = income(future_transactions)
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.fmt % amount
-            print(f'~ {amount.rjust(18)}    next 12m')
+            payers = formatted_prominent_payers(future_transactions)
+            print(f'~ {amount.rjust(18)}    next 12m   {payers}')
             should_breakline = True
 
         if commodity != commodities[-1] and should_breakline:
