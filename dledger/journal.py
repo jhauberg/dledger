@@ -417,7 +417,7 @@ def read_journal_transaction(lines: List[Tuple[int, str]], *, location: Tuple[st
                 raise ParseError(f'negative amount (\'{amount.value}\')', location)
         else:
             if dividend is None:
-                raise ParseError(f'missing amount', location)
+                raise ParseError(f'missing dividend amount', location)
         if amount_datestamp is not None:
             try:
                 d2 = parse_datestamp(amount_datestamp, strict=True)
