@@ -7,9 +7,11 @@ usage: dledger report  [<journal>]... [--period=<interval>] [-V]
                                       [--by-ticker=<ticker>]
                                       [--by-payout-date | --by-ex-date]
                                       [--in-currency=<symbol>]
+                                      [--baseline]
        dledger balance [<journal>]... [--by-position | --by-amount] [-V]
                                       [--by-payout-date | --by-ex-date]
                                       [--in-currency=<symbol>]
+                                      [--baseline]
        dledger stats   [<journal>]... [--period=<interval>] [-V]
        dledger print   [<journal>]... [--condensed] [-V]
        dledger convert <file>...      [--type=<name>] [-V]
@@ -24,6 +26,7 @@ OPTIONS:
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
      --in-currency=<symbol>   Show income as if exchanged to currency
+     --baseline               Show baseline income
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
   -y --annual                 Show income by year
@@ -183,6 +186,20 @@ def main() -> None:
         records = [r if r.ex_date is None else
                    replace(r, entry_date=r.ex_date, ex_date=None) for
                    r in records]
+
+    if args['--baseline']:
+        # convert all transactions to their baseline representations;
+        # i.e. treating all transactions as if the position was 1
+        # this is effectively just a way to reveal base dividends with
+        # exchange rates applied (if applicable)
+        def baseline_record(record: Transaction) -> Transaction:
+            if record.amount is not None:
+                baseline_amount = replace(
+                    record.amount, value=record.amount.value / record.position)
+            else:
+                baseline_amount = record.amount
+            return replace(record, position=1, amount=baseline_amount)
+        records = [baseline_record(r) if r.position > 0 else r for r in records]
 
     if not args['--without-forecast']:
         # produce forecasted transactions dated into the future
