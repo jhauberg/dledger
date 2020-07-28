@@ -469,7 +469,8 @@ def print_balance_report(records: List[Transaction], *, deviance: int = DRIFT_BY
                 line = f'~ {amount.rjust(18)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}'
             else:
                 line = f'{amount.rjust(20)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}'
-            p = format_amount(p, places=decimalplaces(p))
+            p_decimals = decimalplaces(p)
+            p = format_amount(p, places=p_decimals)
             position = f'({p})'.rjust(18)
             if deviance == DRIFT_BY_WEIGHT:
                 if wdrift >= 0:
@@ -485,10 +486,10 @@ def print_balance_report(records: List[Transaction], *, deviance: int = DRIFT_BY
             elif deviance == DRIFT_BY_POSITION:
                 if pdrift >= 0:
                     # increase position (buy)
-                    drift = f'+ {format_amount(pdrift)}'.rjust(16)
+                    drift = f'+ {format_amount(pdrift, places=p_decimals)}'.rjust(16)
                 else:
                     # decrease position (sell)
-                    drift = f'- {format_amount(abs(pdrift))}'.rjust(16)
+                    drift = f'- {format_amount(abs(pdrift), places=p_decimals)}'.rjust(16)
             line = f'{line} {position} {drift}'
             print(line)
         if commodity != commodities[-1]:
