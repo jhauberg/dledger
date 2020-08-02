@@ -8,7 +8,7 @@ usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--by-payout-date | --by-ex-date]
                                       [--as-currency=<symbol>]
                                       [--baseline]
-       dledger balance [<journal>]... [--by-position | --by-amount] [-v]
+       dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
                                       [--by-payout-date | --by-ex-date]
                                       [--as-currency=<symbol>]
                                       [--baseline]
@@ -29,6 +29,7 @@ OPTIONS:
      --baseline               Show baseline income (i.e. 1 share per ticker)
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
+     --by-currency            Show drift from target currency exposure
      --annual                 Show income by year
      --quarterly              Show income by quarter
      --monthly                Show income by month
@@ -58,7 +59,7 @@ from dledger.report import (
     print_simple_rolling_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
     print_simple_sum_report, print_simple_weight_by_ticker,
-    print_balance_report,
+    print_balance_report, print_currency_balance_report,
     print_stats,
     DRIFT_BY_WEIGHT, DRIFT_BY_AMOUNT, DRIFT_BY_POSITION
 )
@@ -221,7 +222,9 @@ def main() -> None:
             transactions, symbol=exchange_symbol, rates=exchange_rates)
 
     if args['balance']:
-        if args['--by-position']:
+        if args['--by-currency']:
+            print_currency_balance_report(transactions)
+        elif args['--by-position']:
             print_balance_report(transactions, deviance=DRIFT_BY_POSITION)
         elif args['--by-amount']:
             print_balance_report(transactions, deviance=DRIFT_BY_AMOUNT)

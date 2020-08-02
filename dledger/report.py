@@ -494,3 +494,48 @@ def print_balance_report(records: List[Transaction], *, deviance: int = DRIFT_BY
             print(line)
         if commodity != commodities[-1]:
             print()
+
+
+def print_currency_balance_report(records: List[Transaction]):
+    commodities = sorted(symbols(records, excluding_dividends=True))
+    for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, records))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+        total_income = income(matching_transactions)
+        weights = []
+        dividend_symbols = []
+        for transaction in matching_transactions:
+            assert transaction.dividend is not None
+            if transaction.dividend.symbol not in dividend_symbols:
+                dividend_symbols.append(transaction.dividend.symbol)
+        target_weight = 100 / len(dividend_symbols)
+        for symbol in dividend_symbols:
+            filtered_records = list(
+                filter(lambda r: r.dividend.symbol == symbol, matching_transactions))
+            income_by_symbol = income(filtered_records)
+            weight = income_by_symbol / total_income * 100
+            weight_drift = target_weight - weight
+            has_estimate = any(isinstance(r.amount, GeneratedAmount) for r in filtered_records)
+            weights.append((symbol, income_by_symbol, latest_transaction.amount.fmt, weight,
+                            weight_drift, len(tickers(filtered_records)), has_estimate))
+        weights.sort(key=lambda w: w[1], reverse=True)
+        for weight in weights:
+            symbol, amount, fmt, pct, wdrift, p, has_estimate = weight
+            pct = f'{format_amount(pct)}%'
+            amount = fmt % format_amount(amount, trailing_zero=False)
+            positions = f'({p})'.rjust(18)
+            if wdrift >= 0:
+                drift = f'+ {format_amount(wdrift)}%'.rjust(16)
+            else:
+                drift = f'- {format_amount(abs(wdrift))}%'.rjust(16)
+            if has_estimate:
+                line = f'~ {amount.rjust(18)}'
+            else:
+                line = f'{amount.rjust(20)}'
+            line = f'{line}       {pct.rjust(7)} {symbol.ljust(8)} {positions} {drift}'
+            print(line)
+        if commodity != commodities[-1]:
+            print()
