@@ -1,43 +1,43 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report  [<journal>]... [--period=<interval>] [-V]
+usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
                                       [--without-forecast]
                                       [--by-ticker=<ticker>]
                                       [--by-payout-date | --by-ex-date]
                                       [--in-currency=<symbol>]
                                       [--baseline]
-       dledger balance [<journal>]... [--by-position | --by-amount] [-V]
+       dledger balance [<journal>]... [--by-position | --by-amount] [-v]
                                       [--by-payout-date | --by-ex-date]
                                       [--in-currency=<symbol>]
                                       [--baseline]
-       dledger stats   [<journal>]... [--period=<interval>] [-V]
-       dledger print   [<journal>]... [--condensed] [-V]
-       dledger convert <file>...      [--type=<name>] [-V]
+       dledger stats   [<journal>]... [--period=<interval>] [-v]
+       dledger print   [<journal>]... [--condensed] [-v]
+       dledger convert <file>...      [--type=<name>] [-v]
                                       [--output=<journal>]
 
 OPTIONS:
      --type=<name>            Specify type of transaction data [default: journal]
      --output=<journal>       Specify journal filename [default: ledger.journal]
-  -d --period=<interval>      Specify reporting date interval
+     --period=<interval>      Specify reporting date interval
      --without-forecast       Don't include forecasted transactions
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
      --in-currency=<symbol>   Show income as if exchanged to currency
-     --baseline               Show baseline income
+     --baseline               Show baseline income (i.e. 1 share per ticker)
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
-  -y --annual                 Show income by year
-  -q --quarterly              Show income by quarter
-  -m --monthly                Show income by month
-     --trailing               Show income by rolling trailing 12-month totals
+     --annual                 Show income by year
+     --quarterly              Show income by quarter
+     --monthly                Show income by month
+     --trailing               Show income by trailing 12-months (per month)
      --weight                 Show income by weight (per ticker)
      --sum                    Show income by totals
-  -V --verbose                Show diagnostic messages
+  -v --verbose                Show diagnostic messages
   -h --help                   Show program help
-  -v --version                Show program version
+  -V --version                Show program version
 
 See https://github.com/jhauberg/dledger for additional details.
 """
