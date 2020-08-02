@@ -334,7 +334,7 @@ The report includes [forecasts](#forecasts) and preliminary records, as indicate
 
 Taking a look at the last row, we might also notice that the date stands out from the others in two ways: 1) it is set in the future, and 2) it has a `<` next to it. Here, the `<` is to be read as a backwards facing arrow, indicating "by/before this date". So with this knowledge, the row now reads: "approximately $308 received by November 2020".
 
-If a journal contains income of multiple currencies, the report is split in a section for each currency (unless `--in-currency` is specified, see [consolidating income reports](#consolidating-income-reports)).
+If a journal contains income of multiple currencies, the report is split in a section for each currency (unless `--as-currency` is specified, see [consolidating income reports](#consolidating-income-reports)).
 
 ### Monthly
 
@@ -517,7 +517,7 @@ The exchange rate is always based on the latest recorded transaction and is *not
 
 ### Consolidating income reports
 
-The flag `--in-currency` can be used to report all income in a specific currency. This can be particularly useful when you track and receive income in currency other than your domestic currency, but want to consolidate all reports into a single one.
+The flag `--as-currency` can be used to report all income in a specific currency. This can be particularly useful when you track and receive income in currency other than your domestic currency, but want to consolidate all reports into a single one.
 
 This works by estimating how much the amount of cash received previously would be worth today, using the most recently known exchange rate; i.e. it does not determine what it was worth at the time of the transaction, but rather what it would be worth if exchanged today.
 

@@ -6,11 +6,11 @@ usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--without-forecast]
                                       [--by-ticker=<ticker>]
                                       [--by-payout-date | --by-ex-date]
-                                      [--in-currency=<symbol>]
+                                      [--as-currency=<symbol>]
                                       [--baseline]
        dledger balance [<journal>]... [--by-position | --by-amount] [-v]
                                       [--by-payout-date | --by-ex-date]
-                                      [--in-currency=<symbol>]
+                                      [--as-currency=<symbol>]
                                       [--baseline]
        dledger stats   [<journal>]... [--period=<interval>] [-v]
        dledger print   [<journal>]... [--condensed] [-v]
@@ -25,7 +25,7 @@ OPTIONS:
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
-     --in-currency=<symbol>   Show income as if exchanged to currency
+     --as-currency=<symbol>   Show income as if exchanged to currency
      --baseline               Show baseline income (i.e. 1 share per ticker)
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
@@ -214,7 +214,7 @@ def main() -> None:
     # (redundantly) sort for good measure
     transactions = sorted(transactions)
 
-    exchange_symbol = args['--in-currency']
+    exchange_symbol = args['--as-currency']
     if exchange_symbol is not None:
         # forcefully apply an exchange to given currency
         transactions = convert_to_currency(
