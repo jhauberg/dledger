@@ -394,20 +394,31 @@ def estimated_transactions(records: List[Transaction], *,
         scheduled_records: List[GeneratedTransaction] = []
 
         future_date = latest_transaction.entry_date
+        future_ex_date = latest_transaction.ex_date
         # estimate timeframe by latest actual record
         future_timeframe = projected_timeframe(future_date)
+        future_ex_timeframe = None
+        scheduled_months_ex = None
+        if future_ex_date is not None:
+            future_ex_timeframe = projected_timeframe(future_ex_date)
+            latest_transactions_by_exdate = [r if r.ex_date is None else
+                                             replace(r, entry_date=r.ex_date, ex_date=None) for
+                                             r in transactions]
+            latest_transaction_by_exdate = latest(latest_transactions_by_exdate)
+            sched_ex = estimated_schedule(latest_transactions_by_exdate, latest_transaction_by_exdate)
+            scheduled_months_ex = sched_ex.months
 
         # increase number of iterations to extend beyond the next twelve months
         while len(scheduled_records) < len(scheduled_months):
             next_date = next_scheduled_date(future_date, scheduled_months)
             future_date = projected_date(next_date, timeframe=future_timeframe)
             # double-check that position is not closed in timeframe leading up to future_date
-            latest_record = latest(before(by_ticker(records, ticker), future_date),
-                                   by_exdividend=True)
-
-            assert latest_record is not None
-
-            future_position = latest_record.position
+            if future_ex_date is not None:
+                next_ex_date = next_scheduled_date(future_ex_date, scheduled_months_ex)
+                future_ex_date = projected_date(next_ex_date, timeframe=future_ex_timeframe)
+                future_position = next_position(records, ticker, earlier_than=future_ex_date)
+            else:
+                future_position = next_position(records, ticker, earlier_than=future_date)
 
             if not future_position > 0:
                 # don't project closed positions
@@ -519,6 +530,15 @@ def next_linear_dividend(records: List[Transaction], *,
     return None
 
 
+def next_position(records: List[Transaction], ticker: str, *,
+                  earlier_than: date = datetime.today().date()) \
+        -> float:
+    latest_record = latest(before(by_ticker(records, ticker), earlier_than), by_exdividend=True)
+    
+    assert latest_record is not None
+    return latest_record.position
+
+
 def future_transactions(records: List[Transaction], *,
                         rates: Optional[Dict[Tuple[str, str], float]] = None) \
         -> List[GeneratedTransaction]:
@@ -535,7 +555,8 @@ def future_transactions(records: List[Transaction], *,
     for transaction in transactions:
         assert transaction.amount is not None
 
-        matching_transactions = list(by_ticker(transactions, transaction.ticker))
+        ticker = transaction.ticker
+        matching_transactions = list(by_ticker(transactions, ticker))
         latest_transaction = latest(matching_transactions)
 
         assert latest_transaction is not None
@@ -549,13 +570,12 @@ def future_transactions(records: List[Transaction], *,
         next_date = next_scheduled_date(transaction.entry_date, [transaction.entry_date.month])
         future_date = projected_date(next_date, timeframe=projected_timeframe(transaction.entry_date))
 
-        # find latest record based on ex-dividend date, to determine forecasted position
-        latest_record = latest(before(by_ticker(records, transaction.ticker), future_date),
-                               by_exdividend=True)
-
-        assert latest_record is not None
-
-        future_position = latest_record.position
+        if transaction.ex_date is not None:
+            next_ex_date = next_scheduled_date(transaction.ex_date, [transaction.ex_date.month])
+            future_ex_date = projected_date(next_ex_date, timeframe=projected_timeframe(transaction.ex_date))
+            future_position = next_position(records, ticker, earlier_than=future_ex_date)
+        else:
+            future_position = next_position(records, ticker, earlier_than=future_date)
 
         if not future_position > 0:
             # don't project closed positions
@@ -579,7 +599,7 @@ def future_transactions(records: List[Transaction], *,
             else:
                 future_amount = future_position * future_dividend.value
 
-        future_record = GeneratedTransaction(future_date, transaction.ticker, future_position,
+        future_record = GeneratedTransaction(future_date, ticker, future_position,
                                              amount=GeneratedAmount(
                                                  future_amount,
                                                  places=transaction.amount.places,

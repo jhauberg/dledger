@@ -1258,3 +1258,65 @@ def test_12month_projection():
     assert len(projections) == 1
 
     assert projections[0].entry_date == date(2021, 4, 15)
+
+
+def test_estimated_position_by_ex_dividend():
+    # test whether projected positions are correctly based on ex-dates (if applicable),
+    # even if not tracking entry date by ex-date
+    records = [
+        Transaction(date(2019, 9, 17), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 9, 16), ex_date=date(2019, 8, 19)),
+        Transaction(date(2019, 10, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 10, 15), ex_date=date(2019, 9, 18)),
+        Transaction(date(2019, 11, 18), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 11, 15), ex_date=date(2019, 10, 17)),
+        Transaction(date(2019, 12, 12), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 12, 11), ex_date=date(2019, 11, 19)),
+        Transaction(date(2020, 1, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 1, 15), ex_date=date(2019, 12, 27)),
+        Transaction(date(2020, 2, 17), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 2, 14), ex_date=date(2020, 1, 20)),
+        Transaction(date(2020, 3, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 3, 13), ex_date=date(2020, 2, 19)),
+        Transaction(date(2020, 4, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 4, 15), ex_date=date(2020, 3, 17)),
+        Transaction(date(2020, 5, 18), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 5, 15), ex_date=date(2020, 4, 17)),
+        Transaction(date(2020, 6, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 6, 15), ex_date=date(2020, 5, 19)),
+        Transaction(date(2020, 7, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 7, 15), ex_date=date(2020, 6, 17)),
+        Transaction(date(2020, 8, 3), 'ABCD', 2),
+    ]
+
+    projections = scheduled_transactions(records, since=date(2020, 8, 4))
+
+    assert len(projections) == 12
+
+    assert projections[0].entry_date == date(2020, 8, 31)
+    assert projections[0].position == 1
+    assert projections[1].entry_date == date(2020, 9, 30)
+    assert projections[1].position == 2
+
+
+def test_future_position_by_ex_dividend():
+    records = [
+        # this is a dividend transaction with all dates plotted in; note that only
+        # entry date is actually projected, which puts it "in front" of the purchase record below;
+        # this effectively means that, unless ex-date is properly accounted for, the future position
+        # would be based on the latest record before the projected date; i.e. the purchase record
+        # what we actually want, though, is to additionally project the ex-date, and *then*
+        # find the latest record before *that* date; which, in this case, would be this dividend
+        # transaction and result in a position=1, as expected
+        Transaction(date(2019, 8, 17), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 8, 16), ex_date=date(2019, 7, 19)),
+        # this is a purchase record; note dated prior to a projected entry date of the record above
+        Transaction(date(2020, 8, 3), 'ABCD', 2),
+    ]
+
+    projections = scheduled_transactions(records, since=date(2020, 8, 4))
+
+    assert len(projections) == 1
+
+    assert projections[0].entry_date == date(2020, 8, 31)
+    assert projections[0].position == 1
