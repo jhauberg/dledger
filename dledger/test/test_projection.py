@@ -267,6 +267,17 @@ def test_quarterly_frequency():
     #       but because it isnt, there's ambiguity in timespan
     assert frequency(records) == 6
 
+    records = [
+        Transaction(date(2019, 9, 16), 'ABC', 1),
+        Transaction(date(2019, 11, 18), 'ABC', 1),
+        Transaction(date(2020, 2, 24), 'ABC', 1),
+        Transaction(date(2020, 5, 18), 'ABC', 1),
+        # note, one month earlier than last year
+        Transaction(date(2020, 8, 17), 'ABC', 1),
+    ]
+
+    assert frequency(records) == 3
+
 
 def test_monthly_frequency():
     records = [
@@ -733,6 +744,25 @@ def test_scheduled_transactions():
     assert scheduled[0].entry_date == GeneratedDate(2020, 3, 15)
     assert scheduled[1].entry_date == GeneratedDate(2020, 6, 15)
     assert scheduled[2].entry_date == GeneratedDate(2020, 9, 15)
+
+    records = [
+        Transaction(date(2019, 9, 16), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 11, 18), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 2, 24), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 5, 18), 'ABC', 1, Amount(100)),
+        # note, one month earlier than last year
+        Transaction(date(2020, 8, 17), 'ABC', 1, Amount(100)),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 8, 18))
+    # todo: issue here is that 2019/9 is projected to 2020/9, but we can clearly tell,
+    #       based on month interval not matching expected frequency (i.e. 3), that we don't
+    #       actually want/expect this projection - it should just be weeded out
+    assert len(scheduled) == 4
+    assert scheduled[0].entry_date == GeneratedDate(2020, 11, 30)
+    assert scheduled[2].entry_date == GeneratedDate(2021, 2, 28)
+    assert scheduled[3].entry_date == GeneratedDate(2021, 5, 31)
+    assert scheduled[4].entry_date == GeneratedDate(2021, 8, 31)
 
 
 def test_scheduled_grace_period():
