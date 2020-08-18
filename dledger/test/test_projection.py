@@ -760,9 +760,9 @@ def test_scheduled_transactions():
     #       actually want/expect this projection - it should just be weeded out
     assert len(scheduled) == 4
     assert scheduled[0].entry_date == GeneratedDate(2020, 11, 30)
-    assert scheduled[2].entry_date == GeneratedDate(2021, 2, 28)
-    assert scheduled[3].entry_date == GeneratedDate(2021, 5, 31)
-    assert scheduled[4].entry_date == GeneratedDate(2021, 8, 31)
+    assert scheduled[1].entry_date == GeneratedDate(2021, 2, 28)
+    assert scheduled[2].entry_date == GeneratedDate(2021, 5, 31)
+    assert scheduled[3].entry_date == GeneratedDate(2021, 8, 31)
 
 
 def test_scheduled_grace_period():
@@ -961,15 +961,9 @@ def test_scheduled_transactions_sampling():
     ]
 
     scheduled = scheduled_transactions(records, since=date(2020, 2, 28))
-    # assert len(scheduled) == 4
-    # assert scheduled[0].date == date(2020, 6, 15)
-    # todo: note that this is a false-positive due to leap year; i.e. if we get a projection:
-    #         2020/03/15
-    #       and then have realized transaction:
-    #         2020/02/28
-    #       then there's 16 days between, crossing the 15 days threshold for filtering
-    assert len(scheduled) == 5
-    assert scheduled[0].entry_date == GeneratedDate(2020, 3, 15)
+
+    assert len(scheduled) == 4
+    assert scheduled[0].entry_date == date(2020, 6, 15)
 
     records = [
         Transaction(date(2018, 1, 1), 'ABC', 1, Amount(100)),
