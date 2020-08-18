@@ -59,6 +59,7 @@ def normalize_interval(interval: int) \
     if interval < 1 or interval > 12:
         raise ValueError('interval must be within 1-12-month range')
 
+    # start (exclusive) / end (inclusive)
     normalized_intervals = {
         1: (0, 1),
         3: (1, 3),
@@ -336,6 +337,23 @@ def scheduled_transactions(records: List[Transaction], *,
         # but prefer less projections (pessimistic) over too many projections (optimistic)
         for discarded_record in discards:
             scheduled.remove(discarded_record)
+    for ticker in tickers(scheduled):
+        # find potential outliers to be weeded out
+        recs = list(by_ticker(sample_records, ticker))
+        projected_recs = list(by_ticker(scheduled, ticker))
+        # determine approximate frequency (in sample period)
+        freq = frequency(recs)
+        # search for outliers if we have projected more records than expected
+        while len(projected_recs) > 12 / freq:
+            # base this search on the rule that interval between each projection
+            # should match approximated frequency - discard records as needed
+            # note that we include latest realized record to determine initial interval
+            for n, interval in enumerate(intervals([latest(recs)] + projected_recs)):
+                if normalize_interval(interval) != freq:
+                    # discard this projection
+                    scheduled.remove(projected_recs.pop(n))
+                    # start over if there's still more projections than expected
+                    break
     # finally sort them by default transaction sorting rules
     return sorted(scheduled)
 
