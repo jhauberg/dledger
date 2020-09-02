@@ -764,6 +764,22 @@ def test_scheduled_transactions():
     assert scheduled[2].entry_date == GeneratedDate(2021, 5, 31)
     assert scheduled[3].entry_date == GeneratedDate(2021, 8, 31)
 
+    records = [
+        Transaction(date(2020, 3, 13), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 6, 15), 'ABC', 1, Amount(100)),
+        # preliminary record; e.g. in future, results in projection more than 1 year later
+        Transaction(date(2020, 9, 15), 'ABC', 1, GeneratedAmount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 9, 2))
+
+    assert len(scheduled) == 4
+    assert scheduled[0].entry_date == GeneratedDate(2020, 12, 15)
+    assert scheduled[1].entry_date == GeneratedDate(2021, 3, 15)
+    assert scheduled[2].entry_date == GeneratedDate(2021, 6, 15)
+    # note that this one is included though more than 365 days later; see earliest/cutoff in scheduled_transactions
+    assert scheduled[3].entry_date == GeneratedDate(2021, 9, 15)
+
 
 def test_scheduled_grace_period():
     records = [
