@@ -1187,6 +1187,56 @@ def test_conversion_factors():
     assert len(factors) == 1
     assert factors[('$', 'kr')] == 1.05
 
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = symbol_conversion_factors(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == 1
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    try:
+        symbol_conversion_factors(records)
+    except ValueError:
+        assert True
+
+    records = [
+        Transaction(date(2019, 2, 28), 'ABC', 100, payout_date=date(2019, 3, 1), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    try:
+        symbol_conversion_factors(records)
+    except ValueError:
+        assert True
+
+    records = [
+        Transaction(date(2019, 2, 26), 'ABC', 100, payout_date=date(2019, 2, 28), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = symbol_conversion_factors(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == 1.1
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, ex_date=date(2019, 2, 28), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    try:
+        symbol_conversion_factors(records)
+    except ValueError:
+        assert True
+
 
 def test_convert_estimates():
     records = [
