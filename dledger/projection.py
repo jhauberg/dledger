@@ -1,3 +1,5 @@
+import math
+
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass, replace
 
@@ -677,7 +679,7 @@ def symbol_conversion_factors(records: List[Transaction]) \
 
             for similar_transaction in similar_transactions:
                 similar_conversion_factor = amount_conversion_factor(similar_transaction)
-                if similar_conversion_factor != conversion_factor:
+                if not math.isclose(similar_conversion_factor, conversion_factor, abs_tol=0.0001):
                     raise ValueError(f'ambiguous conversion rate ({similar_conversion_factor} or {conversion_factor}?)')
 
     return conversion_factors
