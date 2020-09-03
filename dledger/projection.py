@@ -8,7 +8,7 @@ from dledger.dateutil import last_of_month, months_between, in_months, next_mont
 from dledger.formatutil import decimalplaces
 from dledger.record import (
     by_ticker, tickers, trailing, latest, before, monthly_schedule, dividends, deltas,
-    amount_per_share, amount_conversion_factor, intervals, pruned, symbols
+    amount_per_share, amount_conversion_factor, intervals, pruned, symbols, dated
 )
 
 from typing import Tuple, Optional, List, Iterable, Dict
@@ -647,14 +647,17 @@ def symbol_conversion_factors(records: List[Transaction]) \
             if symbol == other_symbol:
                 continue
 
-            latest_transaction = latest(
-                (r for r in transactions if (r.amount.symbol == symbol and
-                                             r.dividend is not None and
-                                             r.dividend.symbol == other_symbol)), by_payout=True)
+            matching_transactions = list(r for r in transactions if (r.amount.symbol == symbol and
+                                                                     r.dividend is not None and
+                                                                     r.dividend.symbol == other_symbol))
 
+            latest_transaction = latest(matching_transactions, by_payout=True)
             if latest_transaction is None:
                 continue
-
+            # determine the date to reference by; e.g. either payout date or entry date, depending on availability
+            latest_transaction_date = (latest_transaction.payout_date if
+                                       latest_transaction.payout_date is not None else
+                                       latest_transaction.entry_date)
             assert latest_transaction.amount is not None
             assert latest_transaction.amount.symbol is not None
 
@@ -664,5 +667,17 @@ def symbol_conversion_factors(records: List[Transaction]) \
             conversion_factor = amount_conversion_factor(latest_transaction)
             conversion_factors[(latest_transaction.dividend.symbol,
                                 latest_transaction.amount.symbol)] = conversion_factor
+
+            # bias similar transactions by payout date even if latest is based on entry date
+            similar_transactions = list(dated(matching_transactions, latest_transaction_date, by_payout=True))
+
+            if len(similar_transactions) == 1:  # latest_transaction is always included here
+                # unless we have more transactions there's no need to proceed further
+                continue
+
+            for similar_transaction in similar_transactions:
+                similar_conversion_factor = amount_conversion_factor(similar_transaction)
+                if similar_conversion_factor != conversion_factor:
+                    raise ValueError(f'ambiguous conversion rate ({similar_conversion_factor} or {conversion_factor}?)')
 
     return conversion_factors
