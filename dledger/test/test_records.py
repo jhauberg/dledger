@@ -3,7 +3,7 @@ from datetime import date
 from dledger.journal import Transaction, Amount
 from dledger.record import (
     monthly_schedule, intervals, trailing, pruned, dividends, deltas,
-    in_period, symbols
+    in_period, symbols, dated
 )
 
 
@@ -274,3 +274,50 @@ def test_symbols():
     s = symbols(records, excluding_dividends=True)
 
     assert len(s) == 1
+
+
+def test_dated():
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1),
+        Transaction(date(2019, 3, 1), 'XYZ', 1)
+    ]
+
+    hits = list(dated(records, date(2019, 3, 1)))
+
+    assert len(hits) == 2
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, payout_date=date(2019, 2, 28)),
+        Transaction(date(2019, 3, 1), 'XYZ', 1)
+    ]
+
+    hits = list(dated(records, date(2019, 3, 1), by_payout=True))
+
+    assert len(hits) == 1
+
+    records = [
+        Transaction(date(2019, 2, 28), 'XYZ', 1),
+        Transaction(date(2019, 3, 1), 'ABC', 1, payout_date=date(2019, 2, 28)),
+    ]
+
+    hits = list(dated(records, date(2019, 2, 28), by_payout=True))
+
+    assert len(hits) == 2
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, ex_date=date(2019, 2, 28)),
+        Transaction(date(2019, 3, 1), 'XYZ', 1)
+    ]
+
+    hits = list(dated(records, date(2019, 3, 1), by_payout=True))
+
+    assert len(hits) == 2
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, ex_date=date(2019, 2, 28)),
+        Transaction(date(2019, 3, 1), 'XYZ', 1)
+    ]
+
+    hits = list(dated(records, date(2019, 3, 1), by_exdividend=True))
+
+    assert len(hits) == 1
