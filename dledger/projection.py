@@ -315,6 +315,9 @@ def scheduled_transactions(records: List[Transaction], *,
             continue
         # it does not, so use this estimate to fill out gap
         scheduled.append(future_record)
+
+    def is_within_period(record: Transaction, starting: date, ending: date) -> bool:
+        return ending > record.entry_date >= starting
     # weed out projections in the past or later than 12 months into the future
     # note that we potentially include more than 365 days here;
     #   e.g. remainder of current month + 12 full months
@@ -324,7 +327,7 @@ def scheduled_transactions(records: List[Transaction], *,
     # example timespan: since=2020/04/08
     #   [2020/03/23] inclusive, up to
     #   [2021/05/01] exclusive
-    scheduled = [r for r in scheduled if cutoff_date > r.entry_date >= earliest_date]
+    scheduled = [r for r in scheduled if is_within_period(r, earliest_date, cutoff_date)]
     for sample_record in sample_records:
         if sample_record.amount is None:
             # skip buy/sell transactions; they should not have any effect on this bit of filtering
