@@ -1206,6 +1206,8 @@ def test_conversion_factors():
         symbol_conversion_factors(records)
     except ValueError:
         assert True
+    else:
+        assert False
 
     records = [
         Transaction(date(2019, 2, 28), 'ABC', 100, payout_date=date(2019, 3, 1), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
@@ -1216,6 +1218,8 @@ def test_conversion_factors():
         symbol_conversion_factors(records)
     except ValueError:
         assert True
+    else:
+        assert False
 
     records = [
         Transaction(date(2019, 2, 26), 'ABC', 100, payout_date=date(2019, 2, 28), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
@@ -1236,6 +1240,8 @@ def test_conversion_factors():
         symbol_conversion_factors(records)
     except ValueError:
         assert True
+    else:
+        assert False
 
 
 def test_convert_estimates():
