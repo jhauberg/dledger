@@ -90,47 +90,40 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
         -> date:
     """ Return the date that maps to datestamp.
 
-    If strict is True, a full datestamp is expected (year/month/day).
+    If strict is True, a full datestamp is expected (year/month/day):
+
+        "2019/11/11" => 2019/11/11
 
     Otherwise, a datestamp can be specified in any of the following variations:
 
-        "2019/11/11" => 2019/11/11
         "2019/11"    => 2019/11/01
-        "2019"       => 2019/01/01
-
-        or
-
-        "2019-11-11" => 2019/11/11
-        "2019-11"    => 2019/11/01
         "2019"       => 2019/01/01
 
     Components omitted will default to the first of year or month.
     """
 
-    try:
-        return datetime.strptime(datestamp, '%Y/%m/%d').date()
-    except ValueError:
-        try:
-            return datetime.strptime(datestamp, '%Y-%m-%d').date()
-        except ValueError:
-            if strict:
-                raise
+    strict_formats = ['%Y/%m/%d', '%Y-%m-%d', '%Y.%m.%d']
+    month_formats = ['%Y/%m', '%Y-%m', '%Y.%m']
+    year_formats = ['%Y']
 
-    try:
-        return datetime.strptime(datestamp, '%Y/%m').date()
-    except ValueError:
-        try:
-            return datetime.strptime(datestamp, '%Y-%m').date()
-        except ValueError:
-            pass
+    def tryparse(string: str, formats: List[str]) -> Optional[date]:
+        for fmt in formats:
+            try:
+                return datetime.strptime(string, fmt).date()
+            except ValueError:
+                continue
+        return None
 
-    try:
-        return datetime.strptime(datestamp, '%Y').date()
-    except ValueError:
-        try:
-            return datetime.strptime(datestamp, '%Y').date()
-        except ValueError:
+    d = tryparse(datestamp, formats=strict_formats)
+
+    if d is None:
+        if strict:
+            raise ValueError(f'invalid date format (\'{datestamp}\'; expected strict format)')
+        other_formats = month_formats + year_formats
+        d = tryparse(datestamp, formats=other_formats)
+        if d is None:
             raise ValueError(f'invalid date format (\'{datestamp}\')')
+    return d
 
 
 def parse_interval(interval: str) \
@@ -220,7 +213,8 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     # determine number of datestamp components
     # (assuming valid datestamp; i.e. only one separator kind, no combination)
     num_separators = max(component.count('/'),
-                         component.count('-'))
+                         component.count('-'),
+                         component.count('.'))
     if num_separators > 2:  # too many components
         raise ValueError(f'invalid date format (\'{component}\')')
     if num_separators == 0:  # year component
