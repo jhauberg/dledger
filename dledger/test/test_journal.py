@@ -62,8 +62,10 @@ def test_parse_amount():
 
     assert parse_amount('$10', location=loc) == Amount(10, places=0, symbol='$', fmt='$%s')
     assert parse_amount('$ 10', location=loc) == Amount(10, places=0, symbol='$', fmt='$ %s')
-    assert parse_amount('$  10', location=loc) == Amount(10, places=0, symbol='$', fmt='$  %s')
+    assert parse_amount(' $ 10 ', location=loc) == Amount(10, places=0, symbol='$', fmt='$ %s')
+    assert parse_amount('$  10', location=loc) == Amount(10, places=0, symbol='$', fmt='$ %s')
     assert parse_amount('10 kr', location=loc) == Amount(10, places=0, symbol='kr', fmt='%s kr')
+    assert parse_amount('10   kr', location=loc) == Amount(10, places=0, symbol='kr', fmt='%s kr')
 
     assert parse_amount('$ 0.50', location=loc) == Amount(0.5, places=2, symbol='$', fmt='$ %s')
     assert parse_amount('0.50 kr', location=loc) == Amount(0.5, places=2, symbol='kr', fmt='%s kr')
@@ -71,6 +73,13 @@ def test_parse_amount():
 
     assert parse_amount('$ .50', location=loc) == Amount(0.5, places=2, symbol='$', fmt='$ %s')
     assert parse_amount('.50 kr', location=loc) == Amount(0.5, places=2, symbol='kr', fmt='%s kr')
+
+    assert parse_amount('10 danske kroner', location=loc) == Amount(10, places=0,
+                                                                    symbol='danske kroner',
+                                                                    fmt='%s danske kroner')
+    assert parse_amount('10 danske  kroner', location=loc) == Amount(10, places=0,
+                                                                     symbol='danske  kroner',
+                                                                     fmt='%s danske  kroner')
 
     trysetlocale(locale.LC_NUMERIC, ['da_DK', 'da-DK', 'da'])
 

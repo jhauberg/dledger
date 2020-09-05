@@ -267,6 +267,17 @@ def test_quarterly_frequency():
     #       but because it isnt, there's ambiguity in timespan
     assert frequency(records) == 6
 
+    records = [
+        Transaction(date(2019, 9, 16), 'ABC', 1),
+        Transaction(date(2019, 11, 18), 'ABC', 1),
+        Transaction(date(2020, 2, 24), 'ABC', 1),
+        Transaction(date(2020, 5, 18), 'ABC', 1),
+        # note, one month earlier than last year
+        Transaction(date(2020, 8, 17), 'ABC', 1),
+    ]
+
+    assert frequency(records) == 3
+
 
 def test_monthly_frequency():
     records = [
@@ -734,6 +745,41 @@ def test_scheduled_transactions():
     assert scheduled[1].entry_date == GeneratedDate(2020, 6, 15)
     assert scheduled[2].entry_date == GeneratedDate(2020, 9, 15)
 
+    records = [
+        Transaction(date(2019, 9, 16), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 11, 18), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 2, 24), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 5, 18), 'ABC', 1, Amount(100)),
+        # note, one month earlier than last year
+        Transaction(date(2020, 8, 17), 'ABC', 1, Amount(100)),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 8, 18))
+    # todo: issue here is that 2019/9 is projected to 2020/9, but we can clearly tell,
+    #       based on month interval not matching expected frequency (i.e. 3), that we don't
+    #       actually want/expect this projection - it should just be weeded out
+    assert len(scheduled) == 4
+    assert scheduled[0].entry_date == GeneratedDate(2020, 11, 30)
+    assert scheduled[1].entry_date == GeneratedDate(2021, 2, 28)
+    assert scheduled[2].entry_date == GeneratedDate(2021, 5, 31)
+    assert scheduled[3].entry_date == GeneratedDate(2021, 8, 31)
+
+    records = [
+        Transaction(date(2020, 3, 13), 'ABC', 1, Amount(100)),
+        Transaction(date(2020, 6, 15), 'ABC', 1, Amount(100)),
+        # preliminary record; e.g. in future, results in projection more than 1 year later
+        Transaction(date(2020, 9, 15), 'ABC', 1, GeneratedAmount(100))
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 9, 2))
+
+    assert len(scheduled) == 4
+    assert scheduled[0].entry_date == GeneratedDate(2020, 12, 15)
+    assert scheduled[1].entry_date == GeneratedDate(2021, 3, 15)
+    assert scheduled[2].entry_date == GeneratedDate(2021, 6, 15)
+    # note that this one is included though more than 365 days later; see earliest/cutoff in scheduled_transactions
+    assert scheduled[3].entry_date == GeneratedDate(2021, 9, 15)
+
 
 def test_scheduled_grace_period():
     records = [
@@ -931,15 +977,9 @@ def test_scheduled_transactions_sampling():
     ]
 
     scheduled = scheduled_transactions(records, since=date(2020, 2, 28))
-    # assert len(scheduled) == 4
-    # assert scheduled[0].date == date(2020, 6, 15)
-    # todo: note that this is a false-positive due to leap year; i.e. if we get a projection:
-    #         2020/03/15
-    #       and then have realized transaction:
-    #         2020/02/28
-    #       then there's 16 days between, crossing the 15 days threshold for filtering
-    assert len(scheduled) == 5
-    assert scheduled[0].entry_date == GeneratedDate(2020, 3, 15)
+
+    assert len(scheduled) == 4
+    assert scheduled[0].entry_date == date(2020, 6, 15)
 
     records = [
         Transaction(date(2018, 1, 1), 'ABC', 1, Amount(100)),
@@ -1147,6 +1187,62 @@ def test_conversion_factors():
     assert len(factors) == 1
     assert factors[('$', 'kr')] == 1.05
 
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = symbol_conversion_factors(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == 1
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    try:
+        symbol_conversion_factors(records)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    records = [
+        Transaction(date(2019, 2, 28), 'ABC', 100, payout_date=date(2019, 3, 1), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    try:
+        symbol_conversion_factors(records)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    records = [
+        Transaction(date(2019, 2, 26), 'ABC', 100, payout_date=date(2019, 2, 28), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = symbol_conversion_factors(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == 1.1
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, ex_date=date(2019, 2, 28), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    try:
+        symbol_conversion_factors(records)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
 
 def test_convert_estimates():
     records = [
@@ -1220,6 +1316,47 @@ def test_secondary_date_monthly():
     assert transactions[10].entry_date == date(2020, 3, 15)
 
 
+def test_seemingly_missing_projection():
+    # this test simulates reporting with --by-ex-date where a projected record
+    # is projected "in the past", beyond the grace period, and is therefore discarded
+    # but the payout/entry date might lie in the future still so it seems incorrect to be missing
+    # the logic is correct, however, so it is intentional and not an error
+    #
+    # it could be included by considering other dates; i.e. not only entry_date
+    # however, that requires a mechanism to determine the "primary" date
+    # as currently we replace entry_date and discard the field used (with a function to determine
+    # primary date, we would not alter the record at all- except for setting some flag- but this
+    # is a large task that goes deep almost everywhere)
+    # additionally, it might introduce unwanted projections in situations where
+    # the dividend distribution was actually eliminated (the projection would just linger longer)
+    records = [
+        Transaction(date(2019, 3, 15), 'A', 1, amount=Amount(1), ex_date=date(2019, 2, 20)),
+        Transaction(date(2019, 6, 14), 'A', 1, amount=Amount(1), ex_date=date(2019, 5, 15)),
+        Transaction(date(2019, 9, 13), 'A', 1, amount=Amount(1), ex_date=date(2019, 8, 14)),
+        Transaction(date(2019, 12, 13), 'A', 1, amount=Amount(1), ex_date=date(2019, 11, 20)),
+        Transaction(date(2020, 3, 13), 'A', 1, amount=Amount(1), ex_date=date(2020, 2, 19)),
+        Transaction(date(2020, 6, 12), 'A', 1, amount=Amount(1), ex_date=date(2020, 5, 20)),
+    ]
+
+    projections = scheduled_transactions(records, since=date(2020, 9, 5))
+
+    assert len(projections) == 4
+    assert projections[0].entry_date == date(2020, 9, 15)
+
+    # simulate --by-ex-date
+    from dataclasses import replace
+    records = [r if r.ex_date is None else
+               replace(r, entry_date=r.ex_date, ex_date=None) for
+               r in records]
+
+    projections = scheduled_transactions(records, since=date(2020, 9, 5))
+
+    assert len(projections) == 3
+    # note the "missing" projection at 2020/08/15, because this is 20 days ago;
+    # i.e. more than the grace period of 15 days
+    assert projections[0].entry_date == date(2020, 11, 30)
+
+
 def test_secondary_date_quarterly():
     records = [
         Transaction(date(2019, 4, 30), 'ABC', 1, amount=Amount(1), dividend=Amount(1)),
@@ -1258,3 +1395,65 @@ def test_12month_projection():
     assert len(projections) == 1
 
     assert projections[0].entry_date == date(2021, 4, 15)
+
+
+def test_estimated_position_by_ex_dividend():
+    # test whether projected positions are correctly based on ex-dates (if applicable),
+    # even if not tracking entry date by ex-date
+    records = [
+        Transaction(date(2019, 9, 17), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 9, 16), ex_date=date(2019, 8, 19)),
+        Transaction(date(2019, 10, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 10, 15), ex_date=date(2019, 9, 18)),
+        Transaction(date(2019, 11, 18), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 11, 15), ex_date=date(2019, 10, 17)),
+        Transaction(date(2019, 12, 12), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 12, 11), ex_date=date(2019, 11, 19)),
+        Transaction(date(2020, 1, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 1, 15), ex_date=date(2019, 12, 27)),
+        Transaction(date(2020, 2, 17), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 2, 14), ex_date=date(2020, 1, 20)),
+        Transaction(date(2020, 3, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 3, 13), ex_date=date(2020, 2, 19)),
+        Transaction(date(2020, 4, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 4, 15), ex_date=date(2020, 3, 17)),
+        Transaction(date(2020, 5, 18), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 5, 15), ex_date=date(2020, 4, 17)),
+        Transaction(date(2020, 6, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 6, 15), ex_date=date(2020, 5, 19)),
+        Transaction(date(2020, 7, 16), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2020, 7, 15), ex_date=date(2020, 6, 17)),
+        Transaction(date(2020, 8, 3), 'ABCD', 2),
+    ]
+
+    projections = scheduled_transactions(records, since=date(2020, 8, 4))
+
+    assert len(projections) == 12
+
+    assert projections[0].entry_date == date(2020, 8, 31)
+    assert projections[0].position == 1
+    assert projections[1].entry_date == date(2020, 9, 30)
+    assert projections[1].position == 2
+
+
+def test_future_position_by_ex_dividend():
+    records = [
+        # this is a dividend transaction with all dates plotted in; note that only
+        # entry date is actually projected, which puts it "in front" of the purchase record below;
+        # this effectively means that, unless ex-date is properly accounted for, the future position
+        # would be based on the latest record before the projected date; i.e. the purchase record
+        # what we actually want, though, is to additionally project the ex-date, and *then*
+        # find the latest record before *that* date; which, in this case, would be this dividend
+        # transaction and result in a position=1, as expected
+        Transaction(date(2019, 8, 17), 'ABCD', 1, amount=Amount(1), dividend=Amount(1),
+                    payout_date=date(2019, 8, 16), ex_date=date(2019, 7, 19)),
+        # this is a purchase record; note dated prior to a projected entry date of the record above
+        Transaction(date(2020, 8, 3), 'ABCD', 2),
+    ]
+
+    projections = scheduled_transactions(records, since=date(2020, 8, 4))
+
+    assert len(projections) == 1
+
+    assert projections[0].entry_date == date(2020, 8, 31)
+    assert projections[0].position == 1

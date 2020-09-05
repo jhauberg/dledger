@@ -137,9 +137,35 @@ def test_parse_datestamp():
     assert parse_datestamp('2019-11') == date(2019, 11, 1)
     assert parse_datestamp('2019') == date(2019, 1, 1)
 
-    # assert parse_datestamp('') raises ValueError
-    # assert parse_datestamp('2019/11-11') raises ValueError
-    # assert parse_datestamp('2019 / 11/11') raises ValueError
+    assert parse_datestamp('2019.1.01') == date(2019, 1, 1)
+    assert parse_datestamp('2019.01.1') == date(2019, 1, 1)
+    assert parse_datestamp('2019.1.1') == date(2019, 1, 1)
+    assert parse_datestamp('2019.11.01') == date(2019, 11, 1)
+    assert parse_datestamp('2019.11.1') == date(2019, 11, 1)
+    assert parse_datestamp('2019.11.11') == date(2019, 11, 11)
+    assert parse_datestamp('2019.11') == date(2019, 11, 1)
+    assert parse_datestamp('2019') == date(2019, 1, 1)
+
+    try:
+        parse_datestamp('')
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        parse_datestamp('2019/11-11')
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        parse_datestamp('2019 / 11/11')
+    except ValueError:
+        assert True
+    else:
+        assert False
 
 
 def test_parse_period():
@@ -202,3 +228,4 @@ def test_parse_period():
 
     assert parse_period('marts') == (date(today.year, 3, 1), date(today.year, 4, 1))
     assert parse_period('feb') == (date(today.year, 2, 1), date(today.year, 3, 1))
+    assert parse_period('oct') == (date(today.year, 10, 1), date(today.year, 11, 1))

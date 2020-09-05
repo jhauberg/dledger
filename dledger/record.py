@@ -98,7 +98,10 @@ def deltas(amounts: List[Amount], *, normalized: bool = True) -> List[Union[int,
 
 def tickers(records: Iterable[Transaction]) \
         -> List[str]:
-    """ Return a list of unique ticker components in a set of records. """
+    """ Return a list of unique ticker components in a set of records.
+
+    Does not guarantee original ordering.
+    """
 
     return list(set([record.ticker for record in records]))
 
@@ -251,6 +254,24 @@ def latest(records: Iterable[Transaction], *,
     return records[-1] if len(records) > 0 else None
 
 
+def dated(records: Iterable[Transaction], d: date, *,
+          by_payout: bool = False,
+          by_exdividend: bool = False) \
+        -> Iterable[Transaction]:
+    """ Return an iterator for records dated to a specific date. """
+
+    assert not (by_payout and by_exdividend)
+
+    if by_payout:
+        return (r for r in records if (r.payout_date == d if r.payout_date is not None else
+                                       r.entry_date == d))
+    elif by_exdividend:
+        return (r for r in records if (r.ex_date == d if r.ex_date is not None else
+                                       r.entry_date == d))
+    return (r for r in records if r.entry_date == d)
+
+
+# todo: not a great name for this function
 def pruned(records: Iterable[Transaction]) \
         -> List[Transaction]:
     """ Return a list of transactions with only the first occurence of a transaction per date. """

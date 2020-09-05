@@ -1,44 +1,49 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report  <journal>... [--period=<interval>] [-V]
-                                    [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
-                                    [--without-forecast]
-                                    [--by-ticker=<ticker>]
-                                    [--by-payout-date | --by-ex-date]
-                                    [--in-currency=<symbol>]
-       dledger balance <journal>... [--by-position | --by-amount]
-                                    [--by-payout-date | --by-ex-date]
-                                    [--in-currency=<symbol>]
-       dledger stats   <journal>... [--period=<interval>] [-V]
-       dledger print   <journal>... [--condensed] [-V]
-       dledger convert <file>...    [--type=<name>] [-V]
-                                    [--output=<journal>]
+usage: dledger report  [<journal>]... [--period=<interval>] [-v]
+                                      [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
+                                      [--without-forecast]
+                                      [--by-ticker=<ticker>]
+                                      [--by-payout-date | --by-ex-date]
+                                      [--as-currency=<symbol>]
+                                      [--baseline]
+       dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
+                                      [--by-payout-date | --by-ex-date]
+                                      [--as-currency=<symbol>]
+                                      [--baseline]
+       dledger stats   [<journal>]... [--period=<interval>] [-v]
+       dledger print   [<journal>]... [--condensed] [-v]
+       dledger convert <file>...      [--type=<name>] [-v]
+                                      [--output=<journal>]
 
 OPTIONS:
      --type=<name>            Specify type of transaction data [default: journal]
      --output=<journal>       Specify journal filename [default: ledger.journal]
-  -d --period=<interval>      Specify reporting date interval
+     --period=<interval>      Specify reporting date interval
      --without-forecast       Don't include forecasted transactions
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
-     --in-currency=<symbol>   Show income as if exchanged to currency
+     --as-currency=<symbol>   Show income as if exchanged to currency
+     --baseline               Show baseline income (i.e. 1 share per ticker)
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
-  -y --annual                 Show income by year
-  -q --quarterly              Show income by quarter
-  -m --monthly                Show income by month
-     --trailing               Show income by rolling trailing 12-month totals
+     --by-currency            Show drift from target currency exposure
+     --annual                 Show income by year
+     --quarterly              Show income by quarter
+     --monthly                Show income by month
+     --trailing               Show income by trailing 12-months (per month)
      --weight                 Show income by weight (per ticker)
      --sum                    Show income by totals
-  -V --verbose                Show diagnostic messages
+  -v --verbose                Show diagnostic messages
   -h --help                   Show program help
-  -v --version                Show program version
+  -V --version                Show program version
 
 See https://github.com/jhauberg/dledger for additional details.
 """
 
+import os
 import sys
 import locale
 
@@ -54,7 +59,7 @@ from dledger.report import (
     print_simple_rolling_report,
     print_simple_annual_report, print_simple_monthly_report, print_simple_quarterly_report,
     print_simple_sum_report, print_simple_weight_by_ticker,
-    print_balance_report,
+    print_balance_report, print_currency_balance_report,
     print_stats,
     DRIFT_BY_WEIGHT, DRIFT_BY_AMOUNT, DRIFT_BY_POSITION
 )
@@ -90,6 +95,20 @@ def main() -> None:
     input_paths = (args['<file>']
                    if args['convert'] else
                    args['<journal>'])
+
+    if len(input_paths) == 0:
+        try:
+            env_journal_path = os.environ['DLEDGER_FILE']
+            env_journal_path = os.path.expandvars(env_journal_path)
+            env_journal_path = os.path.expanduser(env_journal_path)
+            input_paths = [env_journal_path]
+        except KeyError:
+            default_journal_path = os.path.expanduser("~/.dledger.journal")
+            input_paths = [default_journal_path]
+
+    for path in input_paths:
+        if not os.path.isfile(path):
+            sys.exit(f'{path}: journal not found')
 
     input_type = args['--type']
     is_verbose = args['--verbose']
@@ -169,9 +188,23 @@ def main() -> None:
                    replace(r, entry_date=r.ex_date, ex_date=None) for
                    r in records]
 
+    if args['--baseline']:
+        # convert all transactions to their baseline representations;
+        # i.e. treating all transactions as if the position was 1
+        # this is effectively just a way to reveal base dividends with
+        # exchange rates applied (if applicable)
+        def baseline_record(record: Transaction) -> Transaction:
+            if record.amount is not None:
+                baseline_amount = replace(
+                    record.amount, value=record.amount.value / record.position)
+            else:
+                baseline_amount = record.amount
+            return replace(record, position=1, amount=baseline_amount)
+        records = [baseline_record(r) if r.position > 0 else r for r in records]
+
     if not args['--without-forecast']:
         # produce forecasted transactions dated into the future
-        records.extend(scheduled_transactions(records))
+        records.extend(scheduled_transactions(records, rates=exchange_rates))
 
     # for reporting, keep only dividend transactions
     transactions = [r for r in records if r.amount is not None]
@@ -182,14 +215,16 @@ def main() -> None:
     # (redundantly) sort for good measure
     transactions = sorted(transactions)
 
-    exchange_symbol = args['--in-currency']
+    exchange_symbol = args['--as-currency']
     if exchange_symbol is not None:
         # forcefully apply an exchange to given currency
         transactions = convert_to_currency(
             transactions, symbol=exchange_symbol, rates=exchange_rates)
 
     if args['balance']:
-        if args['--by-position']:
+        if args['--by-currency']:
+            print_currency_balance_report(transactions)
+        elif args['--by-position']:
             print_balance_report(transactions, deviance=DRIFT_BY_POSITION)
         elif args['--by-amount']:
             print_balance_report(transactions, deviance=DRIFT_BY_AMOUNT)

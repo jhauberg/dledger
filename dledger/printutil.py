@@ -4,6 +4,8 @@ import sys
 # color escape sequences
 COLOR_NEGATIVE = '\x1b[0;33m'
 COLOR_MARKED = '\x1b[0;30;47m'
+COLOR_UNDERLINED = '\x1b[0;0;4m'
+COLOR_NEGATIVE_UNDERLINED = '\x1b[0;33;4m'
 COLOR_RESET = '\x1b[0m'
 
 # windows specific handles

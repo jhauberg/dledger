@@ -5,7 +5,12 @@ from datetime import datetime, date
 
 from dledger.journal import Transaction, Distribution, max_decimal_places
 from dledger.formatutil import format_amount, decimalplaces
-from dledger.printutil import colored, COLOR_NEGATIVE, COLOR_MARKED
+from dledger.printutil import (
+    colored,
+    COLOR_NEGATIVE, COLOR_NEGATIVE_UNDERLINED,
+    COLOR_UNDERLINED,
+    COLOR_MARKED
+)
 from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import (
     GeneratedAmount, GeneratedTransaction,
@@ -49,6 +54,8 @@ def print_simple_annual_report(records: List[Transaction]):
                     line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
             else:
                 line = f'{amount.rjust(20)}    {d.ljust(11)}'
+            payers = formatted_prominent_payers(yearly_transactions)
+            line = f'{line}{payers}'
             if today.year == year:
                 print(colored(line, COLOR_MARKED))
             else:
@@ -85,6 +92,8 @@ def print_simple_monthly_report(records: List[Transaction]):
                     line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
                 else:
                     line = f'{amount.rjust(20)}    {d.ljust(11)}'
+                payers = formatted_prominent_payers(monthly_transactions)
+                line = f'{line}{payers}'
                 if today.year == year and today.month == month:
                     print(colored(line, COLOR_MARKED))
                 else:
@@ -127,6 +136,8 @@ def print_simple_quarterly_report(records: List[Transaction]):
                     line = f'~ {amount.rjust(18)}    {d.ljust(11)}'
                 else:
                     line = f'{amount.rjust(20)}    {d.ljust(11)}'
+                payers = formatted_prominent_payers(quarterly_transactions)
+                line = f'{line}{payers}'
                 if today.year == year and ending_month > today.month >= starting_month:
                     print(colored(line, COLOR_MARKED))
                 else:
@@ -152,13 +163,18 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             position_decimal_places[ticker] = max(
                 decimalplaces(r.position) for r in records if r.ticker == ticker
             )
+    underlined_record = next((x for x in reversed(records) if x.entry_date < today), None)
+    if len(records) > 0 and underlined_record is records[-1]:
+        # don't underline the final transaction; there's no transactions below
+        underlined_record = None
     for transaction in records:
         should_colorize_expired_transaction = False
+        payout = transaction.amount.value
         amount_decimal_places = payout_decimal_places[transaction.ticker]
         if amount_decimal_places is not None:
-            amount = format_amount(transaction.amount.value, places=amount_decimal_places)
+            amount = format_amount(payout, places=amount_decimal_places)
         else:
-            amount = format_amount(transaction.amount.value)
+            amount = format_amount(payout)
         amount = transaction.amount.fmt % amount
 
         d = transaction.entry_date.strftime('%Y/%m/%d')
@@ -171,6 +187,8 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         if transaction.entry_attr is not None and transaction.entry_attr.is_preliminary:
             should_colorize_expired_transaction = True
             # call attention as it is a preliminary record, not completed yet
+            # note that we can't rely on color being supported,
+            # so a textual indication must also be applied
             line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
 
             if not detailed:
@@ -183,10 +201,12 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
                 if transaction.entry_date < today:
                     should_colorize_expired_transaction = True
                     # call attention as it may be a payout about to happen, or a closed position
-                    line = f'{line}  ! {d} {transaction.ticker.ljust(8)}'
+                    line = f'{line}  ~ {d} {transaction.ticker.ljust(8)}'
                 else:
-                    line = f'{line}  < {d} {transaction.ticker.ljust(8)}'
+                    # indicate that the transaction is expected before, or by, date
+                    line = f'{line} <~ {d} {transaction.ticker.ljust(8)}'
             else:
+                # todo: we're ignoring these indicators for preliminary records; is that right?
                 if transaction.kind is Distribution.INTERIM:
                     line = f'{line}  ^ {d} {transaction.ticker.ljust(8)}'
                 elif transaction.kind is Distribution.SPECIAL:
@@ -204,20 +224,24 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
             position = f'({p})'.rjust(18)
             line = f'{line} {position}'
 
-            if transaction.dividend is not None:
-                div_decimal_places = dividend_decimal_places[transaction.ticker]
-                if div_decimal_places is not None:
-                    dividend = format_amount(transaction.dividend.value,
-                                             places=div_decimal_places)
-                else:
-                    dividend = format_amount(transaction.dividend.value)
-                dividend = transaction.dividend.fmt % dividend
-                line = f'{line} {dividend.rjust(16)}'
+            assert transaction.dividend is not None
+
+            div_decimal_places = dividend_decimal_places[transaction.ticker]
+            if div_decimal_places is not None:
+                dividend = format_amount(transaction.dividend.value,
+                                         places=div_decimal_places)
+            else:
+                dividend = format_amount(transaction.dividend.value)
+            dividend = transaction.dividend.fmt % dividend
+            line = f'{line} {dividend.rjust(16)}'
 
         if should_colorize_expired_transaction:
-            line = colored(line, COLOR_NEGATIVE)
-        elif transaction.entry_date == today:
-            line = colored(line, COLOR_MARKED)
+            if transaction is underlined_record:
+                line = colored(line, COLOR_NEGATIVE_UNDERLINED)
+            else:
+                line = colored(line, COLOR_NEGATIVE)
+        elif transaction is underlined_record:
+            line = colored(line, COLOR_UNDERLINED)
 
         print(line)
 
@@ -273,9 +297,12 @@ def print_simple_sum_report(records: List[Transaction]) -> None:
         amount = latest_transaction.amount.fmt % amount
 
         if any(isinstance(r.amount, GeneratedAmount) for r in matching_transactions):
-            print(f'~ {amount.rjust(18)}')
+            line = f'~ {amount.rjust(18)}'
         else:
-            print(f'{amount.rjust(20)}')
+            line = f'{amount.rjust(20)}'
+        payers = formatted_prominent_payers(matching_transactions)
+        line = f'{line}               {payers}'
+        print(line)
         if commodity != commodities[-1]:
             print()
 
@@ -315,6 +342,28 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
                 print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate_amount}')
 
 
+def most_prominent_payers(records: List[Transaction]) \
+        -> List[str]:
+    combined_income_per_ticker = []
+    for ticker in tickers(records):
+        filtered_records = list(by_ticker(records, ticker))
+        combined_income_per_ticker.append((ticker, income(filtered_records)))
+    combined_income_per_ticker.sort(key=lambda x: x[1], reverse=True)
+    return [ticker for ticker, _ in combined_income_per_ticker]
+
+
+def formatted_prominent_payers(records: List[Transaction], *, limit: int = 3) -> str:
+    payers = most_prominent_payers(records)
+    top = payers[:limit]
+    bottom = [payer for payer in payers if payer not in top]
+    formatted = ', '.join(top)
+    formatted = (formatted[:30] + '…') if len(formatted) > 30 else formatted
+    if len(bottom) > 0:
+        additionals = f'(+{len(bottom)})'
+        formatted = f'{formatted} {additionals}'
+    return formatted
+
+
 def print_simple_rolling_report(records: List[Transaction]):
     today = datetime.today().date()
     years = range(earliest(records).entry_date.year,
@@ -349,6 +398,8 @@ def print_simple_rolling_report(records: List[Transaction]):
                     line = f'~ {amount.rjust(18)}  < {d.ljust(11)}'
                 else:
                     line = f'{amount.rjust(20)}  < {d.ljust(11)}'
+                payers = formatted_prominent_payers(rolling_transactions)
+                line = f'{line}{payers}'
                 if today.year == year and today.month == month:
                     print(colored(line, COLOR_MARKED))
                 else:
@@ -360,7 +411,8 @@ def print_simple_rolling_report(records: List[Transaction]):
             total = income(future_transactions)
             amount = format_amount(total, trailing_zero=False)
             amount = latest_transaction.amount.fmt % amount
-            print(f'~ {amount.rjust(18)}    next 12m')
+            payers = formatted_prominent_payers(future_transactions)
+            print(f'~ {amount.rjust(18)}    next 12m   {payers}')
             should_breakline = True
 
         if commodity != commodities[-1] and should_breakline:
@@ -417,7 +469,8 @@ def print_balance_report(records: List[Transaction], *, deviance: int = DRIFT_BY
                 line = f'~ {amount.rjust(18)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}'
             else:
                 line = f'{amount.rjust(20)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}'
-            p = format_amount(p, places=decimalplaces(p))
+            p_decimals = decimalplaces(p)
+            p = format_amount(p, places=p_decimals)
             position = f'({p})'.rjust(18)
             if deviance == DRIFT_BY_WEIGHT:
                 if wdrift >= 0:
@@ -433,11 +486,56 @@ def print_balance_report(records: List[Transaction], *, deviance: int = DRIFT_BY
             elif deviance == DRIFT_BY_POSITION:
                 if pdrift >= 0:
                     # increase position (buy)
-                    drift = f'+ {format_amount(pdrift)}'.rjust(16)
+                    drift = f'+ {format_amount(pdrift, places=p_decimals)}'.rjust(16)
                 else:
                     # decrease position (sell)
-                    drift = f'- {format_amount(abs(pdrift))}'.rjust(16)
+                    drift = f'- {format_amount(abs(pdrift), places=p_decimals)}'.rjust(16)
             line = f'{line} {position} {drift}'
+            print(line)
+        if commodity != commodities[-1]:
+            print()
+
+
+def print_currency_balance_report(records: List[Transaction]):
+    commodities = sorted(symbols(records, excluding_dividends=True))
+    for commodity in commodities:
+        matching_transactions = list(
+            filter(lambda r: r.amount.symbol == commodity, records))
+        if len(matching_transactions) == 0:
+            continue
+        latest_transaction = latest(matching_transactions)
+        total_income = income(matching_transactions)
+        weights = []
+        dividend_symbols = []
+        for transaction in matching_transactions:
+            assert transaction.dividend is not None
+            if transaction.dividend.symbol not in dividend_symbols:
+                dividend_symbols.append(transaction.dividend.symbol)
+        target_weight = 100 / len(dividend_symbols)
+        for symbol in dividend_symbols:
+            filtered_records = list(
+                filter(lambda r: r.dividend.symbol == symbol, matching_transactions))
+            income_by_symbol = income(filtered_records)
+            weight = income_by_symbol / total_income * 100
+            weight_drift = target_weight - weight
+            has_estimate = any(isinstance(r.amount, GeneratedAmount) for r in filtered_records)
+            weights.append((symbol, income_by_symbol, latest_transaction.amount.fmt, weight,
+                            weight_drift, len(tickers(filtered_records)), has_estimate))
+        weights.sort(key=lambda w: w[1], reverse=True)
+        for weight in weights:
+            symbol, amount, fmt, pct, wdrift, p, has_estimate = weight
+            pct = f'{format_amount(pct)}%'
+            amount = fmt % format_amount(amount, trailing_zero=False)
+            positions = f'({p})'.rjust(18)
+            if wdrift >= 0:
+                drift = f'+ {format_amount(wdrift)}%'.rjust(16)
+            else:
+                drift = f'- {format_amount(abs(wdrift))}%'.rjust(16)
+            if has_estimate:
+                line = f'~ {amount.rjust(18)}'
+            else:
+                line = f'{amount.rjust(20)}'
+            line = f'{line}       {pct.rjust(7)} {symbol.ljust(8)} {positions} {drift}'
             print(line)
         if commodity != commodities[-1]:
             print()
