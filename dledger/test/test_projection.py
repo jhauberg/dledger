@@ -1310,6 +1310,47 @@ def test_secondary_date_monthly():
     assert transactions[10].entry_date == date(2020, 3, 15)
 
 
+def test_seemingly_missing_projection():
+    # this test simulates reporting with --by-ex-date where a projected record
+    # is projected "in the past", beyond the grace period, and is therefore discarded
+    # but the payout/entry date might lie in the future still so it seems incorrect to be missing
+    # the logic is correct, however, so it is intentional and not an error
+    #
+    # it could be included by considering other dates; i.e. not only entry_date
+    # however, that requires a mechanism to determine the "primary" date
+    # as currently we replace entry_date and discard the field used (with a function to determine
+    # primary date, we would not alter the record at all- except for setting some flag- but this
+    # is a large task that goes deep almost everywhere)
+    # additionally, it might introduce unwanted projections in situations where
+    # the dividend distribution was actually eliminated (the projection would just linger longer)
+    records = [
+        Transaction(date(2019, 3, 15), 'A', 1, amount=Amount(1), ex_date=date(2019, 2, 20)),
+        Transaction(date(2019, 6, 14), 'A', 1, amount=Amount(1), ex_date=date(2019, 5, 15)),
+        Transaction(date(2019, 9, 13), 'A', 1, amount=Amount(1), ex_date=date(2019, 8, 14)),
+        Transaction(date(2019, 12, 13), 'A', 1, amount=Amount(1), ex_date=date(2019, 11, 20)),
+        Transaction(date(2020, 3, 13), 'A', 1, amount=Amount(1), ex_date=date(2020, 2, 19)),
+        Transaction(date(2020, 6, 12), 'A', 1, amount=Amount(1), ex_date=date(2020, 5, 20)),
+    ]
+
+    projections = scheduled_transactions(records, since=date(2020, 9, 5))
+
+    assert len(projections) == 4
+    assert projections[0].entry_date == date(2020, 9, 15)
+
+    # simulate --by-ex-date
+    from dataclasses import replace
+    records = [r if r.ex_date is None else
+               replace(r, entry_date=r.ex_date, ex_date=None) for
+               r in records]
+
+    projections = scheduled_transactions(records, since=date(2020, 9, 5))
+
+    assert len(projections) == 3
+    # note the "missing" projection at 2020/08/15, because this is 20 days ago;
+    # i.e. more than the grace period of 15 days
+    assert projections[0].entry_date == date(2020, 11, 30)
+
+
 def test_secondary_date_quarterly():
     records = [
         Transaction(date(2019, 4, 30), 'ABC', 1, amount=Amount(1), dividend=Amount(1)),
