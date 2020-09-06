@@ -236,6 +236,15 @@ def test_deltas():
 
     amounts = [
         Amount(1),
+        Amount(2),
+        Amount(2)
+    ]
+
+    assert deltas(amounts) == [1, 0]
+    assert deltas(amounts, normalized=False) == [1, 0]
+
+    amounts = [
+        Amount(1),
         Amount(2.5)
     ]
 
@@ -251,6 +260,16 @@ def test_deltas():
 
     assert deltas(amounts) == [1, -1, -1]
     assert deltas(amounts, normalized=False) == [1.5, -1.5, -0.5]
+
+    amounts = [
+        Amount(0.12),
+        Amount(0.08),
+        Amount(0.08)
+    ]
+
+    assert deltas(amounts) == [-1, 0]
+    # todo: approximate or truncate
+    # assert deltas(amounts, normalized=False) == [-0.04, 0]
 
 
 def test_symbols():
