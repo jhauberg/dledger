@@ -134,6 +134,7 @@ def test_intervals():
         Transaction(date(2018, 5, 4), 'ABC', 1)
     ]
 
+    # note that, though dated identically, these records will be normalized as a year apart
     # this might seem wrong, but what we're interested in here is the pattern of payouts,
     # not the actual number of months between- so in this case, an additional payout on same date
     # just enforces the pattern of an annual payout interval
@@ -236,6 +237,15 @@ def test_deltas():
 
     amounts = [
         Amount(1),
+        Amount(2),
+        Amount(2)
+    ]
+
+    assert deltas(amounts) == [1, 0]
+    assert deltas(amounts, normalized=False) == [1, 0]
+
+    amounts = [
+        Amount(1),
         Amount(2.5)
     ]
 
@@ -251,6 +261,16 @@ def test_deltas():
 
     assert deltas(amounts) == [1, -1, -1]
     assert deltas(amounts, normalized=False) == [1.5, -1.5, -0.5]
+
+    amounts = [
+        Amount(0.12),
+        Amount(0.08),
+        Amount(0.08)
+    ]
+
+    assert deltas(amounts) == [-1, 0]
+    # todo: approximate or truncate
+    # assert deltas(amounts, normalized=False) == [-0.04, 0]
 
 
 def test_symbols():
