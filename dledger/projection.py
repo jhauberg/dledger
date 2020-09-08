@@ -5,7 +5,7 @@ from dataclasses import dataclass, replace
 
 from statistics import multimode, fmean
 
-from dledger.journal import Transaction, Distribution, Amount
+from dledger.journal import Transaction, Distribution, Amount, ParseError
 from dledger.dateutil import last_of_month, months_between, in_months, next_month
 from dledger.formatutil import decimalplaces
 from dledger.record import (
@@ -289,11 +289,21 @@ def scheduled_transactions(records: List[Transaction], *,
             # skip projections for this ticker entirely,
             # as latest transaction is dated more than 12 months ago
             continue
-        # otherwise, add the trailing 12 months of transactions by this ticker
-        sample_records.extend(
-            # note using latest_record dating as that potentially adds to the amount of information
-            # we'll have available (frequency etc.), and then rely on filtering out older ones later
-            trailing(recs, since=latest_record.entry_date, months=12))
+        # note using latest_record dating as that potentially adds to the amount of information
+        # we'll have available (frequency etc.), and then rely on filtering out older ones later
+        recs_in_period = list(trailing(recs, since=latest_record.entry_date, months=12))
+        # assert that we don't have identically dated records
+        # this is a core requirement for unambiguously projecting transactions
+        for i, record in enumerate(recs_in_period):
+            for j, other_record in enumerate(recs_in_period):
+                if i == j:
+                    # don't compare to self
+                    continue
+                if record.entry_date == other_record.entry_date:
+                    if other_record.entry_attr is not None:
+                        raise ParseError('ambiguous record entry', location=other_record.entry_attr.location)
+                    raise ValueError(f'ambiguous record entry: {other_record.entry_date} {ticker}')
+        sample_records.extend(recs_in_period)
     # don't include special dividend transactions
     sample_records = [r for r in sample_records if r.kind is not Distribution.SPECIAL]
     # project sample records 1 year into the future
@@ -354,6 +364,7 @@ def scheduled_transactions(records: List[Transaction], *,
             # should match approximated frequency - discard records as needed
             # note that we include latest realized record to determine initial interval
             for n, interval in enumerate(intervals([latest(recs)] + projected_recs)):
+                # todo: we have an infinite loop here if identically dated records reaches this point
                 if normalize_interval(interval) != freq:
                     # discard this projection
                     scheduled.remove(projected_recs.pop(n))
