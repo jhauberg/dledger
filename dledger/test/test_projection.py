@@ -1471,3 +1471,26 @@ def test_ambiguous_position():
         assert True
     else:
         assert False
+
+    records = [
+        Transaction(date(2019, 2, 14), 'AAPL', 100, amount=Amount(73)),
+        Transaction(date(2019, 2, 14), 'AAPL', 100, amount=Amount(36.5), kind=Distribution.SPECIAL)
+    ]
+
+    projections = scheduled_transactions(records, since=date(2019, 2, 18))
+
+    assert len(projections) == 1
+
+    records = [
+        Transaction(date(2019, 2, 14), 'AAPL', 100, amount=Amount(73)),
+        # ambiguous position
+        Transaction(date(2019, 2, 14), 'AAPL', 50, amount=Amount(36.5), kind=Distribution.SPECIAL)
+    ]
+
+    try:
+        scheduled_transactions(records, since=date(2019, 2, 18))
+    except ValueError:
+        assert True
+    else:
+        assert False
+
