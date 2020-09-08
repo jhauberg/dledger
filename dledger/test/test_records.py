@@ -134,6 +134,7 @@ def test_intervals():
         Transaction(date(2018, 5, 4), 'ABC', 1)
     ]
 
+    # note that, though dated identically, these records will be normalized as a year apart
     # this might seem wrong, but what we're interested in here is the pattern of payouts,
     # not the actual number of months between- so in this case, an additional payout on same date
     # just enforces the pattern of an annual payout interval
