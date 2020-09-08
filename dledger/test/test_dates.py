@@ -167,6 +167,15 @@ def test_parse_datestamp():
     else:
         assert False
 
+    try:
+        parse_datestamp("200/11/11")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    assert parse_datestamp("0200/11/11") == date(200, 11, 11)
+
 
 def test_parse_period():
     assert parse_period('2019/11/11:2020/11/11') == (date(2019, 11, 11),
