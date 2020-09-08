@@ -300,12 +300,26 @@ def scheduled_transactions(records: List[Transaction], *,
                     # don't compare to self
                     continue
                 if record.entry_date == other_record.entry_date:
-                    if other_record.entry_attr is not None:
-                        raise ParseError('ambiguous record entry', location=other_record.entry_attr.location)
-                    raise ValueError(f'ambiguous record entry: {other_record.entry_date} {ticker}')
-        sample_records.extend(recs_in_period)
-    # don't include special dividend transactions
-    sample_records = [r for r in sample_records if r.kind is not Distribution.SPECIAL]
+                    # records dated identically (based on entry date)
+                    # todo: note that there might be some intricacies with ex-date here (i.e. in some cases ex-date
+                    #       could be the date to compare against), but for now just base this logic on primary date
+                    if record.kind == Distribution.SPECIAL or other_record.kind == Distribution.SPECIAL:
+                        # allow identically dated records if one or the other is a special dividend
+                        # but check for ambiguous position
+                        # see journal.py:232 for tolerance
+                        if not math.isclose(record.position, other_record.position, abs_tol=0.000001):
+                            if other_record.entry_attr is not None:
+                                raise ParseError(f'ambiguous position ({record.position} or {other_record.position}?)',
+                                                 location=other_record.entry_attr.location)
+                            raise ValueError(f'ambiguous position: {other_record.entry_date} {ticker} '
+                                             f'({record.position} or {other_record.position}?)')
+                    else:
+                        # otherwise, don't allow records dated identically
+                        if other_record.entry_attr is not None:
+                            raise ParseError('ambiguous record entry', location=other_record.entry_attr.location)
+                        raise ValueError(f'ambiguous record entry: {other_record.entry_date} {ticker}')
+        # don't include special dividend transactions
+        sample_records.extend(r for r in recs_in_period if r.kind is not Distribution.SPECIAL)
     # project sample records 1 year into the future
     futures = future_transactions(sample_records, rates=rates)
     # project sample records by 12-month schedule and frequency
