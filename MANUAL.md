@@ -627,11 +627,11 @@ This reveals some statistics and information on symbol/exchange rate and how `dl
 
 ## I have a position in the same stock in multiple portfolios. How do I track this?
 
-This is not supported. You can still track both in a single journal, but to avoid unexpected reports, you should combine each position and treat it as a single position. You can do this by consolidating the transactions.
+This is not supported. You can choose to either keep a separate journal per portfolio, or keep one journal and consolidate the transactions.
 
 For example, let's say you have two portfolios, each with a respective position of 100 and 50 shares in the fictional company ABC.
 
-In this scenario, you would typically enter the following transactions:
+In this scenario, when a dividend hits, you would enter the following transactions:
 
 ```
 2019/03/16 ABC (100)  # portfolio A
@@ -641,15 +641,15 @@ In this scenario, you would typically enter the following transactions:
   $ 0.5
 ```
 
-However, these transactions contradict each other in regard to forecasting; do you have a current position of 50, or a 100?
+However, these transactions are problematic in regard to forecasting; do you have a current position of 50, or a 100?
 
-*Note that this contradiction will stand as long as the transactions occur within the same report; i.e. you could split the transactions into separate journals, but you would also have to run individual reports per journal.*
-
-To solve this issue, you can consolidate the individual transactions:
+You can resolve this ambiguity by consolidating these transactions into one:
 
 ```
 2019/03/16 ABC (150)
   $ 2
 ```
 
-This clearly and explicitly states that your current, and total position, is 150 shares.
+This explicitly states that your current, and total position (across all portfolios), is 150 shares.
+
+*Note that even while keeping separate journals, the ambiguity will remain unless you also run separate reports.*
