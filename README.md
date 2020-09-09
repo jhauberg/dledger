@@ -30,7 +30,9 @@ Here's a journal that tracks a position of 100 shares of Apple over 3 transactio
   $ 77
 ```
 
-Running a report shows all dividend income, including forecasts for the next 12 months:
+<sup>&nbsp;&nbsp;**.journal**</sup>
+
+Running a report shows all historical dividend income, including forecasts for the next 12 months:
 
 ```shell
 $ dledger report ~/.journal
@@ -39,13 +41,13 @@ $ dledger report ~/.journal
                 $ 73    2019/02/14 AAPL
                 $ 77    2019/05/16 AAPL
                 $ 77    2019/08/15 AAPL
-~               $ 77  < 2019/11/15 AAPL
-~               $ 77  < 2020/02/15 AAPL
-~               $ 77  < 2020/05/31 AAPL
-~               $ 77  < 2020/08/15 AAPL
+~               $ 77 <~ 2019/11/15 AAPL
+~               $ 77 <~ 2020/02/15 AAPL
+~               $ 77 <~ 2020/05/31 AAPL
+~               $ 77 <~ 2020/08/15 AAPL
 ```
 
-Read the [manual](MANUAL.md#reports) to learn more about reporting.
+Read the [manual](MANUAL.md#reports) to learn more.
 
 <br />
 
