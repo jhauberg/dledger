@@ -30,21 +30,23 @@ If the installation is successful, you should now be able to run `dledger`:
 $ dledger
 ```
 
-Depending on your Python setup, you might have to run it as a module:
+Depending on your Python setup, you might have to run `dledger` as a module:
 
 ```shell
 $ python3 -m dledger
 ```
 
+Similarly, you can also use the above command to run `dledger` without installing it first (just navigate to project root).
+
 ### Usage
 
-The `dledger` program has many commands, flags and arguments. You can explore and get a full overview of all usage patterns through `--help`:
+The `dledger` program has many commands, flags and arguments. You can get an overview of all usage patterns through `--help`:
 
 ```shell
 $ dledger --help
 ```
 
-This might seem overwhelming, but the typical usage pattern is `$ dledger <command> <journal> <flags>`, where `<flags>` are always optional.
+This might seem overwhelming, but the typical usage is `$ dledger <command> <journal> <flags>`, where `<flags>` are always an optional set of flags.
 
 For example, the simplest and most useful command-line is simply:
 
@@ -52,13 +54,34 @@ For example, the simplest and most useful command-line is simply:
 $ dledger report ~/.journal
 ```
 
-This invokes `dledger` using the `report` command on the journal-file located at `~/.journal`.
+This invokes `dledger` using the `report` command on the journal-file located at e.g. `/Users/jhauberg/.journal`.
+
+You can provide paths to more than one journal; for example, you might keep a journal per year:
+
+```shell
+$ dledger report ~/2018.journal ~/2019.journal
+```
+
+This produces a report that includes transactions from both journals.
+
+If you only ever use one journal, you can omit any journal path by declaring an environment variable named `DLEDGER_FILE` that points to your default journal-file:
+
+```shell
+export DLEDGER_FILE="~/.journal"
+```
+
+This restricts you to a single journal, but does simplify the command-line:
+
+
+```shell
+$ dledger report
+```
 
 # Journals
 
 In the ledger-like universe, a journal is a simple plain-text file that you edit and format manually- by hand.
 
-The journal is where you keep all your transactions. Each transaction is recorded in a compatible format and `dledger` is simply a tool to process or produce reports on these transactions.
+The journal is where you keep all your transactions. Each transaction is recorded in a compatible format and `dledger` is simply a tool to process and produce reports on these transactions.
 
 There are no requirements on how you name your journal files, nor which extension to use. A common practice is to apply the `.journal` extension.
 
@@ -280,6 +303,7 @@ Then, on the day of payout, you complete the transaction by finally entering the
 This method is recommended if you want to pursue a more active investing strategy (like dividend capturing or reinvesting dividends into the next upcoming payer for a quicker return).
 
 You can extend the transaction with its payout date by applying a tag to the cash component.
+
 ```
 2019/02/08 AAPL (100)
   [2019/02/14] $ 73 @ $ 0.73
@@ -481,15 +505,23 @@ $ dledger report example/simple.journal --by-ticker=AAPL
 ```
 
 ```
-                $ 73    2019/02/14 AAPL           $ 0.73    (100)
-                $ 77    2019/05/16 AAPL           $ 0.77    (100)
-                $ 77    2019/08/15 AAPL           $ 0.77    (100)
-                $ 77    2019/11/14 AAPL           $ 0.77    (100)
-~               $ 77  < 2020/02/15 AAPL           $ 0.77    (100)
-~               $ 77  < 2020/05/31 AAPL           $ 0.77    (100)
-~               $ 77  < 2020/08/15 AAPL           $ 0.77    (100)
-~               $ 77  < 2020/11/15 AAPL           $ 0.77    (100)
+                $ 73    2019/02/14 AAPL                  (100)           $ 0.73
+                $ 77    2019/05/16 AAPL                  (100)           $ 0.77
+                $ 77    2019/08/15 AAPL                  (100)           $ 0.77
+                $ 77    2019/11/14 AAPL                  (100)           $ 0.77
+~               $ 77 <~ 2020/02/15 AAPL                  (100)           $ 0.77
+~               $ 77 <~ 2020/05/31 AAPL                  (100)           $ 0.77
+~               $ 77 <~ 2020/08/15 AAPL                  (100)           $ 0.77
+~               $ 77 <~ 2020/11/15 AAPL                  (100)           $ 0.77
 ```
+
+You can provide partial ticker names if there's no ambiguity among other tickers. For example, the above report could also be run as:
+
+```shell
+$ dledger report example/simple.journal --by-ticker=AAP
+```
+
+Ticker names are case-sensitive; i.e. `--by-ticker=Aapl` does not produce the same report as above.
 
 Ticker names can contain whitespace.
 
