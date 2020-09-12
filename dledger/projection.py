@@ -707,6 +707,10 @@ def symbol_conversion_factors(records: List[Transaction]) \
 
             for similar_transaction in similar_transactions:
                 similar_conversion_factor = amount_conversion_factor(similar_transaction)
+                # todo: note that there can easily be ambiguities due to how brokerages handle
+                #       exchanges; so this error might be better suited as a verbose diagnostic
+                #       rather than an actual error - and then just always go with the latest
+                #       transaction (based on whatever sorting rules we have in place)
                 if not math.isclose(similar_conversion_factor, conversion_factor, abs_tol=0.0001):
                     raise ValueError(f'ambiguous conversion rate ({similar_conversion_factor} or {conversion_factor}?)')
 
