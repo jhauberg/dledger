@@ -189,7 +189,7 @@ def convert_estimates(records: List[Transaction],
                       rates: Optional[Dict[Tuple[str, str], float]] = None) \
         -> List[Transaction]:
     """ Return a list of transactions, replacing missing amounts with estimates. """
-    rates = rates if rates is not None else symbol_conversion_factors(records)
+    rates = rates if rates is not None else latest_exchange_rates(records)
     transactions = list(r for r in records if r.amount is not None)
     estimate_records = (r for r in records if (r.amount is None and
                                                r.dividend is not None))
@@ -231,7 +231,7 @@ def convert_to_currency(records: List[Transaction], *,
                         rates: Optional[Dict[Tuple[str, str], float]] = None) \
         -> List[Transaction]:
     """ Return a list of transactions, replacing amounts with estimates in given currency. """
-    rates = rates if rates is not None else symbol_conversion_factors(records)
+    rates = rates if rates is not None else latest_exchange_rates(records)
     transactions = list(r for r in records if r.amount is not None)
     convertible_records = (r for r in records if (r.amount is not None and
                                                   r.amount.symbol != symbol))
@@ -414,8 +414,7 @@ def estimated_transactions(records: List[Transaction], *,
 
     approximate_records = []
 
-    if rates is None:
-        rates = symbol_conversion_factors(records)
+    rates = rates if rates is not None else latest_exchange_rates(records)
 
     for ticker in tickers(records):
         latest_record = latest(by_ticker(records, ticker), by_exdividend=True)
@@ -597,8 +596,7 @@ def future_transactions(records: List[Transaction], *,
     # weed out position-only records
     transactions = list(r for r in records if r.amount is not None)
 
-    if rates is None:
-        rates = symbol_conversion_factors(transactions)
+    rates = rates if rates is not None else latest_exchange_rates(transactions)
 
     for transaction in transactions:
         assert transaction.amount is not None
@@ -661,11 +659,11 @@ def future_transactions(records: List[Transaction], *,
     return sorted(future_records)
 
 
-def symbol_conversion_factors(records: List[Transaction]) \
-        -> Dict[Tuple[str, str], float]:
+def conversion_factors(records: List[Transaction]) \
+        -> Dict[Tuple[str, str], List[float]]:
     """ Return a set of currency exchange rates. """
 
-    conversion_factors: Dict[Tuple[str, str], float] = dict()
+    factors: Dict[Tuple[str, str], List[float]] = dict()
 
     transactions = list(r for r in records if r.amount is not None)
 
@@ -695,23 +693,39 @@ def symbol_conversion_factors(records: List[Transaction]) \
             assert latest_transaction.dividend.symbol is not None
 
             conversion_factor = amount_conversion_factor(latest_transaction)
-            conversion_factors[(latest_transaction.dividend.symbol,
-                                latest_transaction.amount.symbol)] = conversion_factor
+            conversion_key = (latest_transaction.dividend.symbol, latest_transaction.amount.symbol)
+            factors[conversion_key] = []
 
             # bias similar transactions by payout date even if latest is based on entry date
+            # note that this list will always include latest_transaction as well
             similar_transactions = list(dated(matching_transactions, latest_transaction_date, by_payout=True))
-
-            if len(similar_transactions) == 1:  # latest_transaction is always included here
-                # unless we have more transactions there's no need to proceed further
-                continue
 
             for similar_transaction in similar_transactions:
                 similar_conversion_factor = amount_conversion_factor(similar_transaction)
-                # todo: note that there can easily be ambiguities due to how brokerages handle
-                #       exchanges; so this error might be better suited as a verbose diagnostic
-                #       rather than an actual error - and then just always go with the latest
-                #       transaction (based on whatever sorting rules we have in place)
-                if not math.isclose(similar_conversion_factor, conversion_factor, abs_tol=0.0001):
-                    raise ValueError(f'ambiguous conversion rate ({similar_conversion_factor} or {conversion_factor}?)')
 
-    return conversion_factors
+                def is_ambiguous_rate(a, b) -> bool:
+                    return not math.isclose(a, b, abs_tol=0.0001)
+                if is_ambiguous_rate(similar_conversion_factor, conversion_factor):
+                    is_probably_duplicate = False
+                    for previous_ambiguous_rate in factors[conversion_key]:
+                        if not is_ambiguous_rate(previous_ambiguous_rate, similar_conversion_factor):
+                            # weed out "duplicate" rates
+                            is_probably_duplicate = True
+                            break
+                    if not is_probably_duplicate:
+                        factors[conversion_key].append(
+                            similar_conversion_factor)
+            # note that we set the applicable rate as last factor, as this seems more intuitive
+            # (i.e. the last/latest is the rate being applied to conversions)
+            factors[conversion_key].append(
+                conversion_factor)
+
+    return factors
+
+
+def latest_exchange_rates(records: List[Transaction]) \
+        -> Dict[Tuple[str, str], float]:
+    """ Return a set of currency exchange rates. """
+
+    # note that this assumes that, given a bunch of ambiguous rates, the factor to be applied is the last of the bunch
+    return {k: v[-1] for k, v in conversion_factors(records).items()}

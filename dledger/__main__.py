@@ -64,7 +64,7 @@ from dledger.report import (
     DRIFT_BY_WEIGHT, DRIFT_BY_AMOUNT, DRIFT_BY_POSITION
 )
 from dledger.projection import (
-    scheduled_transactions, convert_estimates, convert_to_currency, symbol_conversion_factors
+    scheduled_transactions, convert_estimates, convert_to_currency, latest_exchange_rates, conversion_factors
 )
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
@@ -138,16 +138,17 @@ def main() -> None:
     if interval is not None:
         interval = parse_period(interval)
 
+    # determine exchange rates before filtering out any transactions, as we expect the
+    # latest rate to be applied in all cases, no matter the period, ticker or other criteria
+    exchange_rates = latest_exchange_rates(records)
+
     if args['stats']:
         if interval is not None:
             # filter down all records by --period, not just transactions
             records = list(in_period(records, interval))
-        print_stats(records, journal_paths=input_paths)
+        print_stats(records, journal_paths=input_paths, rates=exchange_rates)
         sys.exit(0)
 
-    # determine exchange rates before filtering out any transactions, as we expect the
-    # latest rate to be applied in all cases, no matter the period, ticker or other criteria
-    exchange_rates = symbol_conversion_factors(records)
     ticker = args['--by-ticker']
     if ticker is not None:
         unique_tickers = tickers(records)
@@ -248,8 +249,8 @@ def main() -> None:
         else:
             print_simple_report(transactions, detailed=ticker is not None)
 
-    if is_verbose:
-        # print diagnostics on final set of transactions, if any
+    if is_verbose:  # print diagnostics on final set of transactions, if any
+        # find missing date entries when specifically sorting by date
         if args['--by-payout-date'] or args['--by-ex-date']:
             assert journaled_transactions is not None
             if interval is not None:
@@ -271,6 +272,15 @@ def main() -> None:
                     journal, linenumber = transaction.entry_attr.location
                     print(f'{journal}:{linenumber} transaction is missing ex-dividend date',
                           file=sys.stderr)
+        # find ambiguous conversion rates
+        from dledger.projection import GeneratedAmount
+        ambiguous_exchange_rates = conversion_factors(
+            # only include journaled records, but don't include preliminary estimates (signified by GeneratedAmount)
+            [r for r in journaled_transactions if not isinstance(r.amount, GeneratedAmount)])
+        for symbols, rates in ambiguous_exchange_rates.items():
+            if len(rates) > 1:
+                print(f'ambiguous exchange rate {symbols} = {exchange_rates[symbols]}:\n or, {rates[:-1]}',
+                      file=sys.stderr)
 
     sys.exit(0)
 

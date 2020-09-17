@@ -13,15 +13,14 @@ from dledger.printutil import (
 )
 from dledger.dateutil import previous_month, last_of_month
 from dledger.projection import (
-    GeneratedAmount, GeneratedTransaction,
-    symbol_conversion_factors
+    GeneratedAmount, GeneratedTransaction
 )
 from dledger.record import (
     income, yearly, monthly, symbols,
     tickers, by_ticker, latest, earliest, before, after
 )
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 
 
 def print_simple_annual_report(records: List[Transaction]):
@@ -312,7 +311,8 @@ def print_stat_row(name: str, text: str) -> None:
     print(f'{name}: {text}')
 
 
-def print_stats(records: List[Transaction], journal_paths: List[str]):
+def print_stats(records: List[Transaction], journal_paths: List[str], *,
+                rates: Optional[Dict[Tuple[str, str], float]] = None):
     for n, journal_path in enumerate(journal_paths):
         print_stat_row(f'Journal {n + 1}', os.path.abspath(journal_path))
     try:
@@ -320,26 +320,27 @@ def print_stats(records: List[Transaction], journal_paths: List[str]):
         print_stat_row('Locale', f'{lc}')
     except locale.Error:
         print_stat_row('Locale', 'Not configured')
+    if len(records) == 0:
+        return
     transactions = list(filter(lambda r: r.amount is not None, records))
     if len(transactions) > 0 and len(transactions) != len(records):
         print_stat_row('Records', f'{len(records)} ({len(transactions)})')
     else:
         print_stat_row('Records', f'{len(records)}')
-    if len(records) > 0:
-        earliest_datestamp = records[0].entry_date.strftime('%Y/%m/%d')
-        latest_datestamp = records[-1].entry_date.strftime('%Y/%m/%d')
-        print_stat_row('Earliest', earliest_datestamp)
-        print_stat_row('Latest', latest_datestamp)
-        print_stat_row('Tickers', f'{len(tickers(records))}')
-        currencies = sorted(symbols(records))
-        if len(currencies) > 0:
-            print_stat_row('Symbols', f'{currencies}')
-            conversion_rates = symbol_conversion_factors(records)
-            conversion_keys = sorted(conversion_rates, key=lambda c: c[0])
-            for from_symbol, to_symbol in conversion_keys:
-                conversion_rate = conversion_rates[(from_symbol, to_symbol)]
-                conversion_rate_amount = format_amount(conversion_rate)
-                print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate_amount}')
+    earliest_datestamp = records[0].entry_date.strftime('%Y/%m/%d')
+    latest_datestamp = records[-1].entry_date.strftime('%Y/%m/%d')
+    print_stat_row('Earliest', earliest_datestamp)
+    print_stat_row('Latest', latest_datestamp)
+    print_stat_row('Tickers', f'{len(tickers(records))}')
+    currencies = sorted(symbols(records))
+    if len(currencies) > 0:
+        print_stat_row('Symbols', f'{currencies}')
+    if rates is not None:
+        conversion_keys = sorted(rates, key=lambda c: c[0])
+        for from_symbol, to_symbol in conversion_keys:
+            conversion_rate = rates[(from_symbol, to_symbol)]
+            conversion_rate_amount = format_amount(conversion_rate)
+            print_stat_row(f'{from_symbol}/{to_symbol}', f'{conversion_rate_amount}')
 
 
 def most_prominent_payers(records: List[Transaction]) \
