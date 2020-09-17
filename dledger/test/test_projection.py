@@ -9,7 +9,8 @@ from dledger.projection import (
     next_linear_dividend,
     future_transactions,
     estimated_transactions,
-    symbol_conversion_factors,
+    conversion_factors,
+    latest_exchange_rates,
     scheduled_transactions,
     convert_estimates,
     convert_to_currency
@@ -1144,37 +1145,45 @@ def test_conversion_factors():
         Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$'))
     ]
 
-    factors = symbol_conversion_factors(records)
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[('$', 'kr')] == 1
+    assert factors[('$', 'kr')] == [1]
+    assert rates[('$', 'kr')] == 1
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(675, symbol='kr'), dividend=Amount(1, symbol='$'))
     ]
 
-    factors = symbol_conversion_factors(records)
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[('$', 'kr')] == 6.75
+    assert factors[('$', 'kr')] == [6.75]
+    assert rates[('$', 'kr')] == 6.75
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(10, symbol='kr'), dividend=Amount(1, symbol='$'))
     ]
 
-    factors = symbol_conversion_factors(records)
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[('$', 'kr')] == 0.1
+    assert factors[('$', 'kr')] == [0.1]
+    assert rates[('$', 'kr')] == 0.1
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(1, symbol='kr'), dividend=Amount(10, symbol='$'))
     ]
 
-    factors = symbol_conversion_factors(records)
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[('$', 'kr')] == 0.001
+    assert factors[('$', 'kr')] == [0.001]
+    assert rates[('$', 'kr')] == 0.001
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
@@ -1182,66 +1191,85 @@ def test_conversion_factors():
         Transaction(date(2019, 9, 1), 'ABC', 100, amount=Amount(105, symbol='kr'), dividend=Amount(1, symbol='$'))
     ]
 
-    factors = symbol_conversion_factors(records)
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[('$', 'kr')] == 1.05
+    assert factors[('$', 'kr')] == [1.05]
+    assert rates[('$', 'kr')] == 1.05
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
         Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$'))
     ]
 
-    factors = symbol_conversion_factors(records)
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[('$', 'kr')] == 1
+    assert factors[('$', 'kr')] == [1]
+    assert rates[('$', 'kr')] == 1
 
     records = [
         Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
         Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
     ]
 
-    try:
-        symbol_conversion_factors(records)
-    except ValueError:
-        assert True
-    else:
-        assert False
-
-    records = [
-        Transaction(date(2019, 2, 28), 'ABC', 100, payout_date=date(2019, 3, 1), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
-        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
-    ]
-
-    try:
-        symbol_conversion_factors(records)
-    except ValueError:
-        assert True
-    else:
-        assert False
-
-    records = [
-        Transaction(date(2019, 2, 26), 'ABC', 100, payout_date=date(2019, 2, 28), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
-        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
-    ]
-
-    factors = symbol_conversion_factors(records)
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[('$', 'kr')] == 1.1
+    assert factors[('$', 'kr')] == [1, 1.1]
+    assert rates[('$', 'kr')] == 1.1
 
     records = [
-        Transaction(date(2019, 3, 1), 'ABC', 100, ex_date=date(2019, 2, 28), amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$')),
+        Transaction(date(2019, 3, 1), 'WWW', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == [1, 1.1]
+    assert rates[('$', 'kr')] == 1.1
+
+    records = [
+        Transaction(date(2019, 2, 28), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$'), payout_date=date(2019, 3, 1)),
         Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
     ]
 
-    try:
-        symbol_conversion_factors(records)
-    except ValueError:
-        assert True
-    else:
-        assert False
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == [1, 1.1]
+    assert rates[('$', 'kr')] == 1.1
+
+    records = [
+        Transaction(date(2019, 2, 26), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$'), payout_date=date(2019, 2, 28)),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == [1.1]
+    assert rates[('$', 'kr')] == 1.1
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 100, amount=Amount(100, symbol='kr'), dividend=Amount(1, symbol='$'), ex_date=date(2019, 2, 28)),
+        Transaction(date(2019, 3, 1), 'XYZ', 100, amount=Amount(110, symbol='kr'), dividend=Amount(1, symbol='$'))
+    ]
+
+    factors = conversion_factors(records)
+    rates = latest_exchange_rates(records)
+
+    assert len(factors) == 1
+    assert factors[('$', 'kr')] == [1, 1.1]
+    assert rates[('$', 'kr')] == 1.1
 
 
 def test_convert_estimates():
