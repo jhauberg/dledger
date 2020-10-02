@@ -226,6 +226,21 @@ def convert_estimates(records: List[Transaction],
     return records
 
 
+def convert_to_native_currency(records: List[Transaction]) -> List[Transaction]:
+    """ Return a list of transactions, replacing amounts with the sum of dividend times position. """
+    for r in records:
+        if r.dividend is None:
+            continue
+        native_value = r.dividend.value * r.position
+        native_amount = replace(r.amount, value=native_value, symbol=r.dividend.symbol, fmt=r.dividend.fmt, places=None)
+        native_record = replace(r, amount=native_amount)
+        i = records.index(r)
+        records.pop(i)
+        records.insert(i, native_record)
+
+    return records
+
+
 def convert_to_currency(records: List[Transaction], *,
                         symbol: str,
                         rates: Optional[Dict[Tuple[str, str], float]] = None) \

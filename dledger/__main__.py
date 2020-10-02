@@ -6,11 +6,11 @@ usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--without-forecast]
                                       [--by-ticker=<ticker>]
                                       [--by-payout-date | --by-ex-date]
-                                      [--as-currency=<symbol>]
+                                      [--as-currency=<symbol> | --as-native-currency]
                                       [--baseline]
        dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
                                       [--by-payout-date | --by-ex-date]
-                                      [--as-currency=<symbol>]
+                                      [--as-currency=<symbol> | --as-native-currency]
                                       [--baseline]
        dledger stats   [<journal>]... [--period=<interval>] [-v]
        dledger print   [<journal>]... [--condensed] [-v]
@@ -26,6 +26,7 @@ OPTIONS:
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
      --as-currency=<symbol>   Show income as if exchanged to currency
+     --as-native-currency     Show income as received, prior to any exchange
      --baseline               Show baseline income (i.e. 1 share per ticker)
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
@@ -64,7 +65,8 @@ from dledger.report import (
     DRIFT_BY_WEIGHT, DRIFT_BY_AMOUNT, DRIFT_BY_POSITION
 )
 from dledger.projection import (
-    scheduled_transactions, convert_estimates, convert_to_currency, latest_exchange_rates, conversion_factors
+    scheduled_transactions, convert_estimates, convert_to_currency, convert_to_native_currency, latest_exchange_rates,
+    conversion_factors
 )
 from dledger.journal import (
     Transaction, write, read, SUPPORTED_TYPES
@@ -188,6 +190,9 @@ def main() -> None:
         records = [r if r.ex_date is None else
                    replace(r, entry_date=r.ex_date, ex_date=None) for
                    r in records]
+
+    if args['--as-native-currency']:
+        records = convert_to_native_currency(records)
 
     if args['--baseline']:
         # convert all transactions to their baseline representations;
