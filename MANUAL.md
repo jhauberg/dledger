@@ -48,7 +48,7 @@ $ dledger --help
 
 This might seem overwhelming, but the typical usage is `$ dledger <command> <journal> <flags>`, where `<flags>` are always an optional set of flags.
 
-For example, the simplest and most useful command-line is simply:
+For example, the simplest and most common command-line is simply:
 
 ```shell
 $ dledger report ~/.journal
@@ -104,6 +104,8 @@ Here's a [complete example journal-file](dledger/example/simple.journal), for re
 ```
 
 *Note that the hashtag/pound-symbol here indicates a line that is a comment for the human reader; the program will just ignore it.*
+
+The example journals might not report any forecasts if the latest record is more than a year old.
 
 ## Transactions
 
@@ -249,7 +251,7 @@ In general, there are typically two methods to track your dividend income:
 
 2. By ex-dividend date
 
-Both methods involve recording the cash you receive, the difference being *when* record it and which date you associate with each transaction. However, picking one method does not rule out benefits of the other; it's mostly a matter of preference.
+Both methods involve recording the cash you receive; the difference being *when* you record it, and which date you associate with each transaction. However, picking one method does not rule out benefits of the other; it's mostly a matter of preference.
 
 <sup>\*You can base forecasts by payout- or ex-dividend dates instead with the `--by-payout-date` and `--by-ex-date` flags</sup>
 
@@ -657,9 +659,9 @@ This reveals some statistics and information on symbol/exchange rate and how `dl
 
 # FAQ
 
-## I have a position in the same stock in multiple portfolios. How do I track this?
+## I have a position in the same company in multiple portfolios; how do I track this?
 
-This is not supported. You can choose to either keep a separate journal per portfolio, or keep one journal and consolidate the transactions.
+**This is not supported.** You can choose to either keep a separate journal per portfolio, or keep one journal and consolidate the transactions.
 
 For example, let's say you have two portfolios, each with a respective position of 100 and 50 shares in the fictional company ABC.
 
@@ -685,3 +687,47 @@ You can resolve this ambiguity by consolidating these transactions into one:
 This explicitly states that your current, and total position (across all portfolios), is 150 shares.
 
 *Note that even while keeping separate journals, the ambiguity will remain unless you also run separate reports.*
+
+## Company ABC announced they will eliminate their dividend; how do I avoid including it in forecasts?
+
+Unfortunately, this does tend to happen every now and then, and seeing forecasts that you know to be incorrect is frustrating and will skew the outlook of your future situation.
+
+There are two solutions to this problem:
+
+1) **Wait it out.** Forecasted distributions will disappear once a grace period has passed and no transactions have been recorded. However, for high frequency distributions (e.g. monthly) this can take up to a full year.
+2) **Mark the position as closed.** This is typically preferable.
+
+For example:
+
+```
+2018/12/16 ABC
+  $ 1
+2019/03/16 ABC
+  $ 1
+
+2019/06/01 ABC (0)  # dividend was eliminated indefinitely
+```
+
+It is good practice for your future self to leave a note as to why this line exists.
+
+If the distribution resumes, you can simply remove this line. If you prefer to leave it for posterity, you must "open" the position again when recording the next distribution.
+
+## Company ABC completed a split; what should I do?
+
+A stock split is a purely technical event, and generally you do not have to do anything other than record your transactions as usual.
+
+However, what _does_ change, is the number of shares you hold, and, typically, the dividend per share. So, depending on what you track, the next transaction you record should, at least, include the new number of shares held.
+
+Here's an example when AAPL completed a 4-to-1 split during 2020:
+
+```
+2020/07/01 AAPL (10)    # initial purchase of 10 shares
+
+2020/08/14 AAPL         # first dividend distribution
+  [2020/08/13] $ 8.2
+@ [2020/08/07] $ 0.82
+
+2020/11/13 AAPL (40)    # second dividend distribution after a 4-to-1 split
+  [2020/11/12] $ 8.2    # note same exact payout as previously
+@ [2020/11/06] $ 0.205  # adjusted previous $0.82 dividend to $0.205
+```
