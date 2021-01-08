@@ -813,6 +813,20 @@ def test_scheduled_grace_period():
 
     assert len(scheduled) == 0
 
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, Amount(100)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, Amount(100))
+        # a quarterly distribution skipped for december
+        # this should not prevent forecasts for previous distributions;
+        # we can't know whether this means distribution stopped completely, or is just a change in frequency;
+        # require user input
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 1, 20))
+
+    assert len(scheduled) == 3
+
 
 def test_scheduled_transactions_closed_position():
     records = [
