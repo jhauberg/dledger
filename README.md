@@ -4,6 +4,8 @@
 
 In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accounting-apps) and [plain-text accounting](https://plaintextaccounting.org), `dledger` is small, portable and reliable, and operates on plain-text journals that are both easy to read and quick to edit- and most importantly, all yours.
 
+Reports and forecasts are based entirely on your own data; no external data sources are used. This allows `dledger` to work for any investor, no matter the location and choice of currency.
+
 <br />
 
 | [Latest release (0.6.1)](https://github.com/jhauberg/dledger/releases/tag/0.6.1) | Download the latest stable release.                 |
@@ -12,8 +14,6 @@ In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accou
 | [Manual](MANUAL.md)                                                              | Instructions on [setup](MANUAL.md#install) and detailed usage.           |
 
 <br />
-
-*Note that `dledger` does not use any external data; projections are based entirely on your own input.*
 
 ## Example
 
@@ -30,7 +30,9 @@ Here's a journal that tracks a position of 100 shares of Apple over 3 transactio
   $ 77
 ```
 
-<sup>&nbsp;&nbsp;**.journal**</sup>
+<sup>&nbsp;&nbsp;A plain-text **.journal** file</sup>
+
+### Reporting and Forecasting
 
 Running a report shows all historical dividend income, including forecasts for the next 12 months:
 
