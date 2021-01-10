@@ -356,6 +356,7 @@ def scheduled_transactions(records: List[Transaction], *,
         scheduled.append(future_record)
 
     def is_within_period(record: Transaction, starting: date, ending: date) -> bool:
+        """ Determine whether a record is dated within a period. """
         return ending > record.entry_date >= starting
     # weed out projections in the past or later than 12 months into the future
     # note that we potentially include more than 365 days here;
@@ -602,6 +603,10 @@ def next_linear_dividend(records: List[Transaction], *,
 def next_position(records: List[Transaction], ticker: str, *,
                   earlier_than: date = datetime.today().date()) \
         -> float:
+    """ Return the position of a ticker prior to a date.
+
+    The date is compared against the ex-dividend date.
+    """
     latest_record = latest(before(by_ticker(records, ticker), earlier_than), by_exdividend=True)
     
     assert latest_record is not None
@@ -704,7 +709,8 @@ def conversion_factors(records: List[Transaction]) \
             latest_transaction = latest(matching_transactions, by_payout=True)
             if latest_transaction is None:
                 continue
-            # determine the date to reference by; e.g. either payout date or entry date, depending on availability
+            # determine the date to reference by;
+            # e.g. either payout date or entry date, depending on availability
             latest_transaction_date = (latest_transaction.payout_date if
                                        latest_transaction.payout_date is not None else
                                        latest_transaction.entry_date)
@@ -749,5 +755,6 @@ def latest_exchange_rates(records: List[Transaction]) \
         -> Dict[Tuple[str, str], float]:
     """ Return a set of currency exchange rates. """
 
-    # note that this assumes that, given a bunch of ambiguous rates, the factor to be applied is the last of the bunch
+    # note that this assumes that, given a bunch of ambiguous rates,
+    # the factor to be applied is the last of the bunch
     return {k: v[-1] for k, v in conversion_factors(records).items()}

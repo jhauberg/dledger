@@ -83,7 +83,7 @@ def deltas(amounts: List[Amount], *, normalized: bool = True) -> List[Union[int,
     """ Return a list of deltas between amounts.
 
     If normalized is True, returns deltas in integral numbers (-1, 0, 1) indicating
-    direction (down, same, up).
+    direction (down, no difference, up).
     """
     if len(amounts) < 2:
         return []
