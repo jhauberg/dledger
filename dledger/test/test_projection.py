@@ -419,6 +419,26 @@ def test_next_linear_dividend():
     assert dividend == GeneratedAmount(2)
 
     records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(3)),
+    ]
+
+    dividend = next_linear_dividend(records)
+
+    assert dividend == GeneratedAmount(3)
+
+    records = [
+        Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(3)),
+        Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
+        Transaction(date(2019, 9, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
+    ]
+
+    dividend = next_linear_dividend(records)
+
+    assert dividend == GeneratedAmount(1)
+
+    records = [
         Transaction(date(2019, 3, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(2)),
         Transaction(date(2019, 6, 1), 'ABC', 1, amount=Amount(100), dividend=Amount(1)),
     ]
