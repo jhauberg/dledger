@@ -561,33 +561,40 @@ def next_linear_dividend(records: List[Transaction], *,
     transactions = list(r for r in records if r.amount is not None)
     latest_transaction = latest(transactions)
 
-    if latest_transaction is None:
+    if latest_transaction is None or latest_transaction.dividend is None:
         return None
 
-    if latest_transaction.dividend is not None:
-        comparable_transactions: List[Transaction] = []
-        for comparable_transaction in reversed(transactions):
-            if comparable_transaction.kind is not kind:
-                # skip if not same kind, as different kinds of distributions
-                # might follow different schedules
-                continue
-            if (comparable_transaction.dividend is None or
-                    comparable_transaction.dividend.symbol != latest_transaction.dividend.symbol):
-                break
-            comparable_transactions.append(comparable_transaction)
-        if len(comparable_transactions) > 0:
-            comparable_transactions.reverse()
-            movements = deltas(dividends(comparable_transactions))
-            # consider 'no change' same as going up
-            movements = [1 if m == 0 else m for m in movements]
-            movements = multimode(movements)
-            n = len(multimode(movements))
-            # if there's a clear trend, up or down, assume linear pattern
-            if n == 0 or n == 1:
-                latest_comparable = latest(comparable_transactions)
-                assert latest_comparable is not None
-                div = latest_comparable.dividend
-                return GeneratedAmount(div.value, places=div.places, symbol=div.symbol, fmt=div.fmt)
+    comparable_transactions: List[Transaction] = []
+    for transaction in transactions:
+        if transaction.kind is not kind:
+            # skip if not same kind, as different kinds of distributions
+            # might follow different schedules
+            continue
+        if (transaction.dividend is None or
+                transaction.dividend.symbol != latest_transaction.dividend.symbol):
+            break
+        comparable_transactions.append(transaction)
+
+    if len(comparable_transactions) == 0:
+        return None
+
+    movements = deltas(dividends(comparable_transactions))
+    # consider 'no change' same as going up
+    movements = [1 if m == 0 else m for m in movements]
+    movements = multimode(movements)
+    # if there's a clear trend, up or down (i.e. not an equal amount of ups
+    # and downs), then we consider the dividend to follow a linear pattern
+    has_linear_pattern = len(multimode(movements)) != 2
+    if has_linear_pattern:
+        latest_comparable = latest(comparable_transactions)
+        assert latest_comparable is not None
+        div = latest_comparable.dividend
+        return GeneratedAmount(
+            div.value,
+            places=div.places,
+            symbol=div.symbol,
+            fmt=div.fmt
+        )
 
     return None
 
