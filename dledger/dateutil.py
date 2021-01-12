@@ -8,9 +8,8 @@ from typing import Tuple, Optional, List
 from dledger.localeutil import trysetlocale
 
 
-def months_between(a: date, b: date,
-                   *, ignore_years: bool = False) -> int:
-    """ Return the number of months between two dates, from earliest to latest.
+def months_between(a: date, b: date, *, ignore_years: bool = False) -> int:
+    """Return the number of months between two dates, from earliest to latest.
 
     Does not take days into account.
 
@@ -86,9 +85,8 @@ def next_month(d: date) -> date:
     return d
 
 
-def parse_datestamp(datestamp: str, *, strict: bool = False) \
-        -> date:
-    """ Return the date that maps to datestamp.
+def parse_datestamp(datestamp: str, *, strict: bool = False) -> date:
+    """Return the date that maps to datestamp.
 
     If strict is True, a full datestamp is expected (year/month/day):
 
@@ -102,9 +100,9 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
     Components omitted will default to the first of year or month.
     """
 
-    strict_formats = ['%Y/%m/%d', '%Y-%m-%d', '%Y.%m.%d']
-    month_formats = ['%Y/%m', '%Y-%m', '%Y.%m']
-    year_formats = ['%Y']
+    strict_formats = ["%Y/%m/%d", "%Y-%m-%d", "%Y.%m.%d"]
+    month_formats = ["%Y/%m", "%Y-%m", "%Y.%m"]
+    year_formats = ["%Y"]
 
     def tryparse(string: str, formats: List[str]) -> Optional[date]:
         for fmt in formats:
@@ -118,20 +116,21 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) \
 
     if d is None:
         if strict:
-            raise ValueError(f'invalid date format (\'{datestamp}\'; expected strict format)')
+            raise ValueError(
+                f"invalid date format ('{datestamp}'; expected strict format)"
+            )
         other_formats = month_formats + year_formats
         d = tryparse(datestamp, formats=other_formats)
         if d is None:
-            raise ValueError(f'invalid date format (\'{datestamp}\')')
+            raise ValueError(f"invalid date format ('{datestamp}')")
     return d
 
 
-def parse_interval(interval: str) \
-        -> Tuple[Optional[date], Optional[date]]:
-    datestamps = interval.split(':')
+def parse_interval(interval: str) -> Tuple[Optional[date], Optional[date]]:
+    datestamps = interval.split(":")
 
     if len(datestamps) > 2 or len(datestamps) == 0:
-        raise ValueError('malformed interval')
+        raise ValueError("malformed interval")
 
     starting_datestamp = datestamps[0].strip()
     starting: Optional[date] = None
@@ -139,7 +138,9 @@ def parse_interval(interval: str) \
     if len(starting_datestamp) > 0:
         starting, _ = parse_period_component(starting_datestamp)
 
-    ending_datestamp: Optional[str] = datestamps[1].strip() if len(datestamps) > 1 else None
+    ending_datestamp: Optional[str] = (
+        datestamps[1].strip() if len(datestamps) > 1 else None
+    )
     ending: Optional[date] = None
 
     if ending_datestamp is not None and len(ending_datestamp) > 0:
@@ -156,7 +157,7 @@ def parse_interval(interval: str) \
 
 
 def parse_period_component(component: str) -> Tuple[date, date]:
-    """ Return the date interval that exactly includes the period corresponding to a component.
+    """Return the date interval that exactly includes the period corresponding to a component.
 
     A period component can be either a full or partial datestamp, or a pre-defined textual key that
     maps to a specific date.
@@ -168,7 +169,9 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     today = datetime.today().date()
     component = component.lower()
     try:
-        month = int(component)  # if component is a single number, then it might indicate month
+        month = int(
+            component
+        )  # if component is a single number, then it might indicate month
         if 0 < month <= 12:  # component assumed to indicate month
             starting = date(today.year, month, 1)
             return starting, next_month(starting)
@@ -176,26 +179,28 @@ def parse_period_component(component: str) -> Tuple[date, date]:
             pass
     except ValueError:  # component assumed to be typical datestamp or textual key
         pass
-    textual_keys = ['today', 'tomorrow', 'yesterday']
-    matching_keys = [k for k in textual_keys if
-                     k.startswith(component)]
+    textual_keys = ["today", "tomorrow", "yesterday"]
+    matching_keys = [k for k in textual_keys if k.startswith(component)]
     if len(matching_keys) == 1:
         component = matching_keys[0]
-    if component == 'today':
+    if component == "today":
         return today, today + timedelta(days=1)
-    if component == 'tomorrow':
+    if component == "tomorrow":
         return today + timedelta(days=1), today + timedelta(days=2)
-    if component == 'yesterday':
+    if component == "yesterday":
         return today + timedelta(days=-1), today
 
     def month_if_any(name: str) -> Optional[int]:
-        matches = [n for n, m in enumerate(calendar.month_name) if m.lower().startswith(name)]
+        matches = [
+            n for n, m in enumerate(calendar.month_name) if m.lower().startswith(name)
+        ]
         # ambiguous if more than one match; return None
         return None if len(matches) != 1 else matches[0]
+
     # check against month names (both abbreviated and full e.g. 'march', 'jun', etc.)
     # bias toward english month names first, then try localized month names
     prev_locale = locale.getlocale(locale.LC_TIME)
-    trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
+    trysetlocale(locale.LC_TIME, ["en_US", "en-US", "en"])
     # enumerate every month name for this locale so we can capture
     month = month_if_any(component)
     locale.setlocale(locale.LC_TIME, prev_locale)
@@ -212,11 +217,13 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     starting = parse_datestamp(component)
     # determine number of datestamp components
     # (assuming valid datestamp; i.e. only one separator kind, no combination)
-    num_separators = max(component.count('/'),
-                         component.count('-'),
-                         component.count('.'))
+    num_separators = max(
+        component.count("/"),
+        component.count("-"),
+        component.count(".")
+    )
     if num_separators > 2:  # too many components
-        raise ValueError(f'invalid date format (\'{component}\')')
+        raise ValueError(f"invalid date format ('{component}')")
     if num_separators == 0:  # year component
         return starting, starting.replace(year=starting.year + 1)
     if num_separators == 1:  # year and month components
@@ -225,9 +232,8 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     return starting, starting + timedelta(days=1)
 
 
-def parse_period(interval: str) \
-        -> Tuple[Optional[date], Optional[date]]:
+def parse_period(interval: str) -> Tuple[Optional[date], Optional[date]]:
     interval = interval.strip()
-    if ':' in interval:
+    if ":" in interval:
         return parse_interval(interval)
     return parse_period_component(interval)

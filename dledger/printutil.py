@@ -2,11 +2,11 @@ import os
 import sys
 
 # color escape sequences
-COLOR_NEGATIVE = '\x1b[0;33m'
-COLOR_MARKED = '\x1b[0;30;47m'
-COLOR_UNDERLINED = '\x1b[0;0;4m'
-COLOR_NEGATIVE_UNDERLINED = '\x1b[0;33;4m'
-COLOR_RESET = '\x1b[0m'
+COLOR_NEGATIVE = "\x1b[0;33m"
+COLOR_MARKED = "\x1b[0;30;47m"
+COLOR_UNDERLINED = "\x1b[0;0;4m"
+COLOR_NEGATIVE_UNDERLINED = "\x1b[0;33;4m"
+COLOR_RESET = "\x1b[0m"
 
 # windows specific handles
 STD_OUTPUT_HANDLE = -11
@@ -17,25 +17,25 @@ ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
 
 
 def supports_color(stream) -> bool:  # type: ignore
-    """ Determine whether an output stream (e.g. stdout/stderr) supports displaying colored text.
+    """Determine whether an output stream (e.g. stdout/stderr) supports displaying colored text.
 
     A stream that is redirected to a file does not support color.
     """
 
-    return stream.isatty() and hasattr(stream, 'isatty')
+    return stream.isatty() and hasattr(stream, "isatty")
 
 
 def colored(text: str, color: str) -> str:
     if not supports_color(sys.stdout):
         return text
 
-    return f'{color}{text}{COLOR_RESET}'
+    return f"{color}{text}{COLOR_RESET}"
 
 
 def is_windows_environment() -> bool:
     """ Return True if on a Windows platform, False otherwise. """
 
-    return os.name == 'nt'
+    return os.name == "nt"
 
 
 def enable_color_escapes() -> None:
@@ -51,8 +51,10 @@ def enable_color_escapes() -> None:
     kernel32 = ctypes.windll.kernel32  # type: ignore
     handle = kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
 
-    mode = (ENABLE_PROCESSED_OUTPUT |
-            ENABLE_WRAP_AT_EOL_OUTPUT |
-            ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+    mode = (
+        ENABLE_PROCESSED_OUTPUT
+        | ENABLE_WRAP_AT_EOL_OUTPUT
+        | ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    )
 
     kernel32.SetConsoleMode(handle, mode)
