@@ -68,7 +68,8 @@ def intervals(records: Iterable[Transaction]) \
     next_record_date = first_record_date.replace(year=previous_record_date.year + 1)
 
     timespans.append(
-        months_between(next_record_date, previous_record_date, ignore_years=True))
+        months_between(next_record_date, previous_record_date, ignore_years=True)
+    )
 
     return timespans
 
@@ -93,7 +94,8 @@ def deltas(amounts: List[Amount], *, normalized: bool = True) -> List[Union[int,
                 (0 if d.value == amounts[i].value else 1)
                 for i, d in enumerate(amounts[1:])]
 
-    return [d.value - amounts[i].value for i, d in enumerate(amounts[1:])]
+    return [d.value - amounts[i].value
+            for i, d in enumerate(amounts[1:])]
 
 
 def tickers(records: Iterable[Transaction]) \

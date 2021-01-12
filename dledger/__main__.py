@@ -205,6 +205,7 @@ def main() -> None:
                     record.amount, value=record.amount.value / record.position)
             else:
                 baseline_amount = record.amount
+            # todo: this is not representative if you have a fractional position less than 1
             return replace(record, position=1, amount=baseline_amount)
         records = [baseline_record(r) if r.position > 0 else r for r in records]
 

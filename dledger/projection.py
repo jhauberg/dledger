@@ -232,7 +232,13 @@ def convert_to_native_currency(records: List[Transaction]) -> List[Transaction]:
         if r.dividend is None:
             continue
         native_value = r.dividend.value * r.position
-        native_amount = replace(r.amount, value=native_value, symbol=r.dividend.symbol, fmt=r.dividend.fmt, places=None)
+        native_amount = replace(
+            r.amount,
+            value=native_value,
+            symbol=r.dividend.symbol,
+            fmt=r.dividend.fmt,
+            places=None
+        )
         native_record = replace(r, amount=native_amount)
         i = records.index(r)
         records.pop(i)
@@ -272,7 +278,9 @@ def convert_to_currency(records: List[Transaction], *,
                 break
         estimate_amount = GeneratedAmount(
             value=rec.amount.value * conversion_factor,
-            symbol=symbol, fmt=estimate_format)
+            symbol=symbol,
+            fmt=estimate_format
+        )
         estimate = replace(rec, amount=estimate_amount)
         i = records.index(rec)
         records.pop(i)
@@ -314,25 +322,26 @@ def scheduled_transactions(records: List[Transaction], *,
                 if i == j:
                     # don't compare to self
                     continue
-                if record.entry_date == other_record.entry_date:
-                    # records dated identically (based on entry date)
-                    # todo: note that there might be some intricacies with ex-date here (i.e. in some cases ex-date
-                    #       could be the date to compare against), but for now just base this logic on primary date
-                    if record.kind == Distribution.SPECIAL or other_record.kind == Distribution.SPECIAL:
-                        # allow identically dated records if one or the other is a special dividend
-                        # but check for ambiguous position
-                        # see journal.py:232 for tolerance
-                        if not math.isclose(record.position, other_record.position, abs_tol=0.000001):
-                            if other_record.entry_attr is not None:
-                                raise ParseError(f'ambiguous position ({record.position} or {other_record.position}?)',
-                                                 location=other_record.entry_attr.location)
-                            raise ValueError(f'ambiguous position: {other_record.entry_date} {ticker} '
-                                             f'({record.position} or {other_record.position}?)')
-                    else:
-                        # otherwise, don't allow records dated identically
+                if record.entry_date != other_record.entry_date:
+                    continue
+                # records dated identically (based on entry date)
+                # todo: note that there might be some intricacies with ex-date here (i.e. in some cases ex-date
+                #       could be the date to compare against), but for now just base this logic on primary date
+                if record.kind == Distribution.SPECIAL or other_record.kind == Distribution.SPECIAL:
+                    # allow identically dated records if one or the other is a special dividend
+                    # but check for ambiguous position
+                    # see journal.py:232 for tolerance
+                    if not math.isclose(record.position, other_record.position, abs_tol=0.000001):
                         if other_record.entry_attr is not None:
-                            raise ParseError('ambiguous record entry', location=other_record.entry_attr.location)
-                        raise ValueError(f'ambiguous record entry: {other_record.entry_date} {ticker}')
+                            raise ParseError(f'ambiguous position ({record.position} or {other_record.position}?)',
+                                             location=other_record.entry_attr.location)
+                        raise ValueError(f'ambiguous position: {other_record.entry_date} {ticker} '
+                                         f'({record.position} or {other_record.position}?)')
+                else:
+                    # otherwise, don't allow records dated identically
+                    if other_record.entry_attr is not None:
+                        raise ParseError('ambiguous record entry', location=other_record.entry_attr.location)
+                    raise ValueError(f'ambiguous record entry: {other_record.entry_date} {ticker}')
         # don't include special dividend transactions
         sample_records.extend(r for r in recs_in_period if r.kind is not Distribution.SPECIAL)
     # project sample records 1 year into the future
@@ -489,9 +498,14 @@ def estimated_transactions(records: List[Transaction], *,
                 continue
 
             reference_records = trailing(
-                by_ticker(transactions, ticker), since=future_date, months=12)
-            reference_records = list(r for r in reference_records if
-                                     r.amount.symbol == latest_transaction.amount.symbol)
+                by_ticker(transactions, ticker),
+                since=future_date,
+                months=12
+            )
+            reference_records = list(
+                r for r in reference_records if
+                r.amount.symbol == latest_transaction.amount.symbol
+            )
 
             future_amount = amount_per_share(latest_transaction) * future_position
             future_dividend = next_linear_dividend(reference_records)
@@ -533,19 +547,25 @@ def estimated_transactions(records: List[Transaction], *,
                     mean_amount = fmean(aps) * future_position
                     future_amount = mean_amount
 
-            future_record = GeneratedTransaction(future_date, ticker, future_position,
-                                                 amount=GeneratedAmount(
-                                                     future_amount,
-                                                     places=latest_transaction.amount.places,
-                                                     symbol=latest_transaction.amount.symbol,
-                                                     fmt=latest_transaction.amount.fmt),
-                                                 dividend=(GeneratedAmount(
-                                                     future_dividend_value,
-                                                     places=future_dividend_places,
-                                                     symbol=latest_transaction.dividend.symbol,
-                                                     fmt=latest_transaction.dividend.fmt)
-                                                           if future_dividend_value is not None else
-                                                           None))
+            future_record = GeneratedTransaction(
+                future_date, ticker, future_position,
+                amount=GeneratedAmount(
+                    future_amount,
+                    places=latest_transaction.amount.places,
+                    symbol=latest_transaction.amount.symbol,
+                    fmt=latest_transaction.amount.fmt
+                ),
+                dividend=(
+                    GeneratedAmount(
+                        future_dividend_value,
+                        places=future_dividend_places,
+                        symbol=latest_transaction.dividend.symbol,
+                        fmt=latest_transaction.dividend.fmt
+                    )
+                    if future_dividend_value is not None else
+                    None
+                )
+            )
 
             scheduled_records.append(future_record)
 

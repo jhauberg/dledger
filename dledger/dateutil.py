@@ -231,4 +231,3 @@ def parse_period(interval: str) \
     if ':' in interval:
         return parse_interval(interval)
     return parse_period_component(interval)
-

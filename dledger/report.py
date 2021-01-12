@@ -327,6 +327,7 @@ def print_stats(records: List[Transaction], journal_paths: List[str], *,
         print_stat_row('Records', f'{len(records)} ({len(transactions)})')
     else:
         print_stat_row('Records', f'{len(records)}')
+    # todo: records last 30/7 days
     earliest_datestamp = records[0].entry_date.strftime('%Y/%m/%d')
     latest_datestamp = records[-1].entry_date.strftime('%Y/%m/%d')
     print_stat_row('Earliest', earliest_datestamp)
@@ -424,6 +425,8 @@ DRIFT_BY_WEIGHT = 0
 DRIFT_BY_AMOUNT = 1
 DRIFT_BY_POSITION = 2
 
+# todo: possibly, balance should _not_ include special dividends? i.e. a position in balance could look larger than expected
+#       in a web version we could show an asterisk (*includes one or more special dividends)
 
 def print_balance_report(records: List[Transaction], *, deviance: int = DRIFT_BY_WEIGHT):
     commodities = sorted(symbols(records, excluding_dividends=True))
