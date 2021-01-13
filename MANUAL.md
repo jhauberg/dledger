@@ -132,6 +132,8 @@ The next time you receive cash from ABC, you don't have to put in the number of 
   $ 1
 ```
 
+*Note that transactions can be entered in any order. For example, if you prefer, you can have newer transactions at the top, instead of the bottom, as chronology will be established automatically based on record dates.*
+
 If you prefer a more condensed format, you can write the transaction like this instead:
 
 ```
@@ -626,6 +628,20 @@ dledger report ~/.journal --without-forecast | tail -n 5
 ```
 
 *Note the use of `--without-forecast` to exclude any forecasted transactions.*
+
+### Archiving/condensing old journals
+
+The `print` command can be used to easily condense an entire journal.
+
+This can reduce the journal's filesize and linecount drastically, but at the expense of being more difficult to read.
+
+*Warning: this will also __remove all comments__!*
+
+```shell
+$ dledger print old.journal --condensed > archived.journal
+```
+
+This also ensures a consistent formatting and removes any redundant transactions.
 
 # Balance
 
