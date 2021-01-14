@@ -4,13 +4,13 @@ This document provides a reference to the usage and inner workings of the [`dled
 
 ## Introduction
 
-`dledger` is a local-first, command-line tool for tracking and forecasting dividend income, hence the name "dividend" or "dollar ledger", both "dledger" for short.
+`dledger` is a local-first, command-line tool for tracking and forecasting dividend income; hence the name "dividend" or "dollar ledger", both "dledger" for short.
 
 In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accounting-apps) and [plain-text accounting](https://plaintextaccounting.org), `dledger` is small, portable and reliable, and operates on plain-text journals that are both easy to read and quick to edit- and most importantly, all yours.
 
 ## Getting Started
 
-**Requires Python 3.8**
+**Requires Python 3.8+**
 
 The `dledger` program is built in Python and is supported on most major operating systems, including: macOS, Linux and Windows.
 
@@ -27,16 +27,20 @@ $ python3 setup.py install
 If the installation is successful, you should now be able to run `dledger`:
 
 ```shell
-$ dledger
+$ dledger --version
+```
+
+```console
+dledger 0.6.1
 ```
 
 Depending on your Python setup, you might have to run `dledger` as a module:
 
 ```shell
-$ python3 -m dledger
+$ python3 -m dledger --version
 ```
 
-Similarly, you can also use the above command to run `dledger` without installing it first (just navigate to project root).
+Similarly, you can also use the above command to run `dledger` without installing it (just navigate to project root).
 
 ### Usage
 
@@ -48,26 +52,26 @@ $ dledger --help
 
 This might seem overwhelming, but the typical usage is `$ dledger <command> <journal> <flags>`, where `<flags>` are always an optional set of flags.
 
-For example, the simplest and most common command-line is simply:
+For example, the most common command-line to run a report is simply:
 
 ```shell
-$ dledger report ~/.journal
+$ dledger report ~/my.journal
 ```
 
-This invokes `dledger` using the `report` command on the journal-file located at e.g. `/Users/jhauberg/.journal`.
+This invokes `dledger` using the `report` command on the journal-file located at e.g. `/Users/jhauberg/my.journal`.
 
-You can provide paths to more than one journal; for example, you might keep a journal per year:
+You can provide paths to more than one journal. For example, you might want to keep a journal per year:
 
 ```shell
 $ dledger report ~/2018.journal ~/2019.journal
 ```
 
-This produces a report that includes transactions from both journals.
+This produces a report that includes transactions from both journals, ordered chronologically.
 
 If you only ever use one journal, you can omit any journal path by declaring an environment variable named `DLEDGER_FILE` that points to your default journal-file:
 
 ```shell
-export DLEDGER_FILE="~/.journal"
+export DLEDGER_FILE="~/my.journal"
 ```
 
 This restricts you to a single journal, but does simplify the command-line:
@@ -79,13 +83,13 @@ $ dledger report
 
 # Journals
 
-In the ledger-like universe, a journal is a simple plain-text file that you edit and format manually- by hand.
+In the ledger-like universe, a journal is a simple [plain-text](https://en.wikipedia.org/wiki/Plain_text) file that you edit and format manually- by hand.
 
 The journal is where you keep all your transactions. Each transaction is recorded in a compatible format and `dledger` is simply a tool to process and produce reports on these transactions.
 
-There are no requirements on how you name your journal files, nor which extension to use. A common practice is to apply the `.journal` extension.
+There are no requirements on how you edit or name your journal files, nor which extension to use. A common practice is to apply the `.journal` extension.
 
-Here's a [complete example journal-file](dledger/example/simple.journal), for reference:
+Here's an [example journal-file](dledger/example/simple.journal), for reference:
 
 ```
 # this file serves as an example journal for dledger
@@ -675,7 +679,7 @@ This reveals some statistics and information on symbol/exchange rate and how `dl
 
 # FAQ
 
-## I have a position in the same company in multiple portfolios; how do I track this?
+## I have a position in company ABC in multiple portfolios; how do I track this?
 
 **This is not supported.** You can choose to either keep a separate journal per portfolio, or keep one journal and consolidate the transactions.
 
