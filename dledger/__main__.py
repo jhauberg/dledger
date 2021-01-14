@@ -222,12 +222,11 @@ def main() -> None:
         # this is effectively just a way to reveal base dividends with
         # exchange rates applied (if applicable)
         def baseline_record(record: Transaction) -> Transaction:
-            if record.amount is not None:
+            baseline_amount = record.amount
+            if baseline_amount is not None:
                 baseline_amount = replace(
-                    record.amount, value=record.amount.value / record.position
+                    baseline_amount, value=baseline_amount.value / record.position
                 )
-            else:
-                baseline_amount = record.amount
             # todo: this is not representative if you have a fractional position less than 1
             return replace(record, position=1, amount=baseline_amount)
 
@@ -281,9 +280,9 @@ def main() -> None:
             print_simple_report(transactions, detailed=ticker is not None)
 
     if is_verbose:  # print diagnostics on final set of transactions, if any
+        assert journaled_transactions is not None
         # find missing date entries when specifically sorting by date
         if args["--by-payout-date"] or args["--by-ex-date"]:
-            assert journaled_transactions is not None
             if interval is not None:
                 journaled_transactions = list(
                     in_period(journaled_transactions, interval)
@@ -315,17 +314,19 @@ def main() -> None:
                         f"{journal}:{linenumber} transaction is missing ex-dividend date",
                         file=sys.stderr,
                     )
+
         # find ambiguous conversion rates
         from dledger.projection import GeneratedAmount
 
         ambiguous_exchange_rates = conversion_factors(
             # only include journaled records, but don't include preliminary estimates (signified by GeneratedAmount)
             [
-                r
-                for r in journaled_transactions
-                if not isinstance(r.amount, GeneratedAmount)
+                record
+                for record in journaled_transactions
+                if not isinstance(record.amount, GeneratedAmount)
             ]
         )
+
         for symbols, rates in ambiguous_exchange_rates.items():
             if len(rates) > 1:
                 print(

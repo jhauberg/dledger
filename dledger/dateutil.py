@@ -168,10 +168,9 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     """
     today = datetime.today().date()
     component = component.lower()
+    month: Optional[int]
     try:
-        month = int(
-            component
-        )  # if component is a single number, then it might indicate month
+        month = int(component)  # a single number typically indicates month
         if 0 < month <= 12:  # component assumed to indicate month
             starting = date(today.year, month, 1)
             return starting, next_month(starting)

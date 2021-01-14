@@ -458,7 +458,13 @@ def scheduled_transactions(
             # base this search on the rule that interval between each projection
             # should match approximated frequency - discard records as needed
             # note that we include latest realized record to determine initial interval
-            for n, interval in enumerate(intervals([latest(recs)] + projected_recs)):
+            latest_record = latest(recs)
+            combined_recs = (
+                [latest_record] + projected_recs
+                if latest_record is not None else
+                projected_recs
+            )
+            for n, interval in enumerate(intervals(combined_recs)):
                 # todo: we have an infinite loop here if identically dated records reaches this point
                 if normalize_interval(interval) != freq:
                     # discard this projection
@@ -534,12 +540,13 @@ def estimated_transactions(
         if future_ex_date is not None:
             future_ex_timeframe = projected_timeframe(future_ex_date)
             latest_transactions_by_exdate = [
-                r
-                if r.ex_date is None
-                else replace(r, entry_date=r.ex_date, ex_date=None)
-                for r in transactions
+                replace(record, entry_date=record.ex_date, ex_date=None)
+                if record.ex_date is not None
+                else record
+                for record in transactions
             ]
             latest_transaction_by_exdate = latest(latest_transactions_by_exdate)
+            assert latest_transaction_by_exdate is not None
             sched_ex = estimated_schedule(
                 latest_transactions_by_exdate, latest_transaction_by_exdate
             )
@@ -552,6 +559,7 @@ def estimated_transactions(
             # double-check that position is not closed in timeframe leading up to future_date
             if future_ex_date is not None:
                 next_ex_date = next_scheduled_date(future_ex_date, scheduled_months_ex)
+                assert future_ex_timeframe is not None
                 future_ex_date = projected_date(
                     next_ex_date, timeframe=future_ex_timeframe
                 )
@@ -831,12 +839,12 @@ def conversion_factors(
                 continue
 
             matching_transactions = list(
-                r
-                for r in transactions
+                record
+                for record in transactions
                 if (
-                    r.amount.symbol == symbol
-                    and r.dividend is not None
-                    and r.dividend.symbol == other_symbol
+                    record.amount.symbol == symbol
+                    and record.dividend is not None
+                    and record.dividend.symbol == other_symbol
                 )
             )
 
@@ -874,7 +882,7 @@ def conversion_factors(
                     similar_transaction
                 )
 
-                def is_ambiguous_rate(a, b) -> bool:
+                def is_ambiguous_rate(a: float, b: float) -> bool:
                     return not math.isclose(a, b, abs_tol=0.0001)
 
                 if is_ambiguous_rate(similar_conversion_factor, conversion_factor):

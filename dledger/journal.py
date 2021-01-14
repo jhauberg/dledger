@@ -78,7 +78,7 @@ class Transaction:
     entry_attr: Optional[EntryAttributes] = None
 
     @property
-    def ispositional(self):
+    def ispositional(self) -> bool:
         """Return True if transaction only records a position component, False otherwise.
 
         This is typically the case for a buy/sell transaction.
