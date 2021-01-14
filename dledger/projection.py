@@ -688,6 +688,7 @@ def next_linear_dividend(
     movements = deltas(dividends(comparable_transactions))
     # consider 'no change' same as going up
     movements = [1 if m == 0 else m for m in movements]
+    assert all(e == 1 or e == -1 for e in movements)  # only contains 1 or -1 movements
     movements = multimode(movements)
     # if there's a clear trend, up or down (i.e. not an equal amount of ups
     # and downs), then we consider the dividend to follow a linear pattern
