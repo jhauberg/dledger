@@ -13,8 +13,11 @@ usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--as-currency=<symbol> | --as-native-currency]
                                       [--baseline]
        dledger stats   [<journal>]... [--period=<interval>] [-v]
-       dledger print   [<journal>]... [--condensed] [-v]
+       dledger print   [<journal>]... [--condensed]
+                                      [--descending] [-v]
        dledger convert <file>...      [--type=<name>] [-v]
+                                      [--condensed]
+                                      [--descending]
                                       [--output=<journal>]
 
 OPTIONS:
@@ -133,13 +136,16 @@ def main() -> None:
         sys.exit(0)
     records = sorted(records)
 
+    if args["--descending"]:
+        # assuming argument is not passed for any reporting command;
+        # internal function expects ascending (sorted) order
+        records.reverse()
+    if args["print"]:
+        write(records, file=sys.stdout, condensed=args["--condensed"])
+        sys.exit(0)
     if args["convert"]:
         with open(args["--output"], "w", newline="") as file:
             write(records, file=file)
-        sys.exit(0)
-
-    if args["print"]:
-        write(records, file=sys.stdout, condensed=args["--condensed"])
         sys.exit(0)
 
     interval = args["--period"] if not args["balance"] else "tomorrow:"
