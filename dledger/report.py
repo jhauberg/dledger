@@ -358,11 +358,7 @@ def print_stats(
         print_stat_row("Locale", "Not configured")
     if len(records) == 0:
         return
-    transactions = list(filter(lambda r: r.amount is not None, records))
-    if len(transactions) > 0 and len(transactions) != len(records):
-        print_stat_row("Records", f"{len(records)} ({len(transactions)})")
-    else:
-        print_stat_row("Records", f"{len(records)}")
+    print_stat_row("Records", f"{len(records)}")
     # todo: records last 30/7 days
     earliest_datestamp = records[0].entry_date.strftime("%Y/%m/%d")
     latest_datestamp = records[-1].entry_date.strftime("%Y/%m/%d")
