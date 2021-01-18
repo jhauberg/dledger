@@ -1092,6 +1092,35 @@ def test_scheduled_transactions_sampling():
     assert len(scheduled) == 12
     assert scheduled[0].entry_date == GeneratedDate(2020, 2, 29)
 
+    records = [
+        # this case simulates --by-ex-date, but main tracking date is payout date
+        # running a report here will (maybe confusingly so) only show 11 forecasted transactions- not 12
+        # this is correct, however, as the grace period of >15 days has passed, and
+        # the logic dictates that this transaction is then considered out of schedule
+        # (but ticker still inferred as being a monthly payer, thus the 11 transactions)
+        Transaction(date(2019, 12, 31), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 1, 31), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 2, 28), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 3, 31), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 4, 30), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 5, 29), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 6, 30), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 7, 31), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 8, 31), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 9, 30), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 10, 30), "ABC", 1, Amount(1)),
+        Transaction(date(2020, 11, 30), "ABC", 1, Amount(1)),
+        # the record at 2020/12/31 has not been paid out yet and thus not recorded yet
+        # running --by-payout-date will still show 12 forecasts, because in this schedule
+        # the transaction is still set in the future (e.g. 2021/01/31)
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2021, 1, 18))
+
+    assert len(scheduled) == 11
+    # first record is actually a forecast of the 2020/01/31 record; e.g. a year back
+    assert scheduled[0].entry_date == GeneratedDate(2021, 1, 31)
+
 
 def test_scheduled_transactions_in_leap_year():
     records = [Transaction(date(2019, 2, 28), "ABC", 1, Amount(100))]
