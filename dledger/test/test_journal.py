@@ -13,6 +13,7 @@ from dledger.journal import (
     read,
     remove_redundant_journal_transactions,
     parse_amount,
+    write,
 )
 from dledger.projection import (
     GeneratedAmount,
@@ -992,3 +993,28 @@ def test_stable_sort():
         assert records[13].ticker == "B"
         assert records[14].ticker == "A"
         assert records[15].ticker == "B"
+
+
+def test_write():
+    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
+
+    existing_path = "../example/simple.journal"
+    existing_records = read(existing_path, kind="journal")
+
+    import os
+    import tempfile
+
+    fd, output_path = tempfile.mkstemp()
+    with os.fdopen(fd, "w", newline="") as tmp:
+        write(existing_records, file=tmp)
+    records = read(output_path, kind="journal")
+    os.remove(output_path)
+    # todo: this simple check won't fly due to entry attributes
+    # assert records == existing_records
+    assert len(records) == len(existing_records)
+    assert records[0].ticker == existing_records[0].ticker
+    assert records[0].amount == existing_records[0].amount
+    assert records[0].position == existing_records[0].position
+    assert records[0].dividend == existing_records[0].dividend
+    assert records[0].kind == existing_records[0].kind
+    assert records[0].entry_date == existing_records[0].entry_date
