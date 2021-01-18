@@ -137,6 +137,8 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
     # through parse_datestamp at this point)
     transaction_start = re.compile(r"[0-9]+[-/][0-9]+[-/][0-9]+")
 
+    include_start = re.compile(r"include")
+
     with open(path, newline="", encoding=encoding) as file:
         line_number = 0
         lines: List[Tuple[int, str]] = []
@@ -166,9 +168,14 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                             )
                         )
                         lines.clear()
-
                         break
-
+            elif include_start.match(line) is not None:
+                include_path = line[len("include"):].strip()
+                journal_entries.extend(
+                    read(os.path.join(os.path.dirname(path), include_path), kind="journal")
+                )
+                lines.clear()
+                continue
             if len(line) > 0:
                 lines.append(
                     (line_number, line)

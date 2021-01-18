@@ -8,8 +8,8 @@ from dledger.journal import (
     Amount,
     Distribution,
     POSITION_SET,
-    POSITION_ADD,
-    POSITION_SUB,
+    # POSITION_ADD,
+    # POSITION_SUB,
     read,
     remove_redundant_journal_transactions,
     parse_amount,
@@ -993,6 +993,69 @@ def test_stable_sort():
         assert records[13].ticker == "B"
         assert records[14].ticker == "A"
         assert records[15].ticker == "B"
+
+
+def test_include_journal():
+    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
+
+    path = "../example/include.journal"
+
+    included_resolved_path = "../example/simple.journal"
+
+    records = read(path, kind="journal")
+
+    assert len(records) == 5
+
+    assert records[0] == Transaction(
+        date(2019, 2, 14),
+        "AAPL",
+        100,
+        amount=Amount(73, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.73, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path, 3), positioning=(100, POSITION_SET)
+        ),
+    )
+    assert records[1] == Transaction(
+        date(2019, 5, 16),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path, 6), positioning=(None, POSITION_SET)
+        ),
+    )
+    assert records[2] == Transaction(
+        date(2019, 8, 15),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path, 9), positioning=(None, POSITION_SET)
+        ),
+    )
+    assert records[3] == Transaction(
+        date(2019, 11, 14),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path, 12), positioning=(None, POSITION_SET)
+        ),
+    )
+    assert records[4] == Transaction(
+        date(2020, 2, 13),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 5), positioning=(None, POSITION_SET)
+        ),
+    )
 
 
 def test_write():
