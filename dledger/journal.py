@@ -136,7 +136,8 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
     # but will eventually raise a formatting error later on (it is faster to skip validation
     # through parse_datestamp at this point)
     transaction_start = re.compile(r"[0-9]+[-/][0-9]+[-/][0-9]+")
-
+    # any (stripped) line starting with "include" is considered an inclusion directive;
+    # handled as it occurs in the journal
     include_start = re.compile(r"include")
 
     with open(path, newline="", encoding=encoding) as file:
@@ -160,7 +161,7 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                 ):
                     if transaction_start.match(previous_line) is not None:
                         offset = n + 1
-                        lines = lines[len(lines) - offset :]
+                        lines = lines[len(lines) - offset:]
 
                         journal_entries.append(
                             read_journal_transaction(
@@ -169,14 +170,19 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                         )
                         lines.clear()
                         break
-            elif include_start.match(line) is not None:
-                include_path = line[len("include"):].strip()
-                journal_entries.extend(
-                    read(os.path.join(os.path.dirname(path), include_path), kind="journal")
-                )
-                lines.clear()
-                continue
             if len(line) > 0:
+                # line has content; determine if it's an include directive
+                if include_start.match(line) is not None:
+                    relative_include_path = line[len("include"):].strip()
+                    include_path = os.path.join(os.path.dirname(path), relative_include_path)
+                    if os.path.samefile(path, include_path):
+                        raise ParseError("attempt to recursively include journal", location=(path, line_number))
+                    journal_entries.extend(
+                        read(include_path, kind="journal")
+                    )
+                    # clear out this line; we've dealt with the directive and
+                    # don't want to handle it when parsing next transaction
+                    line = ""
                 lines.append(
                     (line_number, line)
                 )  # todo: also attach info, e.g. TRANSACTION_START

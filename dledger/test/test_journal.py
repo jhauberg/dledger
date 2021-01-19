@@ -1116,7 +1116,7 @@ def test_include_journal_out_of_order():
         amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
         dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
         entry_attr=EntryAttributes(
-            location=(path, 5), positioning=(None, POSITION_SET)
+            location=(path, 3), positioning=(None, POSITION_SET)
         ),
     )
     assert records[5] == Transaction(
@@ -1129,7 +1129,7 @@ def test_include_journal_out_of_order():
             location=(path, 8), positioning=(None, POSITION_SET)
         ),
     )
-    assert records[5] == Transaction(
+    assert records[6] == Transaction(
         date(2020, 8, 14),
         "AAPL",
         100,
