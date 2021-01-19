@@ -68,19 +68,6 @@ $ dledger report ~/2018.journal ~/2019.journal
 
 This produces a report that includes transactions from both journals, ordered chronologically.
 
-If you only ever use one journal, you can omit any journal path by declaring an environment variable named `DLEDGER_FILE` that points to your default journal-file:
-
-```shell
-export DLEDGER_FILE="~/my.journal"
-```
-
-This restricts you to a single journal, but does simplify the command-line:
-
-
-```shell
-$ dledger report
-```
-
 # Journals
 
 In the ledger-like universe, a journal is a simple [plain-text](https://en.wikipedia.org/wiki/Plain_text) file that you edit and format manually- by hand.
@@ -110,6 +97,48 @@ Here's an [example journal-file](dledger/example/simple.journal), for reference:
 *Note that the hashtag/pound-symbol here indicates a line that is a comment for the human reader; the program will just ignore it.*
 
 The example journals might not report any forecasts if the latest record is more than a year old.
+
+## Keeping journals
+
+You can keep as many journals as you like.
+
+Keeping more than one journal (e.g. one per year or similar) can be helpful if your transaction history is extensive.
+
+### Keeping a single journal
+
+If you only ever want to use one journal, you can omit the `journal` argument by declaring an environment variable named `DLEDGER_FILE` that points to your default journal-file:
+
+```shell
+export DLEDGER_FILE="~/my.journal"
+```
+
+This restricts you to a single journal (though it can still [include](#including-another-journal) other journals), but does simplify the command-line:
+
+
+```shell
+$ dledger report
+```
+
+If any `journal` path argument is provided, `DLEDGER_FILE` is ignored.
+
+### Including another journal
+
+Any journal can include other journals. This can be helpful for archival purposes and to keep things neat.
+
+To include another journal you use the `include` directive:
+
+```
+# this file serves as an example journal for dledger
+
+include simple.journal
+
+2020/02/13 AAPL
+  $ 77
+```
+
+The directive can exist anywhere in a journal, but it must be succeeded by whitespace and a valid journal path, and it must be on a single line.
+
+The included records will be ordered chronologically, no matter the location of the directive.
 
 ## Transactions
 
