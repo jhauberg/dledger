@@ -461,8 +461,8 @@ def scheduled_transactions(
             latest_record = latest(recs)
             combined_recs = (
                 [latest_record] + projected_recs
-                if latest_record is not None else
-                projected_recs
+                if latest_record is not None
+                else projected_recs
             )
             for n, interval in enumerate(intervals(combined_recs)):
                 # todo: we have an infinite loop here if identically dated records reaches this point

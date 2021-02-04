@@ -173,13 +173,16 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             if len(line) > 0:
                 # line has content; determine if it's an include directive
                 if include_start.match(line) is not None:
-                    relative_include_path = line[len("include"):].strip()
-                    include_path = os.path.join(os.path.dirname(path), relative_include_path)
-                    if os.path.samefile(path, include_path):
-                        raise ParseError("attempt to recursively include journal", location=(path, line_number))
-                    journal_entries.extend(
-                        read(include_path, kind="journal")
+                    relative_include_path = line[len("include") :].strip()
+                    include_path = os.path.join(
+                        os.path.dirname(path), relative_include_path
                     )
+                    if os.path.samefile(path, include_path):
+                        raise ParseError(
+                            "attempt to recursively include journal",
+                            location=(path, line_number),
+                        )
+                    journal_entries.extend(read(include_path, kind="journal"))
                     # clear out this line; we've dealt with the directive and
                     # don't want to handle it when parsing next transaction
                     line = ""
