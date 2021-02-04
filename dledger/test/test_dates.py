@@ -11,6 +11,7 @@ from dledger.dateutil import (
     last_of_month,
     parse_period,
     parse_datestamp,
+    months_in_quarter,
 )
 
 
@@ -114,6 +115,13 @@ def test_months_between_normalized():
         )
         == 11
     )
+
+
+def test_months_in_quarter():
+    assert months_in_quarter(1) == [1, 2, 3]
+    assert months_in_quarter(2) == [4, 5, 6]
+    assert months_in_quarter(3) == [7, 8, 9]
+    assert months_in_quarter(4) == [10, 11, 12]
 
 
 def test_in_months():
@@ -279,6 +287,15 @@ def test_parse_period():
     assert parse_period("11:12") == (date(today.year, 11, 1), date(today.year, 12, 1))
     assert parse_period("6:1") == (date(today.year, 1, 1), date(today.year, 6, 1))
 
+    assert parse_period("q1") == (date(today.year, 1, 1), date(today.year, 4, 1))
+    assert parse_period("q2") == (date(today.year, 4, 1), date(today.year, 7, 1))
+    assert parse_period("q3") == (date(today.year, 7, 1), date(today.year, 10, 1))
+    assert parse_period("q4") == (date(today.year, 10, 1), date(today.year + 1, 1, 1))
+
+    assert parse_period("q2:q3") == (date(today.year, 4, 1), date(today.year, 7, 1))
+    assert parse_period("q2:q4") == (date(today.year, 4, 1), date(today.year, 10, 1))
+    assert parse_period("q4:q1") == (date(today.year, 1, 1), date(today.year, 10, 1))
+
     tomorrow = today + timedelta(days=1)
     yesterday = today + timedelta(days=-1)
 
@@ -296,7 +313,11 @@ def test_parse_period():
     assert parse_period("yesterday:tomorrow") == (yesterday, tomorrow)
     assert parse_period("y:tom") == (yesterday, tomorrow)
 
+
+def test_parse_period_localized():
     trysetlocale(locale.LC_TIME, ["en_US", "en-US", "en"])
+
+    today = datetime.today().date()
 
     assert parse_period("november") == (
         date(today.year, 11, 1),
