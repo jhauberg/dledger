@@ -12,7 +12,7 @@ from dledger.printutil import (
     COLOR_UNDERLINED,
     COLOR_MARKED,
 )
-from dledger.dateutil import previous_month, last_of_month
+from dledger.dateutil import previous_month, last_of_month, months_in_quarter
 from dledger.projection import GeneratedAmount, GeneratedTransaction
 from dledger.record import (
     income,
@@ -134,8 +134,9 @@ def print_simple_quarterly_report(records: List[Transaction]):
         latest_transaction = latest(matching_transactions)
         for year in years:
             for quarter in range(1, 4 + 1):
-                ending_month = quarter * 3 + 1
-                starting_month = ending_month - 3
+                months = months_in_quarter(quarter)
+                starting_month = months[0]
+                ending_month = months[-1]
 
                 quarterly_transactions = []
                 for month in range(starting_month, ending_month):

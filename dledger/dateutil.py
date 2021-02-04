@@ -36,6 +36,16 @@ def months_between(a: date, b: date, *, ignore_years: bool = False) -> int:
     return months
 
 
+def months_in_quarter(quarter: int) -> List[int]:
+    if quarter < 1 or quarter > 4:
+        raise ValueError("quarter must be within 1-4 range")
+
+    number_of_months = 3
+    starting_month = ((quarter - 1) * number_of_months) + 1
+
+    return [month for month in range(starting_month, starting_month + number_of_months)]
+
+
 def in_months(d: date, months: int) -> date:
     """ Return the date in a number of months. """
 
@@ -178,7 +188,7 @@ def parse_period_component(component: str) -> Tuple[date, date]:
             pass
     except ValueError:  # component assumed to be typical datestamp or textual key
         pass
-    textual_keys = ["today", "tomorrow", "yesterday"]
+    textual_keys = ["today", "tomorrow", "yesterday", "q1", "q2", "q3", "q4"]
     matching_keys = [k for k in textual_keys if k.startswith(component)]
     if len(matching_keys) == 1:
         component = matching_keys[0]
@@ -188,6 +198,12 @@ def parse_period_component(component: str) -> Tuple[date, date]:
         return today + timedelta(days=1), today + timedelta(days=2)
     if component == "yesterday":
         return today + timedelta(days=-1), today
+    if component == "q1" or component == "q2" or component == "q3" or component == "q4":
+        months = months_in_quarter(int(component[-1]))
+        print(months)
+        return date(today.year, months[0], 1), next_month(
+            date(today.year, months[-1], 1)
+        )
 
     def month_if_any(name: str) -> Optional[int]:
         matches = [
