@@ -30,7 +30,7 @@ from dledger.record import (
 from typing import List, Dict, Optional, Tuple
 
 
-def print_simple_annual_report(records: List[Transaction]):
+def print_simple_annual_report(records: List[Transaction]) -> None:
     today = datetime.today().date()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
@@ -72,7 +72,7 @@ def print_simple_annual_report(records: List[Transaction]):
             print()
 
 
-def print_simple_monthly_report(records: List[Transaction]):
+def print_simple_monthly_report(records: List[Transaction]) -> None:
     today = datetime.today().date()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
@@ -117,7 +117,7 @@ def print_simple_monthly_report(records: List[Transaction]):
             print()
 
 
-def print_simple_quarterly_report(records: List[Transaction]):
+def print_simple_quarterly_report(records: List[Transaction]) -> None:
     today = datetime.today().date()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
@@ -168,7 +168,7 @@ def print_simple_quarterly_report(records: List[Transaction]):
             print()
 
 
-def print_simple_report(records: List[Transaction], *, detailed: bool = False):
+def print_simple_report(records: List[Transaction], *, detailed: bool = False) -> None:
     today = datetime.today().date()
     payout_decimal_places: Dict[str, Optional[int]] = dict()
     dividend_decimal_places: Dict[str, Optional[int]] = dict()
@@ -274,7 +274,7 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False):
         print(line)
 
 
-def print_simple_weight_by_ticker(records: List[Transaction]):
+def print_simple_weight_by_ticker(records: List[Transaction]) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
 
     for commodity in commodities:
@@ -349,7 +349,7 @@ def print_stats(
     journal_paths: List[str],
     *,
     rates: Optional[Dict[Tuple[str, str], float]] = None,
-):
+) -> None:
     for n, journal_path in enumerate(journal_paths):
         print_stat_row(f"Journal {n + 1}", os.path.abspath(journal_path))
     try:
@@ -398,7 +398,7 @@ def formatted_prominent_payers(records: List[Transaction], *, limit: int = 3) ->
     return formatted
 
 
-def print_simple_rolling_report(records: List[Transaction]):
+def print_simple_rolling_report(records: List[Transaction]) -> None:
     today = datetime.today().date()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
@@ -470,7 +470,7 @@ DRIFT_BY_POSITION = 2
 
 def print_balance_report(
     records: List[Transaction], *, deviance: int = DRIFT_BY_WEIGHT
-):
+) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
 
     for commodity in commodities:
@@ -557,7 +557,7 @@ def print_balance_report(
             print()
 
 
-def print_currency_balance_report(records: List[Transaction]):
+def print_currency_balance_report(records: List[Transaction]) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
     for commodity in commodities:
         matching_transactions = list(
