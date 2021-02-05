@@ -514,7 +514,7 @@ def read_journal_transaction(
 
 
 def parse_amount_date(text: str) -> Tuple[str, Optional[str]]:
-    m = re.search(r"\[(.*)\]", text)  # match anything encapsulated by []
+    m = re.search(r"\[(.*)]", text)  # match anything encapsulated by []
     if m is None:
         return text, None
     d = m.group(1).strip()

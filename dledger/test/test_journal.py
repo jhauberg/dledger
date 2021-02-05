@@ -11,7 +11,7 @@ from dledger.journal import (
     # POSITION_ADD,
     # POSITION_SUB,
     read,
-    remove_redundant_journal_transactions,
+    excluding_redundant_transactions,
     parse_amount,
     write,
 )
@@ -863,7 +863,7 @@ def test_extended_journal():
 def test_remove_redundant_entries():
     records = [Transaction(date(2019, 1, 1), "ABC", 10)]
 
-    records = remove_redundant_journal_transactions(records)
+    records = excluding_redundant_transactions(records)
 
     assert len(records) == 1
 
@@ -872,7 +872,7 @@ def test_remove_redundant_entries():
         Transaction(date(2019, 2, 1), "ABC", 10, amount=Amount(1)),
     ]
 
-    records = remove_redundant_journal_transactions(records)
+    records = excluding_redundant_transactions(records)
 
     assert len(records) == 1
 
@@ -884,7 +884,7 @@ def test_remove_redundant_entries():
         Transaction(date(2019, 1, 1), "ABC", 10, amount=Amount(1)),
     ]
 
-    records = remove_redundant_journal_transactions(records)
+    records = excluding_redundant_transactions(records)
 
     assert len(records) == 1
 
@@ -893,7 +893,7 @@ def test_remove_redundant_entries():
         Transaction(date(2019, 1, 1), "ABC", 10),
     ]
 
-    records = remove_redundant_journal_transactions(records)
+    records = excluding_redundant_transactions(records)
 
     assert len(records) == 1
 
@@ -903,7 +903,7 @@ def test_remove_redundant_entries():
         Transaction(date(2019, 4, 1), "ABC", 30),
     ]
 
-    records = remove_redundant_journal_transactions(records)
+    records = excluding_redundant_transactions(records)
 
     assert len(records) == 3
 
@@ -914,7 +914,7 @@ def test_remove_redundant_entries():
         Transaction(date(2019, 3, 1), "DEF", 10, amount=Amount(1)),
     ]
 
-    records = remove_redundant_journal_transactions(records)
+    records = excluding_redundant_transactions(records)
 
     assert len(records) == 3
 
