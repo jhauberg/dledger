@@ -7,11 +7,9 @@ usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--by-ticker=<ticker>]
                                       [--by-payout-date | --by-ex-date]
                                       [--as-currency=<symbol> | --as-native-currency]
-                                      [--baseline]
        dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
                                       [--by-payout-date | --by-ex-date]
                                       [--as-currency=<symbol> | --as-native-currency]
-                                      [--baseline]
        dledger stats   [<journal>]... [--period=<interval>] [-v]
        dledger print   [<journal>]... [--condensed]
                                       [--descending] [-v]
@@ -30,7 +28,6 @@ OPTIONS:
      --by-ticker=<ticker>     Show income by ticker (exclusively)
      --as-currency=<symbol>   Show income as if exchanged to currency
      --as-native-currency     Show income as received, prior to any exchange
-     --baseline               Show baseline income (i.e. 1 share per ticker)
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
      --by-currency            Show drift from target currency exposure
@@ -215,22 +212,6 @@ def main() -> None:
 
     if args["--as-native-currency"]:
         records = convert_to_native_currency(records)
-
-    if args["--baseline"]:
-        # convert all transactions to their baseline representations;
-        # i.e. treating all transactions as if the position was 1
-        # this is effectively just a way to reveal base dividends with
-        # exchange rates applied (if applicable)
-        def baseline_record(record: Transaction) -> Transaction:
-            baseline_amount = record.amount
-            if baseline_amount is not None:
-                baseline_amount = replace(
-                    baseline_amount, value=baseline_amount.value / record.position
-                )
-            # todo: this is not representative if you have a fractional position less than 1
-            return replace(record, position=1, amount=baseline_amount)
-
-        records = [baseline_record(r) if r.position > 0 else r for r in records]
 
     if not args["--without-forecast"]:
         # produce forecasted transactions dated into the future
