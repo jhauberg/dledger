@@ -123,7 +123,9 @@ def read(path: str, kind: str) -> List[Transaction]:
         raise ValueError(f"Path could not be read: '{path}'")
 
     if kind == "journal":
-        return read_journal_transactions(path, encoding)
+        return excluding_redundant_transactions(
+            read_journal_transactions(path, encoding)
+        )
     elif kind == "nordnet":
         return read_nordnet_transactions(path, encoding)
     return []
@@ -162,7 +164,6 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                     if transaction_start.match(previous_line) is not None:
                         offset = n + 1
                         lines = lines[len(lines) - offset:]
-
                         journal_entries.append(
                             read_journal_transaction(
                                 lines, location=(path, previous_line_number)
@@ -173,7 +174,7 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             if len(line) > 0:
                 # line has content; determine if it's an include directive
                 if include_start.match(line) is not None:
-                    relative_include_path = line[len("include") :].strip()
+                    relative_include_path = line[len("include"):].strip()
                     include_path = os.path.join(
                         os.path.dirname(path), relative_include_path
                     )
@@ -182,7 +183,12 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                             "attempt to recursively include journal",
                             location=(path, line_number),
                         )
-                    journal_entries.extend(read(include_path, kind="journal"))
+                    journal_entries.extend(
+                        # note that this assumes all included journals are of identical encoding
+                        # if we instead went `read(.., kind="journal"), then this would not support
+                        # pruning redundant records (as they might be needed during recursion)
+                        read_journal_transactions(include_path, encoding)
+                    )
                     # clear out this line; we've dealt with the directive and
                     # don't want to handle it when parsing next transaction
                     line = ""
@@ -191,17 +197,17 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                 )  # todo: also attach info, e.g. TRANSACTION_START
                 #       so we don't have to do regex check twice
         if len(lines) > 0:
-            for n, (previous_line_number, previous_line) in enumerate(reversed(lines)):
+            for n, (previous_line_number, previous_line) in enumerate(
+                reversed(lines)
+            ):
                 if transaction_start.match(previous_line) is not None:
                     offset = n + 1
-                    lines = lines[len(lines) - offset :]
-
+                    lines = lines[len(lines) - offset:]
                     journal_entries.append(
                         read_journal_transaction(
                             lines, location=(path, previous_line_number)
                         )
                     )
-
                     break
 
     # transactions are not necessarily ordered by date in a journal
@@ -327,12 +333,10 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
 
         records.append(transaction)
 
-    records = remove_redundant_journal_transactions(records)
-
     return records
 
 
-def remove_redundant_journal_transactions(
+def excluding_redundant_transactions(
     records: List[Transaction],
 ) -> List[Transaction]:
     for ticker in set([record.ticker for record in records]):
