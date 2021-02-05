@@ -303,7 +303,9 @@ This method requires the least amount of effort and is recommended if you just w
 
 Note that even if you choose to go with this method, you can still record the ex-dividend date for good measure.
 
-Here's an example, extending the transaction with a dividend component and applying a tag with the ex-dividend date:
+#### Extending records with additional dates
+
+Here's an example extending the same transaction with a dividend component and an additional date to go with it (e.g. the *ex-dividend date*):
 
 ```
 2019/02/14 AAPL (100)
@@ -339,7 +341,7 @@ Then, on the day of payout, you complete the transaction by finally entering the
 
 This method is recommended if you want to pursue a more active investing strategy (like dividend capturing or reinvesting dividends into the next upcoming payer for a quicker return).
 
-You can extend the transaction with its payout date by applying a tag to the cash component.
+You can extend the transaction with its payout date by applying an additional date to the cash component.
 
 ```
 2019/02/08 AAPL (100)
@@ -354,11 +356,11 @@ However, if the cash was a different currency than the dividend, adding the date
 
 The `report` command will show a chronological list of all dividend transactions. This includes both past, pending and [future transactions](#forecasts).
 
-Depending on the fidelity of your records and tracking method of choice, you have two additional options for the listing; you can list by either payout date (`--by-payout-date`), or ex-dividend date (`--by-ex-date`). The flags have no effect unless you record these dates explicitly.
+Depending on the fidelity of your records and [tracking method](#tracking-methods) of choice, you have two additional options for the listing; you can order by either the payout (`--by-payout-date`) or ex-dividend date (`--by-ex-date`). These flags have no effect unless you [record these dates explicitly](#extending-records-with-additional-dates).
 
 ## Periods
 
-The flag `--period` can be used to drill down and limit transactions within a date interval.
+The `--period` flag can be used to drill down and limit transactions within a date interval.
 
 A period is specified through a simple syntax using `:` (colon) as a separator to indicate a starting and ending date.
 
@@ -380,7 +382,7 @@ There are several flags that can be used to control the appearance and grouping 
 
 ### Annually
 
-The flag `--annual` can be used to show you total income over the course of every year passed since the first recorded transaction.
+The `--annual` flag can be used to show you total income over the course of every year passed since the first recorded transaction.
 
 ```shell
 $ dledger report example/simple.journal --annual
@@ -405,7 +407,7 @@ Similar to [`--annual`](#annually), the `--monthly` flag groups income received 
 $ dledger report example/simple.journal --monthly
 ```
 
-```
+```console
                 $ 73    2019/02
                 $ 77    2019/05
                 $ 77    2019/08
@@ -424,7 +426,7 @@ Similar to [`--annual`](#annually), the `--quarterly` flag groups income receive
 $ dledger report example/simple.journal --quarterly
 ```
 
-```
+```console
                 $ 73    2019/Q1
                 $ 77    2019/Q2
                 $ 77    2019/Q3
@@ -437,7 +439,7 @@ $ dledger report example/simple.journal --quarterly
 
 ### Trailing
 
-The flag `--trailing` can be used to show you the total income rolling over trailing 12-month periods. This total is listed for every month passed since the very first transaction, through today.
+The `--trailing` flag can be used to show you the total income rolling over trailing 12-month periods. This total is listed for every month passed since the very first transaction, through today.
 
 This is a popular metric among dividend growth investors, as it can serve as a benchmark in performance of cashflow.
 
@@ -483,7 +485,7 @@ $ dledger report example/simply.journal --sum --period=today:
 
 ### Weight
 
-The flag `--weight` can be used to weigh your income sources by ticker.
+The `--weight` flag can be used to weigh your income sources by ticker.
 
 This can be useful in revealing companies that you might be overly dependent on. For example, in this overly simplified example, AAPL is 100% of our portfolio, and should they suffer a dividend cut, it would have a significant impact on our future income.
 
@@ -493,7 +495,7 @@ $ dledger report example/simple.journal --weight --period=2019
 
 *Note the use of `--period` to only weigh income from 2019.*
 
-```
+```console
                $ 304    100.00%    AAPL
 ```
 
@@ -503,13 +505,15 @@ Similarly, it can often be useful to weigh forecasted income instead of past inc
 $ dledger report example/simple.journal --weight --period=tomorrow:
 ```
 
-```
+```console
 ~              $ 308    100.00%    AAPL
 ```
 
+*Note that the [balance](#balance) command can preferably be used instead for this particular case.*
+
 ### Sum
 
-The flag `--sum` can be used to calculate the total (sum) of the transactions in a report.
+The `--sum` flag can be used to calculate the total (sum) of all transactions in a report.
 
 ```shell
 $ dledger report example/simple.journal --sum
@@ -517,7 +521,7 @@ $ dledger report example/simple.journal --sum
 
 Since reports by default include forecasted transactions, the sum also counts these:
 
-```
+```console
 ~              $ 608
 ```
 
@@ -527,7 +531,7 @@ You can apply `--without-forecast` to sum without forecasted transactions:
 $ dledger report example/simple.journal --sum --without-forecast
 ```
 
-```
+```console
                $ 304
 ```
 
@@ -535,13 +539,13 @@ Similarly, you can reduce the number of transactions further by applying either 
 
 ## Detailed transactions
 
-The flag `--by-ticker` can be used to filter a report to only show transactions with a specific ticker. It also adds more details to each transaction (dividend and position).
+The `--by-ticker` flag can be used to filter a report to only show transactions with a specific ticker. It also adds more details to each transaction (dividend and position).
 
 ```shell
 $ dledger report example/simple.journal --by-ticker=AAPL
 ```
 
-```
+```console
                 $ 73    2019/02/14 AAPL                  (100)           $ 0.73
                 $ 77    2019/05/16 AAPL                  (100)           $ 0.77
                 $ 77    2019/08/15 AAPL                  (100)           $ 0.77
@@ -586,7 +590,7 @@ The exchange rate is always based on the latest recorded transaction and is *not
 
 ### Consolidating income reports
 
-The flag `--as-currency` can be used to report all income in a specific currency. This can be particularly useful when you track and receive income in currency other than your domestic currency, but want to consolidate all reports into a single one.
+The `--as-currency` flag can be used to report all income in a specific currency. This can be particularly useful when you track and receive income in currency other than your domestic currency, but want to consolidate all reports into a single one.
 
 This works by estimating how much the amount of cash received previously would be worth today, using the most recently known exchange rate; i.e. it does not determine what it was worth at the time of the transaction, but rather what it would be worth if exchanged today.
 
@@ -613,6 +617,8 @@ Building on the [previous tip](#report-only-future-transactions), you can apply 
 ```shell
 $ dledger report ~/.journal --period=tomorrow: --weight
 ```
+
+*Note that the [balance](#balance) command is typically more useful for this particular case.*
 
 ### Report how much you earned/received
 
