@@ -773,7 +773,7 @@ A stock split is a purely technical event, and generally you do not have to do a
 
 However, what _does_ change, is the number of shares you hold, and, typically, the dividend per share. So, depending on what you track, the next transaction you record should, at least, include the new number of shares held.
 
-Here's an example when AAPL completed a 4-to-1 split during 2020:
+Here's an example when AAPL completed a 4-for-1 split during 2020:
 
 ```
 2020/07/01 AAPL (10)    # initial purchase of 10 shares
@@ -782,7 +782,9 @@ Here's an example when AAPL completed a 4-to-1 split during 2020:
   [2020/08/13] $ 8.2
 @ [2020/08/07] $ 0.82
 
-2020/11/13 AAPL (40)    # second dividend distribution after a 4-to-1 split
-  [2020/11/12] $ 8.2    # note same exact payout as previously
-@ [2020/11/06] $ 0.205  # adjusted previous $0.82 dividend to $0.205
+2020/11/13 AAPL (40)    # second dividend distribution after a 4-for-1 split; position increased from 10 to 40
+  [2020/11/12] $ 8.2    # note same exact payout as previous distribution
+@ [2020/11/06] $ 0.205  # however, dividend has been adjusted from $0.82 previous, to $0.205 current
 ```
+
+*Note that you might not want to record a split until the following dividend has been declared. If you do, you must estimate the expected dividend yourself to avoid it simply repeating past distributions without adjustment.*
