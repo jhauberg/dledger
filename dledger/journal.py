@@ -236,6 +236,7 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             entry.amount,
             entry.dividend,
             entry.entry_attr,
+            # note that we intentionally ignore entry.position here (expecting it to be -1)
         )
 
         assert attr is not None
