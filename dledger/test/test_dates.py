@@ -4,46 +4,124 @@ from datetime import datetime, date, timedelta
 
 from dledger.localeutil import trysetlocale
 from dledger.dateutil import (
-    months_between, in_months,
-    next_month, previous_month, last_of_month,
-    parse_period, parse_datestamp
+    months_between,
+    in_months,
+    next_month,
+    previous_month,
+    last_of_month,
+    parse_period,
+    parse_datestamp,
+    months_in_quarter,
 )
 
 
 def test_months_between():
-    assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2019, month=1, day=1)) == 0
-    assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2019, month=2, day=1)) == 1
-    assert months_between(date(year=2019, month=3, day=1),
-                          date(year=2019, month=12, day=1)) == 9
-    assert months_between(date(year=2019, month=12, day=1),
-                          date(year=2020, month=3, day=1)) == 3
-    assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2019, month=12, day=1)) == 11
-    assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2020, month=1, day=1)) == 12
-    assert months_between(date(year=2019, month=12, day=1),
-                          date(year=2020, month=1, day=1)) == 1
-    assert months_between(date(year=2019, month=5, day=1),
-                          date(year=2020, month=4, day=1)) == 11
+    assert (
+        months_between(date(year=2019, month=1, day=1), date(year=2019, month=1, day=1))
+        == 0
+    )
+    assert (
+        months_between(date(year=2019, month=1, day=1), date(year=2019, month=2, day=1))
+        == 1
+    )
+    assert (
+        months_between(
+            date(year=2019, month=3, day=1), date(year=2019, month=12, day=1)
+        )
+        == 9
+    )
+    assert (
+        months_between(
+            date(year=2019, month=12, day=1), date(year=2020, month=3, day=1)
+        )
+        == 3
+    )
+    assert (
+        months_between(
+            date(year=2019, month=1, day=1), date(year=2019, month=12, day=1)
+        )
+        == 11
+    )
+    assert (
+        months_between(date(year=2019, month=1, day=1), date(year=2020, month=1, day=1))
+        == 12
+    )
+    assert (
+        months_between(
+            date(year=2019, month=12, day=1), date(year=2020, month=1, day=1)
+        )
+        == 1
+    )
+    assert (
+        months_between(date(year=2019, month=5, day=1), date(year=2020, month=4, day=1))
+        == 11
+    )
 
 
 def test_months_between_normalized():
-    assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2019, month=1, day=1), ignore_years=True) == 12
-    assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2020, month=1, day=1), ignore_years=True) == 12
-    assert months_between(date(year=2019, month=3, day=1),
-                          date(year=2019, month=12, day=1), ignore_years=True) == 9
-    assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2019, month=2, day=1), ignore_years=True) == 1
-    assert months_between(date(year=2019, month=1, day=1),
-                          date(year=2019, month=12, day=1), ignore_years=True) == 11
-    assert months_between(date(year=2018, month=1, day=1),
-                          date(year=2020, month=1, day=1), ignore_years=True) == 12
-    assert months_between(date(year=2019, month=5, day=1),
-                          date(year=2020, month=4, day=1), ignore_years=True) == 11
+    assert (
+        months_between(
+            date(year=2019, month=1, day=1),
+            date(year=2019, month=1, day=1),
+            ignore_years=True,
+        )
+        == 12
+    )
+    assert (
+        months_between(
+            date(year=2019, month=1, day=1),
+            date(year=2020, month=1, day=1),
+            ignore_years=True,
+        )
+        == 12
+    )
+    assert (
+        months_between(
+            date(year=2019, month=3, day=1),
+            date(year=2019, month=12, day=1),
+            ignore_years=True,
+        )
+        == 9
+    )
+    assert (
+        months_between(
+            date(year=2019, month=1, day=1),
+            date(year=2019, month=2, day=1),
+            ignore_years=True,
+        )
+        == 1
+    )
+    assert (
+        months_between(
+            date(year=2019, month=1, day=1),
+            date(year=2019, month=12, day=1),
+            ignore_years=True,
+        )
+        == 11
+    )
+    assert (
+        months_between(
+            date(year=2018, month=1, day=1),
+            date(year=2020, month=1, day=1),
+            ignore_years=True,
+        )
+        == 12
+    )
+    assert (
+        months_between(
+            date(year=2019, month=5, day=1),
+            date(year=2020, month=4, day=1),
+            ignore_years=True,
+        )
+        == 11
+    )
+
+
+def test_months_in_quarter():
+    assert months_in_quarter(1) == [1, 2, 3]
+    assert months_in_quarter(2) == [4, 5, 6]
+    assert months_in_quarter(3) == [7, 8, 9]
+    assert months_in_quarter(4) == [10, 11, 12]
 
 
 def test_in_months():
@@ -119,49 +197,49 @@ def test_previous_next_month():
 
 
 def test_parse_datestamp():
-    assert parse_datestamp('2019/1/01') == date(2019, 1, 1)
-    assert parse_datestamp('2019/01/1') == date(2019, 1, 1)
-    assert parse_datestamp('2019/1/1') == date(2019, 1, 1)
-    assert parse_datestamp('2019/11/01') == date(2019, 11, 1)
-    assert parse_datestamp('2019/11/1') == date(2019, 11, 1)
-    assert parse_datestamp('2019/11/11') == date(2019, 11, 11)
-    assert parse_datestamp('2019/11') == date(2019, 11, 1)
-    assert parse_datestamp('2019') == date(2019, 1, 1)
+    assert parse_datestamp("2019/1/01") == date(2019, 1, 1)
+    assert parse_datestamp("2019/01/1") == date(2019, 1, 1)
+    assert parse_datestamp("2019/1/1") == date(2019, 1, 1)
+    assert parse_datestamp("2019/11/01") == date(2019, 11, 1)
+    assert parse_datestamp("2019/11/1") == date(2019, 11, 1)
+    assert parse_datestamp("2019/11/11") == date(2019, 11, 11)
+    assert parse_datestamp("2019/11") == date(2019, 11, 1)
+    assert parse_datestamp("2019") == date(2019, 1, 1)
 
-    assert parse_datestamp('2019-1-01') == date(2019, 1, 1)
-    assert parse_datestamp('2019-01-1') == date(2019, 1, 1)
-    assert parse_datestamp('2019-1-1') == date(2019, 1, 1)
-    assert parse_datestamp('2019-11-01') == date(2019, 11, 1)
-    assert parse_datestamp('2019-11-1') == date(2019, 11, 1)
-    assert parse_datestamp('2019-11-11') == date(2019, 11, 11)
-    assert parse_datestamp('2019-11') == date(2019, 11, 1)
-    assert parse_datestamp('2019') == date(2019, 1, 1)
+    assert parse_datestamp("2019-1-01") == date(2019, 1, 1)
+    assert parse_datestamp("2019-01-1") == date(2019, 1, 1)
+    assert parse_datestamp("2019-1-1") == date(2019, 1, 1)
+    assert parse_datestamp("2019-11-01") == date(2019, 11, 1)
+    assert parse_datestamp("2019-11-1") == date(2019, 11, 1)
+    assert parse_datestamp("2019-11-11") == date(2019, 11, 11)
+    assert parse_datestamp("2019-11") == date(2019, 11, 1)
+    assert parse_datestamp("2019") == date(2019, 1, 1)
 
-    assert parse_datestamp('2019.1.01') == date(2019, 1, 1)
-    assert parse_datestamp('2019.01.1') == date(2019, 1, 1)
-    assert parse_datestamp('2019.1.1') == date(2019, 1, 1)
-    assert parse_datestamp('2019.11.01') == date(2019, 11, 1)
-    assert parse_datestamp('2019.11.1') == date(2019, 11, 1)
-    assert parse_datestamp('2019.11.11') == date(2019, 11, 11)
-    assert parse_datestamp('2019.11') == date(2019, 11, 1)
-    assert parse_datestamp('2019') == date(2019, 1, 1)
+    assert parse_datestamp("2019.1.01") == date(2019, 1, 1)
+    assert parse_datestamp("2019.01.1") == date(2019, 1, 1)
+    assert parse_datestamp("2019.1.1") == date(2019, 1, 1)
+    assert parse_datestamp("2019.11.01") == date(2019, 11, 1)
+    assert parse_datestamp("2019.11.1") == date(2019, 11, 1)
+    assert parse_datestamp("2019.11.11") == date(2019, 11, 11)
+    assert parse_datestamp("2019.11") == date(2019, 11, 1)
+    assert parse_datestamp("2019") == date(2019, 1, 1)
 
     try:
-        parse_datestamp('')
+        parse_datestamp("")
     except ValueError:
         assert True
     else:
         assert False
 
     try:
-        parse_datestamp('2019/11-11')
+        parse_datestamp("2019/11-11")
     except ValueError:
         assert True
     else:
         assert False
 
     try:
-        parse_datestamp('2019 / 11/11')
+        parse_datestamp("2019 / 11/11")
     except ValueError:
         assert True
     else:
@@ -178,63 +256,85 @@ def test_parse_datestamp():
 
 
 def test_parse_period():
-    assert parse_period('2019/11/11:2020/11/11') == (date(2019, 11, 11),
-                                                     date(2020, 11, 11))
-    assert parse_period('2019/11:2020/11') == (date(2019, 11, 1),
-                                               date(2020, 11, 1))
-    assert parse_period('2019:2020') == (date(2019, 1, 1),
-                                         date(2020, 1, 1))
+    assert parse_period("2019/11/11:2020/11/11") == (
+        date(2019, 11, 11),
+        date(2020, 11, 11),
+    )
+    assert parse_period("2019/11:2020/11") == (date(2019, 11, 1), date(2020, 11, 1))
+    assert parse_period("2019:2020") == (date(2019, 1, 1), date(2020, 1, 1))
 
-    assert parse_period('2019:') == (date(2019, 1, 1), None)
-    assert parse_period(':2019') == (None, date(2019, 1, 1))
+    assert parse_period("2019:") == (date(2019, 1, 1), None)
+    assert parse_period(":2019") == (None, date(2019, 1, 1))
 
-    assert parse_period('2019') == (date(2019, 1, 1), date(2020, 1, 1))
-    assert parse_period('2019/11') == (date(2019, 11, 1), date(2019, 12, 1))
-    assert parse_period('2019/11/11') == (date(2019, 11, 11), date(2019, 11, 12))
+    assert parse_period("2019") == (date(2019, 1, 1), date(2020, 1, 1))
+    assert parse_period("2019/11") == (date(2019, 11, 1), date(2019, 12, 1))
+    assert parse_period("2019/11/11") == (date(2019, 11, 11), date(2019, 11, 12))
 
-    assert parse_period('2019/11/11:2020/11') == (date(2019, 11, 11),
-                                                  date(2020, 11, 1))
+    assert parse_period("2019/11/11:2020/11") == (date(2019, 11, 11), date(2020, 11, 1))
 
-    assert parse_period('2020/11/11:2019/11/11') == (date(2019, 11, 11),
-                                                     date(2020, 11, 11))
-    assert parse_period('2019/11/11:2019/11/11') == (date(2019, 11, 11),
-                                                     date(2019, 11, 11))
+    assert parse_period("2020/11/11:2019/11/11") == (
+        date(2019, 11, 11),
+        date(2020, 11, 11),
+    )
+    assert parse_period("2019/11/11:2019/11/11") == (
+        date(2019, 11, 11),
+        date(2019, 11, 11),
+    )
 
     today = datetime.today().date()
 
-    assert parse_period('11') == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period('11:12') == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period('6:1') == (date(today.year, 1, 1), date(today.year, 6, 1))
+    assert parse_period("11") == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period("11:12") == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period("6:1") == (date(today.year, 1, 1), date(today.year, 6, 1))
+
+    assert parse_period("q1") == (date(today.year, 1, 1), date(today.year, 4, 1))
+    assert parse_period("q2") == (date(today.year, 4, 1), date(today.year, 7, 1))
+    assert parse_period("q3") == (date(today.year, 7, 1), date(today.year, 10, 1))
+    assert parse_period("q4") == (date(today.year, 10, 1), date(today.year + 1, 1, 1))
+
+    assert parse_period("q2:q3") == (date(today.year, 4, 1), date(today.year, 7, 1))
+    assert parse_period("q2:q4") == (date(today.year, 4, 1), date(today.year, 10, 1))
+    assert parse_period("q4:q1") == (date(today.year, 1, 1), date(today.year, 10, 1))
 
     tomorrow = today + timedelta(days=1)
     yesterday = today + timedelta(days=-1)
 
-    assert parse_period('today') == (today, tomorrow)
-    assert parse_period('tod') == (today, tomorrow)
-    assert parse_period('Today') == (today, tomorrow)
-    assert parse_period('tomorrow') == (tomorrow, tomorrow + timedelta(days=1))
-    assert parse_period('tom') == (tomorrow, tomorrow + timedelta(days=1))
-    assert parse_period('yesterday') == (yesterday, today)
-    assert parse_period('yest') == (yesterday, today)
-    assert parse_period('y') == (yesterday, today)
+    assert parse_period("today") == (today, tomorrow)
+    assert parse_period("tod") == (today, tomorrow)
+    assert parse_period("Today") == (today, tomorrow)
+    assert parse_period("tomorrow") == (tomorrow, tomorrow + timedelta(days=1))
+    assert parse_period("tom") == (tomorrow, tomorrow + timedelta(days=1))
+    assert parse_period("yesterday") == (yesterday, today)
+    assert parse_period("yest") == (yesterday, today)
+    assert parse_period("y") == (yesterday, today)
 
-    assert parse_period('today:tomorrow') == (today, tomorrow)
-    assert parse_period('tomorrow:tomorrow') == (tomorrow, tomorrow)
-    assert parse_period('yesterday:tomorrow') == (yesterday, tomorrow)
-    assert parse_period('y:tom') == (yesterday, tomorrow)
+    assert parse_period("today:tomorrow") == (today, tomorrow)
+    assert parse_period("tomorrow:tomorrow") == (tomorrow, tomorrow)
+    assert parse_period("yesterday:tomorrow") == (yesterday, tomorrow)
+    assert parse_period("y:tom") == (yesterday, tomorrow)
 
-    trysetlocale(locale.LC_TIME, ['en_US', 'en-US', 'en'])
 
-    assert parse_period('november') == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period('November') == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period('nov') == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period('no') == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period('n') == (date(today.year, 11, 1), date(today.year, 12, 1))
+def test_parse_period_localized():
+    trysetlocale(locale.LC_TIME, ["en_US", "en-US", "en"])
 
-    assert parse_period('nov:dec') == (date(today.year, 11, 1), date(today.year, 12, 1))
+    today = datetime.today().date()
 
-    trysetlocale(locale.LC_TIME, ['da_DK', 'da-DK', 'da'])
+    assert parse_period("november") == (
+        date(today.year, 11, 1),
+        date(today.year, 12, 1),
+    )
+    assert parse_period("November") == (
+        date(today.year, 11, 1),
+        date(today.year, 12, 1),
+    )
+    assert parse_period("nov") == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period("no") == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period("n") == (date(today.year, 11, 1), date(today.year, 12, 1))
 
-    assert parse_period('marts') == (date(today.year, 3, 1), date(today.year, 4, 1))
-    assert parse_period('feb') == (date(today.year, 2, 1), date(today.year, 3, 1))
-    assert parse_period('oct') == (date(today.year, 10, 1), date(today.year, 11, 1))
+    assert parse_period("nov:dec") == (date(today.year, 11, 1), date(today.year, 12, 1))
+
+    trysetlocale(locale.LC_TIME, ["da_DK", "da-DK", "da"])
+
+    assert parse_period("marts") == (date(today.year, 3, 1), date(today.year, 4, 1))
+    assert parse_period("feb") == (date(today.year, 2, 1), date(today.year, 3, 1))
+    assert parse_period("oct") == (date(today.year, 10, 1), date(today.year, 11, 1))

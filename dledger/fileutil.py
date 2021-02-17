@@ -2,11 +2,7 @@ from typing import Optional
 
 
 def fileencoding(path: str) -> Optional[str]:
-    supported_encodings = [
-        'utf-8',
-        'utf-16',
-        'cp1252'
-    ]
+    supported_encodings = ["utf-8", "utf-16", "cp1252"]
 
     for encoding in supported_encodings:
         try:
