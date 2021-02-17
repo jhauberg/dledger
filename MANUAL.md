@@ -193,38 +193,40 @@ Here's an example of a transaction where the distributed dividend is in a differ
 
 This particular example establishes an [exchange rate](#exchange-rates) between DKK/$ that is applied in forecasted transactions involving these currencies.
 
-### Buy/sell transactions
+### Buy/sell
 
 A diligent investor will not only record their dividend transactions, but also their buy and sell transactions.
 
-This will improve [forecasts](#forecasts) inbetween periods of dividend transactions, as payout estimates are essentially based on the calculation `position * dividend` (e.g. if you change your position but don't record it, it won't be noticeable until the next time you receive a dividend). 
+This practice will improve [forecasts](#forecasts) inbetween periods of dividend transactions, as payout estimates are essentially based on the calculation `position * dividend` (e.g. if you change your position but don't record it, it won't be noticeable until the next time you receive a dividend). 
 
 A buy or sell transaction looks exactly like a dividend transaction, except it does not specify any cash amounts.
 
-Here's a transaction where an additional 10 shares of ABC is bought:
+*Note that to `dledger`, a buy or sell transaction is only a matter of either increasing or decreasing a position. There's no concept of share price.*
+
+Here's a transaction where an additional 10 shares of ABC are bought:
 
 ```
 2019/01/17 ABC (+10)
 ```
 
-This transaction establishes that by January 17th, the position in ABC is now 20 shares.
+This transaction establishes that by January 17th, the position in ABC now totals 20 shares (following previous example).
 
-Similarly, in this counter-example, 10 shares are sold, effectively closing the position:
-
-```
-2019/01/17 ABC (-10)
-```
-
-Alternatively, to avoid any confusion, the total new number of shares can be put in:
+Similarly, in this counter-example, 20 shares are sold the day after, effectively closing the position:
 
 ```
-2019/01/17 ABC (20)  # after buying or,
-2019/01/17 ABC (0)   # after selling/closing
+2019/01/18 ABC (-20)
+```
+
+Alternatively, to avoid any confusion, the total new number of shares can be put in for each event:
+
+```
+2019/01/17 ABC (20)  # after buying 10 more shares
+2019/01/18 ABC (0)   # after selling (closing)
 ```
 
 *Note the lack of any minus/plus signs, indicating absolutes.*
 
-This is a matter of preference as both methods are equally valid.
+Which method to use is a matter of preference and context as both methods (relative or absolute) are equally valid.
 
 ### Special dividends
 
