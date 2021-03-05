@@ -1,6 +1,6 @@
 import math
 
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 from dataclasses import dataclass, replace
 
 from statistics import multimode, fmean
@@ -13,7 +13,6 @@ from dledger.dateutil import (
     next_month,
     todayd,
 )
-from dledger.formatutil import decimalplaces
 from dledger.record import (
     by_ticker,
     tickers,
@@ -597,7 +596,6 @@ def estimated_transactions(
             future_amount = amount_per_share(latest_transaction) * future_position
             future_dividend = next_linear_dividend(reference_records)
             future_dividend_value: Optional[float] = None
-            future_dividend_places: Optional[int] = None
             if future_dividend is not None:
                 if future_dividend.symbol != latest_transaction.amount.symbol:
                     assert future_dividend.symbol is not None
@@ -634,12 +632,6 @@ def estimated_transactions(
                         )
                     ]
                     future_dividend_value = fmean(divs)
-                    future_dividend_places = max(decimalplaces(div) for div in divs)
-                    assert future_dividend_places is not None
-                    # truncate/round off to fit longest decimal place count observed
-                    # in all of the real transactions
-                    s = f"{future_dividend_value:.{future_dividend_places}f}"
-                    future_dividend_value = float(s)
                     future_amount = future_dividend_value * future_position
                     future_amount = future_amount * conversion_factor
                 elif len(aps) > 0:
@@ -652,14 +644,12 @@ def estimated_transactions(
                 future_position,
                 amount=GeneratedAmount(
                     future_amount,
-                    places=latest_transaction.amount.places,
                     symbol=latest_transaction.amount.symbol,
                     fmt=latest_transaction.amount.fmt,
                 ),
                 dividend=(
                     GeneratedAmount(
                         future_dividend_value,
-                        places=future_dividend_places,
                         symbol=latest_transaction.dividend.symbol,
                         fmt=latest_transaction.dividend.fmt,
                     )
@@ -715,7 +705,9 @@ def next_linear_dividend(
         assert latest_comparable is not None
         div = latest_comparable.dividend
         return GeneratedAmount(
-            div.value, places=div.places, symbol=div.symbol, fmt=div.fmt
+            div.value,
+            symbol=div.symbol,
+            fmt=div.fmt
         )
 
     return None
@@ -817,7 +809,6 @@ def future_transactions(
             future_position,
             amount=GeneratedAmount(
                 future_amount,
-                places=transaction.amount.places,
                 symbol=latest_transaction.amount.symbol,
                 fmt=latest_transaction.amount.fmt,
             ),
