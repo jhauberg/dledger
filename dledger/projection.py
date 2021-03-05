@@ -6,7 +6,13 @@ from dataclasses import dataclass, replace
 from statistics import multimode, fmean
 
 from dledger.journal import Transaction, Distribution, Amount, ParseError
-from dledger.dateutil import last_of_month, months_between, in_months, next_month
+from dledger.dateutil import (
+    last_of_month,
+    months_between,
+    in_months,
+    next_month,
+    todayd,
+)
 from dledger.formatutil import decimalplaces
 from dledger.record import (
     by_ticker,
@@ -313,7 +319,7 @@ def convert_to_currency(
 def scheduled_transactions(
     records: List[Transaction],
     *,
-    since: date = datetime.today().date(),
+    since: date = todayd(),
     rates: Optional[Dict[Tuple[str, str], float]] = None,
 ) -> List[GeneratedTransaction]:
     """ Return a list of forecasted transactions. """
@@ -716,7 +722,7 @@ def next_position(
     records: List[Transaction],
     ticker: str,
     *,
-    earlier_than: date = datetime.today().date(),
+    earlier_than: date = todayd(),
 ) -> float:
     """Return the position of a ticker prior to a date.
 

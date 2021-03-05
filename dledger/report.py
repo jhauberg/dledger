@@ -12,7 +12,7 @@ from dledger.printutil import (
     COLOR_UNDERLINED,
     COLOR_MARKED,
 )
-from dledger.dateutil import previous_month, last_of_month, months_in_quarter
+from dledger.dateutil import previous_month, last_of_month, months_in_quarter, todayd
 from dledger.projection import GeneratedAmount, GeneratedTransaction
 from dledger.record import (
     income,
@@ -31,7 +31,7 @@ from typing import List, Dict, Optional, Tuple
 
 
 def print_simple_annual_report(records: List[Transaction]) -> None:
-    today = datetime.today().date()
+    today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
@@ -73,7 +73,7 @@ def print_simple_annual_report(records: List[Transaction]) -> None:
 
 
 def print_simple_monthly_report(records: List[Transaction]) -> None:
-    today = datetime.today().date()
+    today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
@@ -118,7 +118,7 @@ def print_simple_monthly_report(records: List[Transaction]) -> None:
 
 
 def print_simple_quarterly_report(records: List[Transaction]) -> None:
-    today = datetime.today().date()
+    today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
@@ -169,7 +169,7 @@ def print_simple_quarterly_report(records: List[Transaction]) -> None:
 
 
 def print_simple_report(records: List[Transaction], *, detailed: bool = False) -> None:
-    today = datetime.today().date()
+    today = todayd()
     payout_decimal_places: Dict[str, Optional[int]] = dict()
     dividend_decimal_places: Dict[str, Optional[int]] = dict()
     position_decimal_places: Dict[str, Optional[int]] = dict()
@@ -399,7 +399,7 @@ def formatted_prominent_payers(records: List[Transaction], *, limit: int = 3) ->
 
 
 def print_simple_rolling_report(records: List[Transaction]) -> None:
-    today = datetime.today().date()
+    today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )

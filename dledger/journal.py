@@ -7,7 +7,7 @@ import os
 from dledger.localeutil import trysetlocale
 from dledger.formatutil import format_amount, decimalplaces
 from dledger.fileutil import fileencoding
-from dledger.dateutil import parse_datestamp
+from dledger.dateutil import parse_datestamp, todayd
 
 from dataclasses import dataclass, replace
 from datetime import datetime, date
@@ -648,7 +648,7 @@ def read_nordnet_transaction(
     amount_str = amount_str.replace(".", "")
     dividend_str = dividend_str.replace(".", "")
 
-    today = datetime.today().date()
+    today = todayd()
     # parse date; expects format '2018-03-19'
     entry_date = datetime.strptime(entry_date_value, "%Y-%m-%d").date()
     if entry_date > today:

@@ -8,6 +8,14 @@ from typing import Tuple, Optional, List
 from dledger.localeutil import trysetlocale
 
 
+def todayd() -> date:
+    """Return today's date.
+    This function should always be used to determine today's date.
+    For debugging purposes, the function may be altered to return any other date.
+    """
+    return datetime.today().date()
+
+
 def months_between(a: date, b: date, *, ignore_years: bool = False) -> int:
     """Return the number of months between two dates, from earliest to latest.
 
@@ -176,7 +184,7 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     today to tomorrow, exactly including only today. Similarly, if component is '2019', then the
     date interval will range from 2019/01/01 to 2020/01/01, including the full year period of 2019.
     """
-    today = datetime.today().date()
+    today = todayd()
     component = component.lower()
     month: Optional[int]
     try:
