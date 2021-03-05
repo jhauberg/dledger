@@ -255,6 +255,9 @@ def convert_to_native_currency(records: List[Transaction]) -> List[Transaction]:
     for r in records:
         if r.dividend is None:
             continue
+        if r.dividend.symbol == r.amount.symbol:
+            # no conversion needed
+            continue
         native_value = r.dividend.value * r.position
         native_amount = replace(
             r.amount,
