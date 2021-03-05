@@ -148,6 +148,8 @@ def print_simple_quarterly_report(records: List[Transaction]) -> None:
                     continue
 
                 total = income(quarterly_transactions)
+                # todo: we're dealing with sums here- can we assume that we want to use
+                #       highest number of decimal places observed for same symbol here?
                 amount = format_amount(total, trailing_zero=False)
                 amount = latest_transaction.amount.fmt % amount
                 d = f"{year}/Q{quarter}"
@@ -173,15 +175,25 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False) -
     payout_decimal_places: Dict[str, Optional[int]] = dict()
     dividend_decimal_places: Dict[str, Optional[int]] = dict()
     position_decimal_places: Dict[str, Optional[int]] = dict()
-    for ticker in tickers(records):
-        payout_decimal_places[ticker] = max_decimal_places(
-            (r.amount for r in records if r.ticker == ticker)
+    all_symbols = symbols(records)
+    all_symbols.add("")  # representing no/None symbol
+    # todo: refactor (this is probably going to be needed in most report functions)
+    #       and figure solution where adding a None symbol is not needed
+    #       - some tests would be appreciated too
+    for symbol in all_symbols:
+        payout_decimal_places[symbol] = max_decimal_places(
+            (r.amount for r in records if
+             r.amount.symbol == symbol or
+             (r.amount.symbol is None and symbol == ""))
         )
+        if detailed:
+            dividend_decimal_places[symbol] = max_decimal_places(
+                (r.dividend for r in records if
+                 r.dividend.symbol == symbol or
+                 (r.dividend.symbol is None and symbol == ""))
+            )
     if detailed:
         for ticker in tickers(records):
-            dividend_decimal_places[ticker] = max_decimal_places(
-                (r.dividend for r in records if r.ticker == ticker)
-            )
             position_decimal_places[ticker] = max(
                 decimalplaces(r.position) for r in records if r.ticker == ticker
             )
@@ -194,11 +206,13 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False) -
     for transaction in records:
         should_colorize_expired_transaction = False
         payout = transaction.amount.value
-        amount_decimal_places = payout_decimal_places[transaction.ticker]
+        amount_decimal_places = payout_decimal_places[
+            transaction.amount.symbol if transaction.amount.symbol is not None else ""
+        ]
         if amount_decimal_places is not None:
             amount = format_amount(payout, places=amount_decimal_places)
         else:
-            amount = format_amount(payout)
+            amount = format_amount(payout, trailing_zero=False)
         amount = transaction.amount.fmt % amount
 
         d = transaction.entry_date.strftime("%Y/%m/%d")
@@ -253,7 +267,9 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False) -
 
             assert transaction.dividend is not None
 
-            div_decimal_places = dividend_decimal_places[transaction.ticker]
+            div_decimal_places = dividend_decimal_places[
+                transaction.dividend.symbol if transaction.dividend.symbol is not None else ""
+            ]
             if div_decimal_places is not None:
                 dividend = format_amount(
                     transaction.dividend.value, places=div_decimal_places
