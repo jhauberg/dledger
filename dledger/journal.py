@@ -163,7 +163,7 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                 ):
                     if transaction_start.match(previous_line) is not None:
                         offset = n + 1
-                        lines = lines[len(lines) - offset:]
+                        lines = lines[len(lines) - offset :]
                         journal_entries.append(
                             read_journal_transaction(
                                 lines, location=(path, previous_line_number)
@@ -174,7 +174,7 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             if len(line) > 0:
                 # line has content; determine if it's an include directive
                 if include_start.match(line) is not None:
-                    relative_include_path = line[len("include"):].strip()
+                    relative_include_path = line[len("include") :].strip()
                     include_path = os.path.join(
                         os.path.dirname(path), relative_include_path
                     )
@@ -197,12 +197,10 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                 )  # todo: also attach info, e.g. TRANSACTION_START
                 #       so we don't have to do regex check twice
         if len(lines) > 0:
-            for n, (previous_line_number, previous_line) in enumerate(
-                reversed(lines)
-            ):
+            for n, (previous_line_number, previous_line) in enumerate(reversed(lines)):
                 if transaction_start.match(previous_line) is not None:
                     offset = n + 1
-                    lines = lines[len(lines) - offset:]
+                    lines = lines[len(lines) - offset :]
                     journal_entries.append(
                         read_journal_transaction(
                             lines, location=(path, previous_line_number)
