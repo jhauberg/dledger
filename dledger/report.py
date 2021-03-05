@@ -399,6 +399,12 @@ def formatted_prominent_payers(records: List[Transaction], *, limit: int = 3) ->
 
 
 def print_simple_rolling_report(records: List[Transaction]) -> None:
+    # note that this report can be confusing; the "next 12m" row
+    # indicates the sum of all forecasted/preliminary records, however
+    # having preliminary records that just pass their entry date can
+    # incur a drop in the sum, which can look like it just disappeared
+    # out of thin air - it will be included when the month passes
+    # todo: consider including past preliminary records as still being "in the future"
     today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
