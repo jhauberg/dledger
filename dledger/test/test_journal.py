@@ -7,6 +7,7 @@ from dledger.journal import (
     EntryAttributes,
     Amount,
     Distribution,
+    ParseError,
     POSITION_SET,
     # POSITION_ADD,
     # POSITION_SUB,
@@ -1056,6 +1057,19 @@ def test_include_journal():
             location=(path, 5), positioning=(None, POSITION_SET)
         ),
     )
+
+
+def test_implicit_currency():
+    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
+
+    path = "../example/implicitcurrency.journal"
+
+    try:
+        records = read(path, kind="journal")
+    except ParseError:
+        assert True
+    else:
+        assert False
 
 
 def test_include_journal_out_of_order():
