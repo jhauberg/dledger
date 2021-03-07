@@ -72,10 +72,34 @@ def intervals(records: Iterable[Transaction]) -> List[int]:
     return timespans
 
 
-def dividends(records: Iterable[Transaction]) -> List[Amount]:
-    """ Return a list of dividend components in a set of records. """
+def amounts(
+    records: Iterable[Transaction], symbol: Optional[str] = None
+) -> List[Amount]:
+    """Return a list of cash components in a set of records.
+    Optionally only including those matching a given symbol.
+    """
 
-    return [record.dividend for record in records if record.dividend is not None]
+    components = [record.amount for record in records if record.amount is not None]
+
+    if symbol is None:
+        return components
+
+    return [component for component in components if component.symbol == symbol]
+
+
+def dividends(
+    records: Iterable[Transaction], symbol: Optional[str] = None
+) -> List[Amount]:
+    """Return a list of dividend components in a set of records.
+    Optionally only including those matching a given symbol.
+    """
+
+    components = [record.dividend for record in records if record.dividend is not None]
+
+    if symbol is None:
+        return components
+
+    return [component for component in components if component.symbol == symbol]
 
 
 def deltas(
@@ -193,7 +217,7 @@ def by_ticker(records: Iterable[Transaction], symbol: str) -> Iterable[Transacti
 def income(records: Iterable[Transaction]) -> float:
     """ Return the sum of amount components in a set of records. """
 
-    return sum([record.amount.value for record in records if record.amount is not None])
+    return sum([amount.value for amount in amounts(records)])
 
 
 def after(records: Iterable[Transaction], d: date) -> Iterable[Transaction]:
