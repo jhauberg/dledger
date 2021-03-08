@@ -161,8 +161,6 @@ def print_simple_quarterly_report(records: List[Transaction]) -> None:
                     continue
 
                 total = income(quarterly_transactions)
-                # todo: we're dealing with sums here- can we assume that we want to use
-                #       highest number of decimal places observed for same symbol here?
                 decimals = amount_decimals[commodity]
                 if decimals is not None:
                     amount = format_amount(total, places=decimals)
@@ -672,13 +670,18 @@ def decimals_per_component(
 
     for symbol in symbols(records):
         amount_decimal_places[symbol] = max_decimal_places(amounts(records, symbol))
+        # todo: note that this is not necessarily what we want; i think preferably
+        #       this component had another layer of specificity; i.e. the ticker
+        #       the problem is that if there's just _one_ occurrence of a dividend
+        #       of e.g. 4 decimals, then _all_ dividends will be set to this precision
+        #       right now this is not a problem, because there is no report that includes
+        #       the dividend of more than just one ticker anyway
         dividend_decimal_places[symbol] = max_decimal_places(dividends(records, symbol))
         # todo: this would work as a fallback and could be useful
         #       in particular for forecasted records with no preference
-        #       toward decimal places;
-        #       however, it would also lead to probably unexpected
-        #       number of decimals... for example, a "$ 0.1925" dividend
-        #       would cause all payouts to have 4 decimal places
+        #       toward decimal places; however, it would also lead to
+        #       probably unexpected number of decimals... same issue as above
+        #       for example, a "$ 0.1925" dividend would cause all payouts to have 4 decimal places
         # if amount_decimal_places[symbol] is None:
         #     amount_decimal_places[symbol] = dividend_decimal_places[symbol]
     for ticker in tickers(records):

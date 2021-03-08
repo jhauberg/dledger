@@ -95,6 +95,8 @@ def main() -> None:
 
     enable_color_escapes()
 
+    # todo: should catch ParseError rather than showing stack trace; not useful for end-user
+
     try:
         # default to system locale, if able
         locale.setlocale(locale.LC_ALL, "")
