@@ -718,6 +718,9 @@ def read_nordnet_transaction(
         ),
         ex_date=ex_date,
         payout_date=payout_date,
+        entry_attr=EntryAttributes(
+            location, positioning=(position, POSITION_SET)
+        )
     )
 
 
