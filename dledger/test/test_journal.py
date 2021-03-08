@@ -1178,3 +1178,59 @@ def test_write():
     assert records[0].dividend == existing_records[0].dividend
     assert records[0].kind == existing_records[0].kind
     assert records[0].entry_date == existing_records[0].entry_date
+
+
+def test_nordnet_import():
+    trysetlocale(locale.LC_NUMERIC, ["da_DK", "da-DK", "da"])
+
+    path = "subjects/nordnet_transactions.csv"
+
+    records = read(path, kind="nordnet")
+
+    assert len(records) == 3
+
+    assert records[0] == Transaction(
+        entry_date=date(2021, 3, 4),
+        payout_date=date(2021, 3, 4),
+        ex_date=date(2021, 3, 2),
+        ticker="ORSTED",
+        position=10,
+        amount=Amount(115, places=0, symbol="DKK", fmt="%s DKK"),
+        dividend=Amount(11.5, places=1, symbol="DKK", fmt="%s DKK"),
+        entry_attr=EntryAttributes(location=(path, 2), positioning=(10, POSITION_SET)),
+    )
+    assert records[1] == Transaction(
+        entry_date=date(2021, 2, 17),
+        payout_date=date(2021, 2, 16),
+        ex_date=date(2021, 1, 29),
+        ticker="O",
+        position=10,
+        amount=Amount(14.45, places=2, symbol="DKK", fmt="%s DKK"),
+        dividend=Amount(0.2345, places=4, symbol="USD", fmt="%s USD"),
+        entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
+    )
+    assert records[2] == Transaction(
+        entry_date=date(2021, 2, 12),
+        payout_date=date(2021, 2, 11),
+        ex_date=date(2021, 2, 5),
+        ticker="AAPL",
+        position=10,
+        amount=Amount(12.66, places=2, symbol="DKK", fmt="%s DKK"),
+        dividend=Amount(0.205, places=3, symbol="USD", fmt="%s USD"),
+        entry_attr=EntryAttributes(location=(path, 4), positioning=(10, POSITION_SET)),
+    )
+
+
+def test_nordnet_import_ambiguity():
+    trysetlocale(locale.LC_NUMERIC, ["da_DK", "da-DK", "da"])
+
+    path = "subjects/nordnet_transactions_ambiguous_dividend.csv"
+
+    try:
+        # record has both "0,234" and "0.2345" dividend component
+        records = read(path, kind="nordnet")
+    except ParseError:
+        assert True
+    else:
+        assert False
+
