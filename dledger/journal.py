@@ -754,10 +754,10 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
         elif record.kind is Distribution.INTERIM:
             indicator = "^ "
         datestamp = record.entry_date.strftime("%Y/%m/%d")
-        p_decimal_places = position_decimal_places[record.ticker]
-        if p_decimal_places is not None:
+        decimals = position_decimal_places[record.ticker]
+        if decimals is not None:
             p = format_amount(
-                record.position, trailing_zero=False, places=p_decimal_places
+                record.position, trailing_zero=False, places=decimals
             )
         else:
             p = format_amount(record.position, trailing_zero=False, rounded=False)
@@ -769,10 +769,10 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
             payout_datestamp = record.payout_date.strftime("%Y/%m/%d")
             amount_display += f"[{payout_datestamp}]"
         if record.amount is not None:
-            amount_decimal_places = payout_decimal_places[record.ticker]
-            if amount_decimal_places is not None:
+            decimals = record.amount.places if record.amount.places is not None else payout_decimal_places[record.ticker]
+            if decimals is not None:
                 payout_display = format_amount(
-                    record.amount.value, places=amount_decimal_places
+                    record.amount.value, places=decimals
                 )
             else:
                 payout_display = format_amount(record.amount.value, rounded=False)
@@ -784,10 +784,10 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
                 else payout_display
             )
         if record.dividend is not None:
-            div_decimal_places = dividend_decimal_places[record.ticker]
-            if div_decimal_places is not None:
+            decimals = record.dividend.places if record.dividend.places is not None else dividend_decimal_places[record.ticker]
+            if decimals is not None:
                 dividend_display = format_amount(
-                    record.dividend.value, places=div_decimal_places
+                    record.dividend.value, places=decimals
                 )
             else:
                 dividend_display = format_amount(record.dividend.value, rounded=False)
