@@ -77,8 +77,9 @@ from dledger.projection import (
     convert_to_native_currency,
     latest_exchange_rates,
     conversion_factors,
+    adjusting_for_splits,
 )
-from dledger.journal import Transaction, write, read, SUPPORTED_TYPES
+from dledger.journal import Transaction, write, read, excluding_redundant_transactions,  SUPPORTED_TYPES
 
 from dataclasses import replace
 
@@ -133,7 +134,12 @@ def main() -> None:
         records.extend(read(input_path, input_type))
     if len(records) == 0:
         sys.exit(0)
-    records = sorted(records)
+
+    records = excluding_redundant_transactions(
+        adjusting_for_splits(
+            sorted(records)
+        )
+    )
 
     if args["--descending"]:
         # assuming argument is not passed for any reporting command;

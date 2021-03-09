@@ -9,8 +9,6 @@ from dledger.journal import (
     Distribution,
     ParseError,
     POSITION_SET,
-    # POSITION_ADD,
-    # POSITION_SUB,
     read,
     excluding_redundant_transactions,
     parse_amount,
@@ -322,6 +320,10 @@ def test_ordering_journal():
 
     records = read(path, kind="journal")
 
+    assert len(records) == 7
+
+    records = excluding_redundant_transactions(records)
+
     assert len(records) == 5
 
     assert records[0] == Transaction(
@@ -379,6 +381,10 @@ def test_positions_journal():
 
     records = read(path, kind="journal")
 
+    assert len(records) == 5
+
+    records = excluding_redundant_transactions(records)
+
     assert len(records) == 4
 
     assert records[0] == Transaction(
@@ -423,6 +429,10 @@ def test_positions_journal():
     path = "../example/positions-condensed.journal"
 
     records = read(path, kind="journal")
+
+    assert len(records) == 5
+
+    records = excluding_redundant_transactions(records)
 
     assert len(records) == 4
 
@@ -470,6 +480,10 @@ def test_positions_format_journal():
     path = "../example/positions-oddformat.journal"
 
     records = read(path, kind="journal")
+
+    assert len(records) == 6
+
+    records = excluding_redundant_transactions(records)
 
     assert len(records) == 5
 
@@ -531,6 +545,10 @@ def test_position_inference_journal():
 
     records = read(path, kind="journal")
 
+    assert len(records) == 4
+
+    records = excluding_redundant_transactions(records)
+
     assert len(records) == 3
 
     assert records[0] == Transaction(
@@ -569,6 +587,10 @@ def test_fractional_positions_journal():
     path = "../example/fractionalpositions.journal"
 
     records = read(path, kind="journal")
+
+    assert len(records) == 5
+
+    records = excluding_redundant_transactions(records)
 
     assert len(records) == 4
 

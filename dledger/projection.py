@@ -5,7 +5,8 @@ from dataclasses import dataclass, replace
 
 from statistics import multimode, fmean
 
-from dledger.journal import Transaction, Distribution, Amount, ParseError
+from dledger.formatutil import decimalplaces
+from dledger.journal import Transaction, Distribution, Amount, ParseError, POSITION_SPLIT, POSITION_SPLIT_WHOLE
 from dledger.dateutil import (
     last_of_month,
     months_between,
@@ -19,6 +20,7 @@ from dledger.record import (
     trailing,
     latest,
     before,
+    after,
     monthly_schedule,
     dividends,
     deltas,
@@ -909,3 +911,60 @@ def latest_exchange_rates(records: List[Transaction]) -> Dict[Tuple[str, str], f
     # note that this assumes that, given a bunch of ambiguous rates,
     # the factor to be applied is the last of the bunch
     return {k: v[-1] for k, v in conversion_factors(records).items()}
+
+
+def adjusting_for_splits(records: List[Transaction]) -> List[Transaction]:
+    splits = list(record for record in records if
+                  record.ispositional and
+                  record.entry_attr is not None and
+                  (record.entry_attr.positioning[1] == POSITION_SPLIT or
+                   record.entry_attr.positioning[1] == POSITION_SPLIT_WHOLE))
+    adjusted_records = []
+    for record in records:
+        later_splits = list(
+            after(
+                by_ticker(splits, record.ticker),
+                record.ex_date if record.ex_date is not None else record.entry_date
+            )
+        )
+        if len(later_splits) > 0:
+            # note that each split can be handled in one of two ways:
+            #  1) fractional remainders paid out as cash, keep whole (default)
+            #  2) fractional remainders kept as a fractional share
+            # if we always assumed either, we could adjust by the product of all factors,
+            # but since we support both kinds, we need to apply each split individually
+            product = math.prod(split.entry_attr.positioning[0] for split in later_splits)
+            adjusted_position = record.position
+            for split in later_splits:  # assuming ordered earlier to later
+                factor, directive = split.entry_attr.positioning
+                adjusted_position = adjusted_position * factor
+                if directive == POSITION_SPLIT_WHOLE:
+                    adjusted_position = math.floor(adjusted_position)
+
+            adjusted_dividend = record.dividend
+            if record.dividend is not None:
+                adjusted_dividend_value = record.dividend.value / product
+                decimals = decimalplaces(adjusted_dividend_value)
+                # note that we're editing the user-defined preference for number of decimal places here;
+                # this is necessary to avoid issues where an adjusted dividend is rounded off
+                # for example, a journal input of "$ 0.205" is clearly 3 decimal places, but
+                # the adjusted value might be 0.1925; this would then display as "$ 0.193" due to rounding
+                # to the preference of 3 decimals - this is typically not what we want to see, though,
+                # so we try figuring out the right number of decimals
+                # however, this can go bad in the other direction too; i.e. if the calculation is
+                # off by a fraction, the value could end up being displayed as "$ 0.192523999999"
+                # so for now, this is a compromise- i'm not sure which is worse; rounding or floating point issues
+                if decimals > 4:  # a reasonable cap
+                    decimals = 4
+                adjusted_dividend = replace(
+                    record.dividend,
+                    value=adjusted_dividend_value,
+                    places=decimals
+                )
+            record = replace(
+                record,
+                position=adjusted_position,
+                dividend=adjusted_dividend
+            )
+        adjusted_records.append(record)
+    return adjusted_records

@@ -22,6 +22,7 @@ POSITION_SET = 0  # directive to set or infer absolute position
 POSITION_ADD = 1  # directive/multiplier to add to previous position
 POSITION_SUB = -1  # directive/multiplier to subtract from previous position
 POSITION_SPLIT = -2
+POSITION_SPLIT_WHOLE = -3
 
 
 class Distribution(Enum):
@@ -124,11 +125,7 @@ def read(path: str, kind: str) -> List[Transaction]:
         raise ValueError(f"Path could not be read: '{path}'")
 
     if kind == "journal":
-        return excluding_redundant_transactions(
-            adjusting_for_splits(
-                read_journal_transactions(path, encoding)
-            )
-        )
+        return read_journal_transactions(path, encoding)
     elif kind == "nordnet":
         return read_nordnet_transactions(path, encoding)
     return []
@@ -246,7 +243,9 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
         location = attr.location
 
         if p is None or (p_directive == POSITION_ADD or
-                         p_directive == POSITION_SUB):
+                         p_directive == POSITION_SUB or
+                         p_directive == POSITION_SPLIT or
+                         p_directive == POSITION_SPLIT_WHOLE):
             # infer position from previous entries
             by_ex_date = sorted(
                 records,
@@ -257,9 +256,6 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             )
 
             for previous_record in reversed(by_ex_date):
-                if previous_record.entry_attr.positioning[1] == POSITION_SPLIT:
-                    # don't use this record to infer position; just skip it
-                    continue
                 if previous_record.ticker == ticker:
                     if previous_record.position is None:
                         continue
@@ -267,7 +263,12 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                         continue
                     if p is None:
                         p = 0
-                    p = truncate_floating_point(previous_record.position + (p * p_directive))
+                    if p_directive == POSITION_SPLIT:
+                        p = truncate_floating_point(previous_record.position * p)
+                    elif p_directive == POSITION_SPLIT_WHOLE:
+                        p = truncate_floating_point(math.floor(previous_record.position * p))
+                    else:
+                        p = truncate_floating_point(previous_record.position + (p * p_directive))
                     if p < 0:
                         raise ParseError(
                             f"position change to negative position ({p})", location
@@ -339,34 +340,6 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
         records.append(transaction)
 
     return records
-
-
-def adjusting_for_splits(
-    records: List[Transaction]
-) -> List[Transaction]:
-    # todo: this approach does not always work as expected;
-    #       for example, a position set post-split will also
-    #       be multiplied - as if split on split
-    split_factors: Dict[str, float] = dict()
-    for ticker in set([record.ticker for record in records]):
-        splits = list(record for record in records if
-                      record.ispositional and
-                      record.ticker == ticker and
-                      record.entry_attr is not None and
-                      record.entry_attr.positioning[1] == POSITION_SPLIT)
-        if len(splits) > 0:
-            factors = (record.position for record in splits)
-            split_factors[ticker] = math.prod(factors)
-    adjusted_records: List[Transaction] = []
-    for record in records:
-        if record.entry_attr is not None and record.entry_attr.positioning[1] != POSITION_SET:
-            # don't adjust position delta records
-            continue
-        if record.ticker in split_factors:
-            adjusted_position = record.position * split_factors[record.ticker]
-            record = replace(record, position=adjusted_position)
-        adjusted_records.append(record)
-    return adjusted_records
 
 
 def excluding_redundant_transactions(
@@ -483,9 +456,14 @@ def read_journal_transaction(
                 position = locale.atof(position_str)
             except ValueError:
                 raise ParseError(f"invalid position ('{position_str}')", location)
-        elif position_str.startswith("x"):
+        elif position_str.lower().startswith("x"):
             # for example: "(x 4/1)"
-            position_change_directive = POSITION_SPLIT
+            # todo: maybe prefer something that augments the "x"; maybe "x~" ?
+            position_change_directive = (
+                POSITION_SPLIT  # keep fractional shares
+                if position_str.startswith("X") else
+                POSITION_SPLIT_WHOLE  # keep whole shares; considered default
+            )
             position_str = position_str[1:]
             if "/" not in position_str:
                 raise ParseError(f"invalid split directive ('{position_str}')", location)
@@ -493,6 +471,7 @@ def read_journal_transaction(
             if len(split_components) != 2:
                 raise ParseError(f"invalid split directive ('{position_str}')", location)
             try:
+                # actually the split factor in this case, rather than a position
                 position = (locale.atof(split_components[0]) /
                             locale.atof(split_components[1]))
             except ValueError:
