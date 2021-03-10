@@ -144,7 +144,7 @@ def test_parse_amount():
 def test_empty_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/empty.journal"
+    path = "subjects/empty.journal"
 
     records = read(path, kind="journal")
 
@@ -154,7 +154,7 @@ def test_empty_journal():
 def test_single_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/single.journal"
+    path = "subjects/single.journal"
 
     records = read(path, kind="journal")
 
@@ -321,7 +321,7 @@ def test_ordering():
 def test_ordering_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/ordering.journal"
+    path = "subjects/ordering.journal"
 
     records = read(path, kind="journal")
 
@@ -382,7 +382,7 @@ def test_ordering_journal():
 def test_positions_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/positions.journal"
+    path = "subjects/positions.journal"
 
     records = read(path, kind="journal")
 
@@ -440,7 +440,7 @@ def test_positions_journal():
         ),
     )
 
-    path = "../example/positions-condensed.journal"
+    path = "subjects/positions-condensed.journal"
 
     records = read(path, kind="journal")
 
@@ -491,7 +491,7 @@ def test_positions_journal():
 def test_positions_format_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/positions-oddformat.journal"
+    path = "subjects/positions-oddformat.journal"
 
     records = read(path, kind="journal")
 
@@ -555,7 +555,7 @@ def test_positions_format_journal():
 def test_position_inference_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/positioninference.journal"
+    path = "subjects/positioninference.journal"
 
     records = read(path, kind="journal")
 
@@ -598,7 +598,7 @@ def test_position_inference_journal():
 def test_fractional_positions_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/fractionalpositions.journal"
+    path = "subjects/fractionalpositions.journal"
 
     records = read(path, kind="journal")
 
@@ -704,7 +704,7 @@ def test_dividends_journal():
 def test_ambiguous_position_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/positionambiguity.journal"
+    path = "subjects/positionambiguity.journal"
 
     records = read(path, kind="journal")
 
@@ -732,7 +732,7 @@ def test_ambiguous_position_journal():
 def test_nativedividends_journal():
     trysetlocale(locale.LC_NUMERIC, ["da_DK", "da-DK", "da"])
 
-    path = "../example/nativedividends.journal"
+    path = "subjects/nativedividends.journal"
 
     records = read(path, kind="journal")
 
@@ -781,7 +781,7 @@ def test_nativedividends_journal():
 def test_strategic_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/strategic.journal"
+    path = "subjects/strategic.journal"
 
     records = read(path, kind="journal")
 
@@ -843,7 +843,7 @@ def test_strategic_journal():
 def test_extended_journal():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/extendingrecords.journal"
+    path = "subjects/extendingrecords.journal"
 
     records = read(path, kind="journal")
 
@@ -959,7 +959,7 @@ def test_remove_redundant_entries():
 def test_preliminary_expected_currency():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/preliminaryrecords.journal"
+    path = "subjects/preliminaryrecords.journal"
 
     records = read(path, kind="journal")
 
@@ -988,7 +988,7 @@ def test_preliminary_expected_currency():
 def test_stable_sort():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/sorting.journal"
+    path = "subjects/sorting.journal"
 
     records = read(path, kind="journal")
 
@@ -1037,6 +1037,8 @@ def test_include_journal():
 
     path = "../example/include.journal"
 
+    # todo: do relative paths resolve on Windows?
+    #       i.e. backslash paths and vice versa
     included_resolved_path = "../example/simple.journal"
 
     records = read(path, kind="journal")
@@ -1098,7 +1100,7 @@ def test_include_journal():
 def test_implicit_currency():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/implicitcurrency.journal"
+    path = "subjects/implicitcurrency.journal"
 
     try:
         records = read(path, kind="journal")
@@ -1111,9 +1113,9 @@ def test_implicit_currency():
 def test_include_journal_out_of_order():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/include_out_of_order.journal"
+    path = "subjects/include_out_of_order.journal"
 
-    included_resolved_path = "../example/simple.journal"
+    included_resolved_path = "subjects/../../example/simple.journal"
 
     records = read(path, kind="journal")
 
@@ -1321,7 +1323,7 @@ def test_splits_whole():
 def test_splits_fractional():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/split_fractional.journal"
+    path = "subjects/split_fractional.journal"
 
     records = read(path, kind="journal")
 
@@ -1394,7 +1396,7 @@ def test_splits_fractional():
 def test_reverse_split():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/split_reverse.journal"
+    path = "subjects/split_reverse.journal"
 
     records = read(path, kind="journal")
 
@@ -1488,7 +1490,7 @@ def test_adjusting_for_splits_whole():
 def test_adjusting_for_splits_fractional():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/split_fractional.journal"
+    path = "subjects/split_fractional.journal"
 
     records = adjusting_for_splits(read(path, kind="journal"))
 
@@ -1561,7 +1563,7 @@ def test_adjusting_for_splits_fractional():
 def test_adjusting_for_splits_reverse():
     trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
 
-    path = "../example/split_reverse.journal"
+    path = "subjects/split_reverse.journal"
 
     records = adjusting_for_splits(read(path, kind="journal"))
 

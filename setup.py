@@ -46,7 +46,7 @@ setup(
     author="Jacob Hauberg Hansen",
     author_email="jacob.hauberg@gmail.com",
     license="MIT",
-    packages=find_packages(exclude=["dledger.test"]),
+    packages=find_packages(exclude=["test"]),
     include_package_data=True,
     platforms="any",
     install_requires=["docopt==0.6.2"],
