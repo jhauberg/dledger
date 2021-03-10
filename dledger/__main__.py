@@ -136,6 +136,9 @@ def main() -> None:
         sys.exit(0)
 
     records = excluding_redundant_transactions(
+        # note that even if omitting this call, journal will still have processed
+        # split directives and inferred positions from them; this is not
+        # necessarily a problem, just something to be aware of
         adjusting_for_splits(
             sorted(records)
         )
