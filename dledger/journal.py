@@ -236,10 +236,12 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
         p, p_directive = attr.positioning
         location = attr.location
 
-        if p is None or (p_directive == POSITION_ADD or
-                         p_directive == POSITION_SUB or
-                         p_directive == POSITION_SPLIT or
-                         p_directive == POSITION_SPLIT_WHOLE):
+        if p is None or (
+            p_directive == POSITION_ADD
+            or p_directive == POSITION_SUB
+            or p_directive == POSITION_SPLIT
+            or p_directive == POSITION_SPLIT_WHOLE
+        ):
             # infer position from previous entries
             by_ex_date = sorted(
                 records,
@@ -260,9 +262,13 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                     if p_directive == POSITION_SPLIT:
                         p = truncate_floating_point(previous_record.position * p)
                     elif p_directive == POSITION_SPLIT_WHOLE:
-                        p = truncate_floating_point(math.floor(previous_record.position * p))
+                        p = truncate_floating_point(
+                            math.floor(previous_record.position * p)
+                        )
                     else:
-                        p = truncate_floating_point(previous_record.position + (p * p_directive))
+                        p = truncate_floating_point(
+                            previous_record.position + (p * p_directive)
+                        )
                     if p < 0:
                         raise ParseError(
                             f"position change to negative position ({p})", location
@@ -455,19 +461,24 @@ def read_journal_transaction(
             # todo: maybe prefer something that augments the "x"; maybe "x~" ?
             position_change_directive = (
                 POSITION_SPLIT  # keep fractional shares
-                if position_str.startswith("X") else
-                POSITION_SPLIT_WHOLE  # keep whole shares; considered default
+                if position_str.startswith("X")
+                else POSITION_SPLIT_WHOLE  # keep whole shares; considered default
             )
             position_str = position_str[1:]
             if "/" not in position_str:
-                raise ParseError(f"invalid split directive ('{position_str}')", location)
+                raise ParseError(
+                    f"invalid split directive ('{position_str}')", location
+                )
             split_components = position_str.split("/")
             if len(split_components) != 2:
-                raise ParseError(f"invalid split directive ('{position_str}')", location)
+                raise ParseError(
+                    f"invalid split directive ('{position_str}')", location
+                )
             try:
                 # actually the split factor in this case, rather than a position
-                position = (locale.atof(split_components[0]) /
-                            locale.atof(split_components[1]))
+                position = locale.atof(split_components[0]) / locale.atof(
+                    split_components[1]
+                )
             except ValueError:
                 raise ParseError(f"invalid position ('{position_str}')", location)
         else:
@@ -750,9 +761,7 @@ def read_nordnet_transaction(
         ),
         ex_date=ex_date,
         payout_date=payout_date,
-        entry_attr=EntryAttributes(
-            location, positioning=(position, POSITION_SET)
-        )
+        entry_attr=EntryAttributes(location, positioning=(position, POSITION_SET)),
     )
 
 
@@ -791,9 +800,7 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
         datestamp = record.entry_date.strftime("%Y/%m/%d")
         decimals = position_decimal_places[record.ticker]
         if decimals is not None:
-            p = format_amount(
-                record.position, trailing_zero=False, places=decimals
-            )
+            p = format_amount(record.position, trailing_zero=False, places=decimals)
         else:
             p = format_amount(record.position, trailing_zero=False, rounded=False)
         line = f"{datestamp} {indicator}{record.ticker} ({p})"
@@ -804,11 +811,13 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
             payout_datestamp = record.payout_date.strftime("%Y/%m/%d")
             amount_display += f"[{payout_datestamp}]"
         if record.amount is not None:
-            decimals = record.amount.places if record.amount.places is not None else payout_decimal_places[record.ticker]
+            decimals = (
+                record.amount.places
+                if record.amount.places is not None
+                else payout_decimal_places[record.ticker]
+            )
             if decimals is not None:
-                payout_display = format_amount(
-                    record.amount.value, places=decimals
-                )
+                payout_display = format_amount(record.amount.value, places=decimals)
             else:
                 payout_display = format_amount(record.amount.value, rounded=False)
             if record.amount.fmt is not None:
@@ -819,11 +828,13 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
                 else payout_display
             )
         if record.dividend is not None:
-            decimals = record.dividend.places if record.dividend.places is not None else dividend_decimal_places[record.ticker]
+            decimals = (
+                record.dividend.places
+                if record.dividend.places is not None
+                else dividend_decimal_places[record.ticker]
+            )
             if decimals is not None:
-                dividend_display = format_amount(
-                    record.dividend.value, places=decimals
-                )
+                dividend_display = format_amount(record.dividend.value, places=decimals)
             else:
                 dividend_display = format_amount(record.dividend.value, rounded=False)
             if record.dividend.fmt is not None:

@@ -6,7 +6,14 @@ from dataclasses import dataclass, replace
 from statistics import multimode, fmean
 
 from dledger.formatutil import decimalplaces, truncate_floating_point
-from dledger.journal import Transaction, Distribution, Amount, ParseError, POSITION_SPLIT, POSITION_SPLIT_WHOLE
+from dledger.journal import (
+    Transaction,
+    Distribution,
+    Amount,
+    ParseError,
+    POSITION_SPLIT,
+    POSITION_SPLIT_WHOLE,
+)
 from dledger.dateutil import (
     last_of_month,
     months_between,
@@ -706,11 +713,7 @@ def next_linear_dividend(
         latest_comparable = latest(comparable_transactions)
         assert latest_comparable is not None
         div = latest_comparable.dividend
-        return GeneratedAmount(
-            div.value,
-            symbol=div.symbol,
-            fmt=div.fmt
-        )
+        return GeneratedAmount(div.value, symbol=div.symbol, fmt=div.fmt)
 
     return None
 
@@ -914,17 +917,22 @@ def latest_exchange_rates(records: List[Transaction]) -> Dict[Tuple[str, str], f
 
 
 def adjusting_for_splits(records: List[Transaction]) -> List[Transaction]:
-    splits = list(record for record in records if
-                  record.ispositional and
-                  record.entry_attr is not None and
-                  (record.entry_attr.positioning[1] == POSITION_SPLIT or
-                   record.entry_attr.positioning[1] == POSITION_SPLIT_WHOLE))
+    splits = list(
+        record
+        for record in records
+        if record.ispositional
+        and record.entry_attr is not None
+        and (
+            record.entry_attr.positioning[1] == POSITION_SPLIT
+            or record.entry_attr.positioning[1] == POSITION_SPLIT_WHOLE
+        )
+    )
     adjusted_records = []
     for record in records:
         later_splits = list(
             after(
                 by_ticker(splits, record.ticker),
-                record.ex_date if record.ex_date is not None else record.entry_date
+                record.ex_date if record.ex_date is not None else record.entry_date,
             )
         )
         if len(later_splits) > 0:
@@ -933,7 +941,9 @@ def adjusting_for_splits(records: List[Transaction]) -> List[Transaction]:
             #  2) fractional remainders kept as a fractional share
             # if we always assumed either, we could adjust by the product of all factors,
             # but since we support both kinds, we need to apply each split individually
-            product = math.prod(split.entry_attr.positioning[0] for split in later_splits)
+            product = math.prod(
+                split.entry_attr.positioning[0] for split in later_splits
+            )
             adjusted_position = record.position
             for split in later_splits:  # assuming ordered earlier to later
                 factor, directive = split.entry_attr.positioning
@@ -952,16 +962,16 @@ def adjusting_for_splits(records: List[Transaction]) -> List[Transaction]:
                 # however, this can go bad in the other direction too; i.e. if the calculation is
                 # off by a fraction, the value could end up being displayed as "$ 0.192523999999"
                 # so for now, this is a compromise- i'm not sure which is worse; rounding or floating point issues
-                adjusted_dividend_value = truncate_floating_point(record.dividend.value / product, places=4)
+                adjusted_dividend_value = truncate_floating_point(
+                    record.dividend.value / product, places=4
+                )
                 adjusted_dividend = replace(
                     record.dividend,
                     value=adjusted_dividend_value,
-                    places=decimalplaces(adjusted_dividend_value)
+                    places=decimalplaces(adjusted_dividend_value),
                 )
             record = replace(
-                record,
-                position=adjusted_position,
-                dividend=adjusted_dividend
+                record, position=adjusted_position, dividend=adjusted_dividend
             )
         adjusted_records.append(record)
     return adjusted_records

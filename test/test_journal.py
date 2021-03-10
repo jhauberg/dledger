@@ -392,9 +392,7 @@ def test_positions_journal():
         date(2019, 6, 4),
         "AAPL",
         120,
-        entry_attr=EntryAttributes(
-            location=(path, 11), positioning=(20, POSITION_ADD)
-        ),
+        entry_attr=EntryAttributes(location=(path, 11), positioning=(20, POSITION_ADD)),
     )
 
     records = excluding_redundant_transactions(records)
@@ -1288,17 +1286,13 @@ def test_splits_whole():
         10,
         amount=Amount(1, places=0, symbol="$", fmt="$ %s"),
         dividend=Amount(0.1, places=1, symbol="$", fmt="$ %s"),
-        entry_attr=EntryAttributes(
-            location=(path, 3), positioning=(10, POSITION_SET)
-        ),
+        entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
     )
     assert records[1] == Transaction(
         date(2021, 2, 1),
         "ABC",
         20,
-        entry_attr=EntryAttributes(
-            location=(path, 6), positioning=(10, POSITION_ADD)
-        ),
+        entry_attr=EntryAttributes(location=(path, 6), positioning=(10, POSITION_ADD)),
     )
     assert records[2] == Transaction(
         date(2021, 2, 10),
@@ -1335,17 +1329,13 @@ def test_splits_fractional():
         10,
         amount=Amount(1, places=0, symbol="$", fmt="$ %s"),
         dividend=Amount(0.1, places=1, symbol="$", fmt="$ %s"),
-        entry_attr=EntryAttributes(
-            location=(path, 3), positioning=(10, POSITION_SET)
-        ),
+        entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
     )
     assert records[1] == Transaction(
         date(2021, 2, 1),
         "ABC",
         20,
-        entry_attr=EntryAttributes(
-            location=(path, 6), positioning=(10, POSITION_ADD)
-        ),
+        entry_attr=EntryAttributes(location=(path, 6), positioning=(10, POSITION_ADD)),
     )
     assert records[2] == Transaction(
         date(2021, 2, 10),
@@ -1359,9 +1349,7 @@ def test_splits_fractional():
         date(2021, 2, 11),
         "ABC",
         39,
-        entry_attr=EntryAttributes(
-            location=(path, 10), positioning=(1, POSITION_SUB)
-        ),
+        entry_attr=EntryAttributes(location=(path, 10), positioning=(1, POSITION_SUB)),
     )
     assert records[4] == Transaction(
         date(2021, 4, 1),
@@ -1408,17 +1396,13 @@ def test_reverse_split():
         10,
         amount=Amount(1, places=0, symbol="$", fmt="$ %s"),
         dividend=Amount(0.1, places=1, symbol="$", fmt="$ %s"),
-        entry_attr=EntryAttributes(
-            location=(path, 3), positioning=(10, POSITION_SET)
-        ),
+        entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
     )
     assert records[1] == Transaction(
         date(2021, 2, 1),
         "ABC",
         20,
-        entry_attr=EntryAttributes(
-            location=(path, 6), positioning=(10, POSITION_ADD)
-        ),
+        entry_attr=EntryAttributes(location=(path, 6), positioning=(10, POSITION_ADD)),
     )
     assert records[2] == Transaction(
         date(2021, 2, 10),
@@ -1455,17 +1439,13 @@ def test_adjusting_for_splits_whole():
         20,
         amount=Amount(1, places=0, symbol="$", fmt="$ %s"),
         dividend=Amount(0.05, places=2, symbol="$", fmt="$ %s"),
-        entry_attr=EntryAttributes(
-            location=(path, 3), positioning=(10, POSITION_SET)
-        ),
+        entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
     )
     assert records[1] == Transaction(
         date(2021, 2, 1),
         "ABC",
         40,
-        entry_attr=EntryAttributes(
-            location=(path, 6), positioning=(10, POSITION_ADD)
-        ),
+        entry_attr=EntryAttributes(location=(path, 6), positioning=(10, POSITION_ADD)),
     )
     assert records[2] == Transaction(
         date(2021, 2, 10),
@@ -1502,17 +1482,13 @@ def test_adjusting_for_splits_fractional():
         30,
         amount=Amount(1, places=0, symbol="$", fmt="$ %s"),
         dividend=Amount(0.0333, places=4, symbol="$", fmt="$ %s"),
-        entry_attr=EntryAttributes(
-            location=(path, 3), positioning=(10, POSITION_SET)
-        ),
+        entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
     )
     assert records[1] == Transaction(
         date(2021, 2, 1),
         "ABC",
         60,
-        entry_attr=EntryAttributes(
-            location=(path, 6), positioning=(10, POSITION_ADD)
-        ),
+        entry_attr=EntryAttributes(location=(path, 6), positioning=(10, POSITION_ADD)),
     )
     assert records[2] == Transaction(
         date(2021, 2, 10),
@@ -1526,9 +1502,7 @@ def test_adjusting_for_splits_fractional():
         date(2021, 2, 11),
         "ABC",
         58.5,
-        entry_attr=EntryAttributes(
-            location=(path, 10), positioning=(1, POSITION_SUB)
-        ),
+        entry_attr=EntryAttributes(location=(path, 10), positioning=(1, POSITION_SUB)),
     )
     assert records[4] == Transaction(
         date(2021, 4, 1),
@@ -1575,17 +1549,13 @@ def test_adjusting_for_splits_reverse():
         5,
         amount=Amount(1, places=0, symbol="$", fmt="$ %s"),
         dividend=Amount(0.2, places=1, symbol="$", fmt="$ %s"),
-        entry_attr=EntryAttributes(
-            location=(path, 3), positioning=(10, POSITION_SET)
-        ),
+        entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
     )
     assert records[1] == Transaction(
         date(2021, 2, 1),
         "ABC",
         10,
-        entry_attr=EntryAttributes(
-            location=(path, 6), positioning=(10, POSITION_ADD)
-        ),
+        entry_attr=EntryAttributes(location=(path, 6), positioning=(10, POSITION_ADD)),
     )
     assert records[2] == Transaction(
         date(2021, 2, 10),

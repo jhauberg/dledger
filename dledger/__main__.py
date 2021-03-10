@@ -81,7 +81,13 @@ from dledger.projection import (
     conversion_factors,
     adjusting_for_splits,
 )
-from dledger.journal import Transaction, write, read, excluding_redundant_transactions,  SUPPORTED_TYPES
+from dledger.journal import (
+    Transaction,
+    write,
+    read,
+    excluding_redundant_transactions,
+    SUPPORTED_TYPES,
+)
 
 from dataclasses import replace
 
@@ -138,9 +144,7 @@ def main() -> None:
         sys.exit(0)
 
     if not args["--without-adjustment"]:
-        records = adjusting_for_splits(
-            sorted(records)
-        )
+        records = adjusting_for_splits(sorted(records))
 
     records = excluding_redundant_transactions(records)
 
