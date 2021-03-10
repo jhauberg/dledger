@@ -4,6 +4,7 @@
 usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
                                       [--without-forecast]
+                                      [--without-adjustment]
                                       [--by-ticker=<ticker>]
                                       [--by-payout-date | --by-ex-date]
                                       [--as-currency=<symbol> | --as-native-currency]
@@ -23,11 +24,12 @@ OPTIONS:
      --output=<journal>       Specify journal filename [default: ledger.journal]
      --period=<interval>      Specify reporting date interval
      --without-forecast       Don't include forecasted transactions
+     --without-adjustment     Don't adjust past transactions for splits
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
      --as-currency=<symbol>   Show income as if exchanged to currency
-     --as-native-currency     Show income as received, prior to any exchange
+     --as-native-currency     Show income prior to any exchange
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
      --by-currency            Show drift from target currency exposure
@@ -135,14 +137,12 @@ def main() -> None:
     if len(records) == 0:
         sys.exit(0)
 
-    records = excluding_redundant_transactions(
-        # note that even if omitting this call, journal will still have processed
-        # split directives and inferred positions from them; this is not
-        # necessarily a problem, just something to be aware of
-        adjusting_for_splits(
+    if not args["--without-adjustment"]:
+        records = adjusting_for_splits(
             sorted(records)
         )
-    )
+
+    records = excluding_redundant_transactions(records)
 
     if args["--descending"]:
         # assuming argument is not passed for any reporting command;
