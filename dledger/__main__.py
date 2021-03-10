@@ -74,19 +74,21 @@ from dledger.report import (
 )
 from dledger.projection import (
     scheduled_transactions,
-    convert_estimates,
-    convert_to_currency,
-    convert_to_native_currency,
     latest_exchange_rates,
     conversion_factors,
-    adjusting_for_splits,
 )
 from dledger.journal import (
     Transaction,
     write,
     read,
-    excluding_redundant_transactions,
     SUPPORTED_TYPES,
+)
+from dledger.convert import (
+    removing_redundancies,
+    adjusting_for_splits,
+    with_estimates,
+    in_currency,
+    in_dividend_currency,
 )
 
 from dataclasses import replace
@@ -146,7 +148,7 @@ def main() -> None:
     if not args["--without-adjustment"]:
         records = adjusting_for_splits(sorted(records))
 
-    records = excluding_redundant_transactions(records)
+    records = removing_redundancies(records)
 
     if args["--descending"]:
         # assuming argument is not passed for any reporting command;
@@ -190,7 +192,7 @@ def main() -> None:
         records = list(r for r in records if r.ticker == ticker)
     # produce estimate amounts for preliminary or incomplete records,
     # transforming them into transactions for all intents and purposes from this point onwards
-    records = convert_estimates(records, rates=exchange_rates)
+    records = with_estimates(records, rates=exchange_rates)
     # keep a copy of the list of records as they were before any date swapping, so that we can
     # produce diagnostics only on those transactions entered manually; i.e. not forecasts
     # note that because we copy the list at this point (i.e. *before* period filtering),
@@ -226,7 +228,7 @@ def main() -> None:
         ]
 
     if args["--as-native-currency"]:
-        records = convert_to_native_currency(records)
+        records = in_dividend_currency(records)
 
     if not args["--without-forecast"]:
         # produce forecasted transactions dated into the future
@@ -244,7 +246,7 @@ def main() -> None:
     exchange_symbol = args["--as-currency"]
     if exchange_symbol is not None:
         # forcefully apply an exchange to given currency
-        transactions = convert_to_currency(
+        transactions = in_currency(
             transactions, symbol=exchange_symbol, rates=exchange_rates
         )
 

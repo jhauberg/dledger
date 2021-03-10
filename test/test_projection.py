@@ -14,8 +14,6 @@ from dledger.projection import (
     conversion_factors,
     latest_exchange_rates,
     scheduled_transactions,
-    convert_estimates,
-    convert_to_currency,
 )
 
 
@@ -1463,72 +1461,6 @@ def test_conversion_factors():
     assert len(factors) == 1
     assert factors[("$", "kr")] == [1, 1.1]
     assert rates[("$", "kr")] == 1.1
-
-
-def test_convert_estimates():
-    records = [
-        Transaction(date(2019, 6, 1), "ABC", 100, dividend=Amount(1, symbol="$"))
-    ]
-
-    records = convert_estimates(records)
-
-    assert records[0].amount == GeneratedAmount(100, symbol="$")
-
-    records = [
-        Transaction(
-            date(2019, 3, 1),
-            "ABC",
-            100,
-            amount=Amount(150, symbol="kr"),
-            dividend=Amount(1.5, symbol="$"),
-        ),
-        Transaction(date(2019, 6, 1), "ABC", 100, dividend=Amount(1.5, symbol="$")),
-    ]
-
-    records = convert_estimates(records)
-
-    assert records[1].amount == GeneratedAmount(150, symbol="kr")
-
-
-def test_convert_to_currency():
-    records = [
-        Transaction(
-            date(2019, 3, 1),
-            "ABC",
-            100,
-            amount=Amount(150, symbol="kr"),
-            dividend=Amount(1, symbol="$"),
-        )
-    ]
-
-    records = convert_to_currency(records, symbol="$")
-
-    assert records[0].amount == GeneratedAmount(100, symbol="$")
-
-    records = [
-        Transaction(
-            date(2019, 3, 1),
-            "ABC",
-            100,
-            amount=Amount(150, symbol="kr"),
-            dividend=Amount(1, symbol="$"),
-        ),
-        Transaction(
-            date(2019, 3, 2),
-            "DEF",
-            100,
-            amount=Amount(50, symbol="kr"),
-            dividend=Amount(0.5, symbol="kr"),
-        ),
-    ]
-
-    records = convert_to_currency(records, symbol="$")
-
-    assert records[0].amount == GeneratedAmount(100, symbol="$")
-    assert isinstance(records[1].amount, GeneratedAmount)
-    import math
-
-    assert math.floor(records[1].amount.value) == 33  # floor to ignore decimals
 
 
 def test_secondary_date_monthly():

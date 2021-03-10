@@ -342,46 +342,6 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
     return records
 
 
-def excluding_redundant_transactions(
-    records: List[Transaction],
-) -> List[Transaction]:
-    for ticker in set([record.ticker for record in records]):
-        recs = list(r for r in records if r.ticker == ticker)
-        # find all entries that only record a change in position
-        position_records = list(r for r in recs if r.ispositional)
-        if len(position_records) == 0:
-            continue
-        # find all dividend transactions (e.g. cash received or earned)
-        realized_records = list(r for r in recs if r not in position_records)
-        if len(realized_records) == 0:
-            continue
-        latest_record = realized_records[-1]
-        # at this point we no longer need to keep some of the position entries around,
-        # as we have already used them to infer and determine position for each realized entry
-        for record in position_records:
-            # so each position entry dated prior to a dividend entry is basically redundant
-            if record.position == 0:
-                # unless it's a closer, in which case we have to keep it around in any case
-                # (e.g. see example/strategic.journal)
-                continue
-            if (
-                latest_record.ex_date is not None
-                and record.entry_date >= latest_record.ex_date
-            ):
-                continue
-            is_redundant = False
-            if record.entry_date < latest_record.entry_date:
-                is_redundant = True
-            elif record.entry_date == latest_record.entry_date and math.isclose(
-                record.position, latest_record.position, abs_tol=0.000001
-            ):
-                is_redundant = True
-            if is_redundant:
-                records.remove(record)
-
-    return records
-
-
 def read_journal_transaction(
     lines: List[Tuple[int, str]], *, location: Tuple[str, int]
 ) -> Transaction:
