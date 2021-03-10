@@ -5,13 +5,12 @@ import locale
 import os
 
 from dledger.localeutil import trysetlocale
-from dledger.formatutil import format_amount, decimalplaces
+from dledger.formatutil import format_amount, decimalplaces, truncate_floating_point
 from dledger.fileutil import fileencoding
 from dledger.dateutil import parse_datestamp, todayd
 
 from dataclasses import dataclass, replace
 from datetime import datetime, date
-from decimal import Decimal
 
 from typing import List, Union, Tuple, Optional, Any, Dict, Iterable
 from enum import Enum
@@ -219,11 +218,6 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
 
     records: List[Transaction] = []
 
-    def truncate_floating_point(value: float, *, places: int = 2) -> float:
-        v = Decimal(value)
-        v = round(v, places)
-        return float(v)
-
     for entry in journal_entries:
         # todo: hackily pack, then unpack to get mutable copies of each attribute
         d, d2, d3, ticker, amount, dividend, attr = (
@@ -301,7 +295,7 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             raise ParseError(f"payout on closed position", location)
 
         if amount is not None and dividend is None:
-            inferred_dividend = truncate_floating_point(amount.value / p)
+            inferred_dividend = truncate_floating_point(amount.value / p, places=4)
             dividend = Amount(
                 inferred_dividend,
                 places=decimalplaces(inferred_dividend),

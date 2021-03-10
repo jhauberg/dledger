@@ -59,3 +59,9 @@ def decimalplaces(value: Union[str, float, int]) -> int:
         if places == 1 and value.endswith("0"):
             return 0
     return places
+
+
+def truncate_floating_point(value: float, *, places: int = 2) -> float:
+    v = Decimal(value)
+    v = round(v, places)
+    return float(v)
