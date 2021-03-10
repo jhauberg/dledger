@@ -78,7 +78,7 @@ The journal is where you keep all your transactions. Each transaction is recorde
 
 There are no requirements on how you edit or name your journal files, nor which extension to use. A common practice is to apply the `.journal` extension.
 
-Here's an [example journal-file](dledger/example/simple.journal), for reference:
+Here's an [example journal-file](example/simple.journal), for reference:
 
 ```
 # this file serves as an example journal for dledger
