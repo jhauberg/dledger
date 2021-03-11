@@ -1,4 +1,5 @@
 import locale
+import os
 
 from datetime import date
 
@@ -974,9 +975,10 @@ def test_include_journal():
 
     path = "../example/include.journal"
 
-    # todo: do relative paths resolve on Windows?
-    #       i.e. backslash paths and vice versa
-    included_resolved_path = "../example/simple.journal"
+    if os.name == "nt":
+        included_resolved_path = "..\\example\\simple.journal"
+    else:
+        included_resolved_path = "../example/simple.journal"
 
     records = read(path, kind="journal")
 
@@ -1052,7 +1054,10 @@ def test_include_journal_out_of_order():
 
     path = "subjects/include_out_of_order.journal"
 
-    included_resolved_path = "subjects/../../example/simple.journal"
+    if os.name == "nt":
+        included_resolved_path = "subjects\\..\\..\\example\\simple.journal"
+    else:
+        included_resolved_path = "subjects/../../example/simple.journal"
 
     records = read(path, kind="journal")
 
