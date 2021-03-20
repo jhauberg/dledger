@@ -1,8 +1,7 @@
-import locale
+import calendar
 
 from datetime import datetime, date, timedelta
 
-from dledger.localeutil import trysetlocale
 from dledger.dateutil import (
     months_between,
     in_months,
@@ -11,6 +10,7 @@ from dledger.dateutil import (
     last_of_month,
     parse_period,
     parse_datestamp,
+    parse_month,
     months_in_quarter,
 )
 
@@ -314,27 +314,27 @@ def test_parse_period():
     assert parse_period("y:tom") == (yesterday, tomorrow)
 
 
-def test_parse_period_localized():
-    trysetlocale(locale.LC_TIME, ["en_US", "en-US", "en"])
-
-    today = datetime.today().date()
+def test_parse_period_months():
+    year = datetime.today().date().year
 
     assert parse_period("november") == (
-        date(today.year, 11, 1),
-        date(today.year, 12, 1),
+        date(year, 11, 1),
+        date(year, 12, 1),
     )
     assert parse_period("November") == (
-        date(today.year, 11, 1),
-        date(today.year, 12, 1),
+        date(year, 11, 1),
+        date(year, 12, 1),
     )
-    assert parse_period("nov") == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period("no") == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period("n") == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period("nov") == (date(year, 11, 1), date(year, 12, 1))
+    assert parse_period("no") == (date(year, 11, 1), date(year, 12, 1))
+    assert parse_period("n") == (date(year, 11, 1), date(year, 12, 1))
 
-    assert parse_period("nov:dec") == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period("nov:dec") == (date(year, 11, 1), date(year, 12, 1))
 
-    trysetlocale(locale.LC_TIME, ["da_DK", "da-DK", "da"])
 
-    assert parse_period("marts") == (date(today.year, 3, 1), date(today.year, 4, 1))
-    assert parse_period("feb") == (date(today.year, 2, 1), date(today.year, 3, 1))
-    assert parse_period("oct") == (date(today.year, 10, 1), date(today.year, 11, 1))
+def test_parse_month():
+    for n, name in enumerate(calendar.month_name):
+        if n == 0:
+            assert parse_month(name) is None
+        else:
+            assert parse_month(name) == n
