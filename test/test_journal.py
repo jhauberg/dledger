@@ -1,4 +1,3 @@
-import locale
 import os
 
 from datetime import date
@@ -23,60 +22,60 @@ from dledger.projection import (
     scheduled_transactions,
 )
 from dledger.convert import removing_redundancies, with_estimates
-from dledger.localeutil import trysetlocale
+from dledger.localeutil import (
+    tempconv,
+    DECIMAL_POINT_COMMA,
+    DECIMAL_POINT_PERIOD,
+)
 from dledger.formatutil import decimalplaces
 
 
 def test_decimal_places():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
+    with tempconv(DECIMAL_POINT_PERIOD):
+        assert decimalplaces("123") == 0
+        assert decimalplaces("123.4") == 1
+        assert decimalplaces("123.45") == 2
+        assert decimalplaces("123.456") == 3
+        assert decimalplaces("12.3456") == 4
+        assert decimalplaces("12.34560") == 5
+        assert decimalplaces("0.77") == 2
+        assert decimalplaces("1.0") == 0
 
-    assert decimalplaces("123") == 0
-    assert decimalplaces("123.4") == 1
-    assert decimalplaces("123.45") == 2
-    assert decimalplaces("123.456") == 3
-    assert decimalplaces("12.3456") == 4
-    assert decimalplaces("12.34560") == 5
-    assert decimalplaces("0.77") == 2
-    assert decimalplaces("1.0") == 0
+        assert decimalplaces(123) == 0
+        assert decimalplaces(123.4) == 1
+        assert decimalplaces(123.45) == 2
+        assert decimalplaces(123.456) == 3
+        assert decimalplaces(12.3456) == 4
+        # note that we won't keep the trailing zero here
+        assert decimalplaces(12.34560) == 4
+        assert decimalplaces(0.77) == 2
+        assert decimalplaces(1.0) == 0
 
-    assert decimalplaces(123) == 0
-    assert decimalplaces(123.4) == 1
-    assert decimalplaces(123.45) == 2
-    assert decimalplaces(123.456) == 3
-    assert decimalplaces(12.3456) == 4
-    # note that we won't keep the trailing zero here
-    assert decimalplaces(12.34560) == 4
-    assert decimalplaces(0.77) == 2
-    assert decimalplaces(1.0) == 0
+    with tempconv(DECIMAL_POINT_COMMA):
+        assert decimalplaces("123") == 0
+        assert decimalplaces("123,4") == 1
+        assert decimalplaces("123,45") == 2
+        assert decimalplaces("123,456") == 3
+        assert decimalplaces("12,3456") == 4
+        assert decimalplaces("1,0") == 0
 
-    trysetlocale(locale.LC_NUMERIC, ["da_DK", "da-DK", "da"])
-
-    assert decimalplaces("123,4") == 1
-    assert decimalplaces("123,45") == 2
-    assert decimalplaces("123,456") == 3
-    assert decimalplaces("12,3456") == 4
-    assert decimalplaces("1,0") == 0
-
-    assert decimalplaces(123) == 0
-    assert decimalplaces(123.4) == 1
-    assert decimalplaces(123.45) == 2
-    assert decimalplaces(123.456) == 3
-    assert decimalplaces(12.3456) == 4
-    # note that we won't keep the trailing zero here
-    assert decimalplaces(12.34560) == 4
-    assert decimalplaces(0.77) == 2
-    assert decimalplaces(1.0) == 0
+        assert decimalplaces(123) == 0
+        assert decimalplaces(123.4) == 1
+        assert decimalplaces(123.45) == 2
+        assert decimalplaces(123.456) == 3
+        assert decimalplaces(12.3456) == 4
+        # note that we won't keep the trailing zero here
+        assert decimalplaces(12.34560) == 4
+        assert decimalplaces(0.77) == 2
+        assert decimalplaces(1.0) == 0
 
 
 def test_parse_amount():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     loc = ("", 0)
 
     assert parse_amount("$", location=loc) == Amount(
         0, places=0, symbol="$", fmt="%s $"
     )
-
     assert parse_amount("$10", location=loc) == Amount(
         10, places=0, symbol="$", fmt="$%s"
     )
@@ -95,24 +94,6 @@ def test_parse_amount():
     assert parse_amount("10   kr", location=loc) == Amount(
         10, places=0, symbol="kr", fmt="%s kr"
     )
-
-    assert parse_amount("$ 0.50", location=loc) == Amount(
-        0.5, places=2, symbol="$", fmt="$ %s"
-    )
-    assert parse_amount("0.50 kr", location=loc) == Amount(
-        0.5, places=2, symbol="kr", fmt="%s kr"
-    )
-    assert parse_amount("0.00 kr", location=loc) == Amount(
-        0, places=2, symbol="kr", fmt="%s kr"
-    )
-
-    assert parse_amount("$ .50", location=loc) == Amount(
-        0.5, places=2, symbol="$", fmt="$ %s"
-    )
-    assert parse_amount(".50 kr", location=loc) == Amount(
-        0.5, places=2, symbol="kr", fmt="%s kr"
-    )
-
     assert parse_amount("10 danske kroner", location=loc) == Amount(
         10, places=0, symbol="danske kroner", fmt="%s danske kroner"
     )
@@ -120,42 +101,56 @@ def test_parse_amount():
         10, places=0, symbol="danske  kroner", fmt="%s danske  kroner"
     )
 
-    trysetlocale(locale.LC_NUMERIC, ["da_DK", "da-DK", "da"])
+    with tempconv(DECIMAL_POINT_PERIOD):
+        assert parse_amount("$ 0.50", location=loc) == Amount(
+            0.5, places=2, symbol="$", fmt="$ %s"
+        )
+        assert parse_amount("0.50 kr", location=loc) == Amount(
+            0.5, places=2, symbol="kr", fmt="%s kr"
+        )
+        assert parse_amount("0.00 kr", location=loc) == Amount(
+            0, places=2, symbol="kr", fmt="%s kr"
+        )
+        assert parse_amount("$ .50", location=loc) == Amount(
+            0.5, places=2, symbol="$", fmt="$ %s"
+        )
+        assert parse_amount(".50 kr", location=loc) == Amount(
+            0.5, places=2, symbol="kr", fmt="%s kr"
+        )
 
-    assert parse_amount("$ 0,50", location=loc) == Amount(
-        0.5, places=2, symbol="$", fmt="$ %s"
-    )
-    assert parse_amount("0,50 kr", location=loc) == Amount(
-        0.5, places=2, symbol="kr", fmt="%s kr"
-    )
-    assert parse_amount("0,00 kr", location=loc) == Amount(
-        0, places=2, symbol="kr", fmt="%s kr"
-    )
+    with tempconv(DECIMAL_POINT_COMMA):
+        assert parse_amount("$ 0,50", location=loc) == Amount(
+            0.5, places=2, symbol="$", fmt="$ %s"
+        )
+        assert parse_amount("0,50 kr", location=loc) == Amount(
+            0.5, places=2, symbol="kr", fmt="%s kr"
+        )
+        assert parse_amount("0,00 kr", location=loc) == Amount(
+            0, places=2, symbol="kr", fmt="%s kr"
+        )
 
-    assert parse_amount("$ ,50", location=loc) == Amount(
-        0.5, places=2, symbol="$", fmt="$ %s"
-    )
-    assert parse_amount(",50 kr", location=loc) == Amount(
-        0.5, places=2, symbol="kr", fmt="%s kr"
-    )
+        assert parse_amount("$ ,50", location=loc) == Amount(
+            0.5, places=2, symbol="$", fmt="$ %s"
+        )
+        assert parse_amount(",50 kr", location=loc) == Amount(
+            0.5, places=2, symbol="kr", fmt="%s kr"
+        )
 
 
 def test_empty_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/empty.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 0
 
 
 def test_single_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/single.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 1
 
@@ -170,11 +165,10 @@ def test_single_journal():
 
 
 def test_simple_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "../example/simple.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -219,7 +213,8 @@ def test_simple_journal():
 
     path = "../example/simple-condensed.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -318,11 +313,10 @@ def test_ordering():
 
 
 def test_ordering_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/ordering.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 7
 
@@ -379,11 +373,10 @@ def test_ordering_journal():
 
 
 def test_positions_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/positions.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 5
 
@@ -439,7 +432,8 @@ def test_positions_journal():
 
     path = "subjects/positions-condensed.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 5
 
@@ -486,11 +480,10 @@ def test_positions_journal():
 
 
 def test_positions_format_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/positions-oddformat.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 6
 
@@ -550,11 +543,10 @@ def test_positions_format_journal():
 
 
 def test_position_inference_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/positioninference.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -593,11 +585,10 @@ def test_position_inference_journal():
 
 
 def test_fractional_positions_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/fractionalpositions.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 5
 
@@ -648,11 +639,10 @@ def test_fractional_positions_journal():
 
 
 def test_dividends_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "../example/dividends.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -699,11 +689,10 @@ def test_dividends_journal():
 
 
 def test_ambiguous_position_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/positionambiguity.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 2
 
@@ -727,11 +716,10 @@ def test_ambiguous_position_journal():
 
 
 def test_nativedividends_journal():
-    trysetlocale(locale.LC_NUMERIC, ["da_DK", "da-DK", "da"])
-
     path = "subjects/nativedividends.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_COMMA):
+        records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -776,11 +764,10 @@ def test_nativedividends_journal():
 
 
 def test_strategic_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/strategic.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 6
 
@@ -838,11 +825,10 @@ def test_strategic_journal():
 
 
 def test_extended_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/extendingrecords.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -895,11 +881,10 @@ def test_extended_journal():
 
 
 def test_preliminary_expected_currency():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/preliminaryrecords.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -924,8 +909,6 @@ def test_preliminary_expected_currency():
 
 
 def test_stable_sort():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/sorting.journal"
 
     records = read(path, kind="journal")
@@ -971,8 +954,6 @@ def test_stable_sort():
 
 
 def test_include_journal():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "../example/include.journal"
 
     if os.name == "nt":
@@ -1037,12 +1018,10 @@ def test_include_journal():
 
 
 def test_implicit_currency():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/implicitcurrency.journal"
 
     try:
-        records = read(path, kind="journal")
+        _ = read(path, kind="journal")
     except ParseError:
         assert True
     else:
@@ -1050,8 +1029,6 @@ def test_implicit_currency():
 
 
 def test_include_journal_out_of_order():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/include_out_of_order.journal"
 
     if os.name == "nt":
@@ -1136,8 +1113,6 @@ def test_include_journal_out_of_order():
 
 
 def test_write():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     existing_path = "../example/simple.journal"
     existing_records = read(existing_path, kind="journal")
 
@@ -1161,11 +1136,10 @@ def test_write():
 
 
 def test_nordnet_import():
-    trysetlocale(locale.LC_NUMERIC, ["da_DK", "da-DK", "da"])
-
     path = "subjects/nordnet_transactions.csv"
 
-    records = read(path, kind="nordnet")
+    with tempconv(DECIMAL_POINT_COMMA):
+        records = read(path, kind="nordnet")
 
     assert len(records) == 3
 
@@ -1202,13 +1176,12 @@ def test_nordnet_import():
 
 
 def test_nordnet_import_ambiguity():
-    trysetlocale(locale.LC_NUMERIC, ["da_DK", "da-DK", "da"])
-
     path = "subjects/nordnet_transactions_ambiguous_dividend.csv"
 
     try:
         # record has both "0,234" and "0.2345" dividend component
-        records = read(path, kind="nordnet")
+        with tempconv(DECIMAL_POINT_COMMA):
+            _ = read(path, kind="nordnet")
     except ParseError:
         assert True
     else:
@@ -1216,11 +1189,10 @@ def test_nordnet_import_ambiguity():
 
 
 def test_splits_whole():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "../example/split.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -1259,11 +1231,10 @@ def test_splits_whole():
 
 
 def test_splits_fractional():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/split_fractional.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 7
 
@@ -1326,11 +1297,10 @@ def test_splits_fractional():
 
 
 def test_reverse_split():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/split_reverse.journal"
 
-    records = read(path, kind="journal")
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
 
     assert len(records) == 4
 

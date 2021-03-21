@@ -4,7 +4,7 @@ import math
 import locale
 import os
 
-from dledger.localeutil import trysetlocale
+from dledger.localeutil import DECIMAL_POINT_COMMA, DECIMAL_POINT_PERIOD, tempconv
 from dledger.formatutil import format_amount, decimalplaces, truncate_floating_point
 from dledger.fileutil import fileencoding
 from dledger.dateutil import parse_datestamp, todayd
@@ -663,17 +663,13 @@ def read_nordnet_transaction(
     if payout_date > today:
         raise ParseError(f"payout date set in future ({payout_date_value})", location)
 
-    prev = locale.getlocale(locale.LC_NUMERIC)
-
-    # Nordnet will provide numbers and data depending on user; set numeric locale accordingly
-    # (currently assumes danish locale)
-    trysetlocale(locale.LC_NUMERIC, ["da_DK", "da-DK", "da"])
-
-    position = locale.atoi(position_str)
-    amount = locale.atof(amount_str)
-    dividend = locale.atof(dividend_str)
-
-    locale.setlocale(locale.LC_NUMERIC, prev)
+    # we have to assume either period or comma as decimal point here,
+    # as we can't just rely on system locale- nordnet transactions will always
+    # be either one or the other- not necessarily matching system locale
+    with tempconv(DECIMAL_POINT_COMMA):
+        position = locale.atoi(position_str)
+        amount = locale.atof(amount_str)
+        dividend = locale.atof(dividend_str)
 
     transaction_text_components = transaction_text.split(" ")
 
@@ -689,14 +685,13 @@ def read_nordnet_transaction(
     #       but occasionally a comma sneaks in- we assume that is an error and correct it
     dividend_rate_str = dividend_rate_str.replace(",", ".")
 
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     try:
-        dividend_rate = locale.atof(dividend_rate_str)
+        # again, we have to assume one or the other here- in most cases
+        # this column uses period decimal point
+        with tempconv(DECIMAL_POINT_PERIOD):
+            dividend_rate = locale.atof(dividend_rate_str)
     except ValueError:
         raise ParseError(f"unexpected transaction text", location)
-
-    locale.setlocale(locale.LC_NUMERIC, prev)
 
     assert dividend_rate is not None
 

@@ -1,16 +1,27 @@
 import locale
 
-from typing import List, Optional, Any
+from contextlib import contextmanager
+
+DECIMAL_POINT_PERIOD = {
+    "decimal_point": ".",
+    "thousands_sep": ","
+}
+
+DECIMAL_POINT_COMMA = {
+    "decimal_point": ",",
+    "thousands_sep": "."
+}
 
 
-def trysetlocale(category: Any, locales: List[str]) -> Optional[str]:
-    """ Set first supported locale in a list of locales. """
+@contextmanager
+def tempconv(props: dict) -> None:
+    """Override specific properties in currently active locale."""
+    conv = locale.localeconv()
 
-    for supported_locale in locales:
-        try:
-            locale.setlocale(category, supported_locale)
-            return supported_locale
-        except (locale.Error, ValueError):
-            continue
-
-    return None
+    def _localeconv():
+        _conv = {k: v for k, v in conv.items()}
+        _conv.update(props)
+        return _conv
+    locale.localeconv = _localeconv
+    yield
+    props = conv

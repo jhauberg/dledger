@@ -2,7 +2,6 @@ import locale
 
 from datetime import date
 
-from dledger.localeutil import trysetlocale
 from dledger.journal import (
     EntryAttributes,
     Transaction,
@@ -21,7 +20,7 @@ from dledger.convert import (
     with_estimates,
     in_currency,
 )
-
+from dledger.localeutil import tempconv, DECIMAL_POINT_PERIOD
 from dledger.projection import GeneratedAmount
 
 
@@ -85,8 +84,6 @@ def test_remove_redundant_entries():
 
 
 def test_adjusting_for_splits_whole():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "../example/split.journal"
 
     records = adjusting_for_splits(read(path, kind="journal"))
@@ -128,11 +125,11 @@ def test_adjusting_for_splits_whole():
 
 
 def test_adjusting_for_splits_fractional():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/split_fractional.journal"
 
-    records = adjusting_for_splits(read(path, kind="journal"))
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
+    records = adjusting_for_splits(records)
 
     assert len(records) == 7
 
@@ -195,8 +192,6 @@ def test_adjusting_for_splits_fractional():
 
 
 def test_adjusting_for_splits_reverse():
-    trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
-
     path = "subjects/split_reverse.journal"
 
     records = adjusting_for_splits(read(path, kind="journal"))

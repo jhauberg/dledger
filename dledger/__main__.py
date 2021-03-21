@@ -54,7 +54,6 @@ from docopt import docopt  # type: ignore
 
 from dledger import __version__
 from dledger.dateutil import parse_period
-from dledger.localeutil import trysetlocale
 from dledger.printutil import enable_color_escapes
 from dledger.record import in_period, tickers
 from dledger.report import (
@@ -109,11 +108,10 @@ def main() -> None:
     # todo: should catch ParseError rather than showing stack trace; not useful for end-user
 
     try:
-        # default to system locale, if able
+        # default to current system locale
         locale.setlocale(locale.LC_ALL, "")
     except (locale.Error, ValueError):
-        # fallback to US locale
-        trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
+        sys.exit("locale not specified")
 
     input_paths = args["<file>"] if args["convert"] else args["<journal>"]
 
@@ -317,7 +315,8 @@ def main() -> None:
         from dledger.projection import GeneratedAmount
 
         ambiguous_exchange_rates = conversion_factors(
-            # only include journaled records, but don't include preliminary estimates (signified by GeneratedAmount)
+            # only include journaled records, but don't include preliminary
+            # estimates (signified by GeneratedAmount)
             [
                 record
                 for record in journaled_transactions
@@ -328,7 +327,8 @@ def main() -> None:
         for symbols, rates in ambiguous_exchange_rates.items():
             if len(rates) > 1:
                 print(
-                    f"ambiguous exchange rate {symbols} = {exchange_rates[symbols]}:\n or, {rates[:-1]}",
+                    f"ambiguous exchange rate {symbols} = "
+                    f"{exchange_rates[symbols]}:\n or, {rates[:-1]}",
                     file=sys.stderr,
                 )
 
