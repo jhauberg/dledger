@@ -1,6 +1,6 @@
 # Testing and Coverage
 
-Tests for `dledger` can be run using [pytest](https://pytest.org); just move to the test directory and run `$ pytest`.
+Tests for `dledger` can be run using [pytest](https://pytest.org).
 
 ## Running tests
 
@@ -47,3 +47,9 @@ $ coverage html
 ```
 
 The report can then be read at `htmlcov/index.html`.
+
+For convenience, chain run/report together:
+
+```shell
+$ pytest --cov=dledger ; coverage html
+```
