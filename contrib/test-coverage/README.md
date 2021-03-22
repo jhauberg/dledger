@@ -51,5 +51,5 @@ The report can then be read at `htmlcov/index.html`.
 For convenience, chain run/report together:
 
 ```shell
-$ pytest --cov=dledger ; coverage html
+$ pytest --cov=dledger && coverage html
 ```
