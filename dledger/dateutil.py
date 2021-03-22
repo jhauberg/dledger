@@ -261,6 +261,7 @@ def parse_period_component(component: str) -> Tuple[date, date]:
         component.count(".")
     )
     if num_separators > 2:  # too many components
+        # todo: i don't think there's any case where this can happen
         raise ValueError(f"invalid date format ('{component}')")
     if num_separators == 0:  # year component
         return starting, starting.replace(year=starting.year + 1)

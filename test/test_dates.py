@@ -123,6 +123,20 @@ def test_months_in_quarter():
     assert months_in_quarter(3) == [7, 8, 9]
     assert months_in_quarter(4) == [10, 11, 12]
 
+    try:
+        _ = months_in_quarter(5)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        _ = months_in_quarter(-1)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
 
 def test_in_months():
     d = in_months(date(year=2019, month=1, day=1), months=1)
@@ -224,8 +238,24 @@ def test_parse_datestamp():
     assert parse_datestamp("2019.11") == date(2019, 11, 1)
     assert parse_datestamp("2019") == date(2019, 1, 1)
 
+    assert parse_datestamp("2019/11/11", strict=True) == date(2019, 11, 11)
+
+    try:
+        parse_datestamp("2019/11", strict=True)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
     try:
         parse_datestamp("")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        parse_datestamp("2019/11/11/11")
     except ValueError:
         assert True
     else:
@@ -280,6 +310,20 @@ def test_parse_period():
         date(2019, 11, 11),
         date(2019, 11, 11),
     )
+
+    try:
+        parse_period("")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        parse_period("2019/11/11:2020/11/11:2021/11/11")
+    except ValueError:
+        assert True
+    else:
+        assert False
 
     today = datetime.today().date()
 
