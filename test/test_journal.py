@@ -1017,15 +1017,68 @@ def test_include_journal():
     )
 
 
-def test_implicit_currency():
-    path = "subjects/implicitcurrency.journal"
+def test_include_journal_quoted():
+    path = "subjects/include_quoted_path.journal"
 
-    try:
-        _ = read(path, kind="journal")
-    except ParseError:
-        assert True
+    if os.name == "nt":
+        included_resolved_path = "subjects\\..\\..\\example\\simple.journal"
     else:
-        assert False
+        included_resolved_path = "subjects/../../example/simple.journal"
+
+    records = read(path, kind="journal")
+
+    assert len(records) == 5
+
+    assert records[0] == Transaction(
+        date(2019, 2, 14),
+        "AAPL",
+        100,
+        amount=Amount(73, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.73, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path, 3), positioning=(100, POSITION_SET)
+        ),
+    )
+    assert records[1] == Transaction(
+        date(2019, 5, 16),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path, 6), positioning=(None, POSITION_SET)
+        ),
+    )
+    assert records[2] == Transaction(
+        date(2019, 8, 15),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path, 9), positioning=(None, POSITION_SET)
+        ),
+    )
+    assert records[3] == Transaction(
+        date(2019, 11, 14),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path, 12), positioning=(None, POSITION_SET)
+        ),
+    )
+    assert records[4] == Transaction(
+        date(2020, 2, 13),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 5), positioning=(None, POSITION_SET)
+        ),
+    )
 
 
 def test_include_journal_out_of_order():
@@ -1110,6 +1163,17 @@ def test_include_journal_out_of_order():
             location=(path, 11), positioning=(None, POSITION_SET)
         ),
     )
+
+
+def test_implicit_currency():
+    path = "subjects/implicitcurrency.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError:
+        assert True
+    else:
+        assert False
 
 
 def test_write():
