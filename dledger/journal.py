@@ -174,6 +174,10 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                 # line has content; determine if it's an include directive
                 if include_start.match(line) is not None:
                     relative_include_path = line[len("include") :].strip()
+                    if relative_include_path.startswith("\""):
+                        relative_include_path = relative_include_path[1:].strip()
+                    if relative_include_path.endswith("\""):
+                        relative_include_path = relative_include_path[:-1].strip()
                     include_path = os.path.normcase(
                         os.path.join(
                             os.path.dirname(path), relative_include_path
