@@ -7,9 +7,11 @@ usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--without-adjustment]
                                       [--by-ticker=<ticker>]
                                       [--by-payout-date | --by-ex-date]
+                                      [--in-currency=<symbol>]
                                       [--as-currency=<symbol> | --as-native-currency]
        dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
                                       [--by-payout-date | --by-ex-date]
+                                      [--in-currency=<symbol>]
                                       [--as-currency=<symbol> | --as-native-currency]
        dledger stats   [<journal>]... [--period=<interval>] [-v]
        dledger print   [<journal>]... [--condensed]
@@ -28,6 +30,7 @@ OPTIONS:
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
+     --in-currency=<symbol>   Show income exchanged from currency
      --as-currency=<symbol>   Show income as if exchanged to currency
      --as-native-currency     Show income prior to any exchange
      --by-position            Show drift from target position
@@ -188,6 +191,7 @@ def main() -> None:
                 ticker = matching_tickers[0]
         # filter down to only include records by ticker
         records = list(r for r in records if r.ticker == ticker)
+
     # produce estimate amounts for preliminary or incomplete records,
     # transforming them into transactions for all intents and purposes from this point onwards
     records = with_estimates(records, rates=exchange_rates)
@@ -238,6 +242,11 @@ def main() -> None:
     if interval is not None:
         # filter down to only transactions within period interval
         transactions = list(in_period(transactions, interval))
+
+    filter_symbol = args["--in-currency"]
+    if filter_symbol is not None:
+        transactions = [txn for txn in transactions if txn.dividend.symbol == filter_symbol]
+
     # (redundantly) sort for good measure
     transactions = sorted(transactions)
 
@@ -328,7 +337,7 @@ def main() -> None:
             if len(rates) > 1:
                 print(
                     f"ambiguous exchange rate {symbols} = "
-                    f"{exchange_rates[symbols]}:\n or, {rates[:-1]}",
+                    f"{exchange_rates[symbols]}:\n or, {rates[:-1]}?",
                     file=sys.stderr,
                 )
 
