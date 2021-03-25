@@ -110,8 +110,9 @@ def parse_month(name: str) -> Optional[int]:
     """
     comparable_name = name.lower()
     months = [
-        n for n, m in enumerate(calendar.month_name) if
-        n > 0 and m.lower().startswith(comparable_name)
+        n
+        for n, m in enumerate(calendar.month_name)
+        if n > 0 and m.lower().startswith(comparable_name)
     ]
     # ambiguous if more than one match; return None
     return None if len(months) != 1 else months[0]
@@ -211,8 +212,18 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     except ValueError:  # component assumed to be typical datestamp or textual key
         pass
     default_month_keys = [
-        "january", "february", "march", "april", "may", "june", "july",
-        "august", "september", "october", "november" "december",
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
     ]
     textual_keys = [
         "today", "tomorrow", "yesterday",

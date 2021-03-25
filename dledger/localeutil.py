@@ -22,6 +22,7 @@ def tempconv(props: dict) -> None:
         _conv = {k: v for k, v in conv.items()}
         _conv.update(props)
         return _conv
+
     locale.localeconv = _localeconv
     yield
     props = conv

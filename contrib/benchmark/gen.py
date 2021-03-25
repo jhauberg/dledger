@@ -2,7 +2,7 @@ import sys
 
 from datetime import datetime, date
 
-sys.path.append('../../')
+sys.path.append("../../")
 
 from dledger.journal import Transaction, Amount, write
 from dledger.dateutil import previous_month

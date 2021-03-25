@@ -245,7 +245,9 @@ def main() -> None:
 
     filter_symbol = args["--in-currency"]
     if filter_symbol is not None:
-        transactions = [txn for txn in transactions if txn.dividend.symbol == filter_symbol]
+        transactions = [
+            txn for txn in transactions if txn.dividend.symbol == filter_symbol
+        ]
 
     # (redundantly) sort for good measure
     transactions = sorted(transactions)
