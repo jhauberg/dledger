@@ -59,7 +59,7 @@ class EntryAttributes:
     #       as it will generally always equal (position, POSITION_SET)
     #       this is the case since because positional records are typically redundant and will
     #       be pruned anyway. consider whether we can do something to make this more useful?
-    positioning: Tuple[Optional[float], int]  # position/change:directive
+    positioning: Tuple[Optional[float], int]  # position/change:directive (i.e. POSITION_*)
     is_preliminary: bool = False  # True if amount component left blank intentionally
     preliminary_amount: Optional[Amount] = None
 
@@ -174,14 +174,12 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                 # line has content; determine if it's an include directive
                 if include_start.match(line) is not None:
                     relative_include_path = line[len("include") :].strip()
-                    if relative_include_path.startswith("\""):
+                    if relative_include_path.startswith('"'):
                         relative_include_path = relative_include_path[1:].strip()
-                    if relative_include_path.endswith("\""):
+                    if relative_include_path.endswith('"'):
                         relative_include_path = relative_include_path[:-1].strip()
                     include_path = os.path.normcase(
-                        os.path.join(
-                            os.path.dirname(path), relative_include_path
-                        )
+                        os.path.join(os.path.dirname(path), relative_include_path)
                     )
                     if os.path.samefile(path, include_path):
                         raise ParseError(
@@ -222,35 +220,30 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
         key=lambda r: (r.entry_date, r.amount is None and r.dividend is None),
     )
 
-    records: List[Transaction] = []
+    return infer(journal_entries)
 
-    for entry in journal_entries:
-        # todo: hackily pack, then unpack to get mutable copies of each attribute
-        d, d2, d3, ticker, amount, dividend, attr = (
-            entry.entry_date,
-            entry.payout_date,
-            entry.ex_date,
-            entry.ticker,
-            entry.amount,
-            entry.dividend,
-            entry.entry_attr,
-            # note that we intentionally ignore entry.position here (expecting it to be -1)
-        )
 
-        assert attr is not None
+def infer(entries: Iterable[Transaction]) -> List[Transaction]:
+    transactions: List[Transaction] = []
 
-        p, p_directive = attr.positioning
-        location = attr.location
+    for record in entries:
+        assert record.entry_attr is not None
 
-        if p is None or (
-            p_directive == POSITION_ADD
-            or p_directive == POSITION_SUB
-            or p_directive == POSITION_SPLIT
-            or p_directive == POSITION_SPLIT_WHOLE
+        # inferrable properties: Position, Dividend (and Entry Attributes)
+        # i.e. these may differ from original entry to the resulting transaction
+        attr = record.entry_attr
+        position, position_directive = attr.positioning
+        dividend = record.dividend
+
+        if position is None or (
+            position_directive == POSITION_ADD
+            or position_directive == POSITION_SUB
+            or position_directive == POSITION_SPLIT
+            or position_directive == POSITION_SPLIT_WHOLE
         ):
             # infer position from previous entries
             by_ex_date = sorted(
-                records,
+                transactions,
                 key=lambda r: (
                     r.ex_date if r.ex_date is not None else r.entry_date,
                     r.ispositional,
@@ -258,33 +251,36 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             )
 
             for previous_record in reversed(by_ex_date):
-                if previous_record.ticker == ticker:
+                if previous_record.ticker == record.ticker:
                     if previous_record.position is None:
                         continue
-                    if d3 is not None and previous_record.entry_date > d3:
+                    if (
+                        record.ex_date is not None
+                        and previous_record.entry_date > record.ex_date
+                    ):
                         continue
-                    if p is None:
-                        p = 0
-                    if p_directive == POSITION_SPLIT:
-                        p = truncate_floating_point(previous_record.position * p)
-                    elif p_directive == POSITION_SPLIT_WHOLE:
-                        p = truncate_floating_point(
-                            math.floor(previous_record.position * p)
+                    if position is None:
+                        position = 0
+                    if position_directive == POSITION_SPLIT:
+                        position = truncate_floating_point(previous_record.position * position)
+                    elif position_directive == POSITION_SPLIT_WHOLE:
+                        position = truncate_floating_point(
+                            math.floor(previous_record.position * position)
                         )
                     else:
-                        p = truncate_floating_point(
-                            previous_record.position + (p * p_directive)
+                        position = truncate_floating_point(
+                            previous_record.position + (position * position_directive)
                         )
-                    if p < 0:
+                    if position < 0:
                         raise ParseError(
-                            f"position change to negative position ({p})", location
+                            f"position change to negative position ({position})", attr.location
                         )
                     break
 
-        if amount is not None and dividend is not None:
-            if amount.symbol == dividend.symbol:
-                inferred_p = amount.value / dividend.value
-                if p is not None:
+        if record.amount is not None and record.dividend is not None:
+            if record.amount.symbol == record.dividend.symbol:
+                inferred_p = record.amount.value / record.dividend.value
+                if position is not None:
                     # determine whether position equates (close enough) to the inferred position
                     # tolerance based on fractional precision from Robinhood/M1
                     # see https://robinhood.com/us/en/support/articles/66zKxGmw7zjdkFXEcGYksl/fractional-shares/
@@ -293,59 +289,62 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                     #       e.g. 1 penny = $ 0.01
                     #       so if you your position would amount to 0.006, you would get 0.01
                     #       but also hit this error, because your position is 0.006/div, not 0.01/div
-                    if not math.isclose(p, inferred_p, abs_tol=0.000001):
+                    if not math.isclose(position, inferred_p, abs_tol=0.000001):
                         raise ParseError(
-                            f"ambiguous position ({p} or {inferred_p}?)", location
+                            f"ambiguous position ({position} or {inferred_p}?)", attr.location
                         )
                 else:
-                    p = truncate_floating_point(inferred_p)
+                    position = truncate_floating_point(inferred_p)
 
-        if p is None:
-            raise ParseError(f"position could not be inferred", location)
+        if position is None:
+            raise ParseError(f"position could not be inferred", attr.location)
 
-        if amount is not None and p == 0:
-            raise ParseError(f"payout on closed position", location)
+        if record.amount is not None and position == 0:
+            raise ParseError(f"payout on closed position", attr.location)
 
-        if amount is not None and dividend is None:
-            inferred_dividend = truncate_floating_point(amount.value / p, places=4)
+        if record.amount is not None and record.dividend is None:
+            inferred_dividend = truncate_floating_point(
+                record.amount.value / position, places=4
+            )
             dividend = Amount(
                 inferred_dividend,
                 places=decimalplaces(inferred_dividend),
-                symbol=amount.symbol,
-                fmt=amount.fmt,
+                symbol=record.amount.symbol,
+                fmt=record.amount.fmt,
             )
 
-        if amount is None and dividend is None:
-            if d2 is not None or d3 is not None:
-                raise ParseError(f"associated date on positional record", location)
+        if record.amount is None and dividend is None:
+            if record.payout_date is not None or record.ex_date is not None:
+                raise ParseError(f"associated date on positional record", attr.location)
 
-        if d2 is not None and d3 is not None:
-            if d2 < d3:
-                raise ParseError(f"payout date dated earlier than ex-date", location)
+        if record.payout_date is not None and record.ex_date is not None:
+            if record.payout_date < record.ex_date:
+                raise ParseError(f"payout date dated earlier than ex-date", attr.location)
 
         is_incomplete = False
         prelim_amount = None
         if (
-            amount is None or amount is not None and amount.value == 0
+            record.amount is None
+            or record.amount is not None
+            and record.amount.value == 0
         ) and dividend is not None:
-            prelim_amount = amount
+            prelim_amount = record.amount
             is_incomplete = True
 
-        transaction_attribs = replace(
+        attr = replace(
             attr, preliminary_amount=prelim_amount, is_preliminary=is_incomplete
         )
 
-        transaction = replace(
-            entry,
-            amount=amount if prelim_amount is None else None,
-            entry_attr=transaction_attribs,
-            position=p,
+        record = replace(
+            record,
+            amount=record.amount if prelim_amount is None else None,
+            entry_attr=attr,
+            position=position,
             dividend=dividend,
         )
 
-        records.append(transaction)
-
-    return records
+        transactions.append(record)
+    return transactions
 
 
 def read_journal_transaction(
