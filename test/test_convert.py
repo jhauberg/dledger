@@ -124,6 +124,56 @@ def test_adjusting_for_splits_whole():
     )
 
 
+def test_adjusting_for_splits_ordering():
+    path = "../example/split.journal"
+
+    records = read(path, kind="journal")
+
+    # ensure that order does not matter for split adjustment
+    tmp = records[0]
+    records[0] = records[-2]
+    records[-2] = tmp
+
+    records = sorted(
+        adjusting_for_splits(records)
+    )
+
+    assert len(records) == 4
+
+    assert records[0] == Transaction(
+        date(2021, 1, 1),
+        "ABC",
+        20,
+        amount=Amount(1, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.05, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
+    )
+    assert records[1] == Transaction(
+        date(2021, 2, 1),
+        "ABC",
+        40,
+        entry_attr=EntryAttributes(location=(path, 6), positioning=(10, POSITION_ADD)),
+    )
+    assert records[2] == Transaction(
+        date(2021, 2, 10),
+        "ABC",
+        40,
+        entry_attr=EntryAttributes(
+            location=(path, 8), positioning=(2, POSITION_SPLIT_WHOLE)
+        ),
+    )
+    assert records[3] == Transaction(
+        date(2021, 4, 1),
+        "ABC",
+        40,
+        amount=Amount(2, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.05, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 10), positioning=(None, POSITION_SET)
+        ),
+    )
+
+
 def test_adjusting_for_splits_fractional():
     path = "subjects/split_fractional.journal"
 
