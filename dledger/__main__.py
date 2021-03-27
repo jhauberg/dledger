@@ -146,10 +146,13 @@ def main() -> None:
     if len(records) == 0:
         sys.exit(0)
 
-    if not args["--without-adjustment"]:
-        records = adjusting_for_splits(sorted(records))
+    if args["print"]:
+        # disable adjusting for splits for print command
+        args["--without-adjustment"] = True
 
-    records = removing_redundancies(records)
+    if not args["--without-adjustment"]:
+        records = adjusting_for_splits(records)
+    records = sorted(removing_redundancies(records))
 
     if args["--descending"]:
         # assuming argument is not passed for any reporting command;
