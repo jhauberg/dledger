@@ -38,11 +38,20 @@ def removing_redundancies(
         # at this point we no longer need to keep some of the position entries around,
         # as we have already used them to infer and determine position for each realized entry
         for record in position_records:
-            # so each position entry dated prior to a dividend entry is basically redundant
+            # each position entry dated prior to a dividend entry is basically redundant
             if record.position == 0:
                 # unless it's a closer, in which case we have to keep it around in any case
                 # (e.g. see example/strategic.journal)
                 continue
+            if record.entry_attr is not None:
+                _, directive = record.entry_attr.positioning
+                if (
+                    directive == POSITION_SPLIT or
+                    directive == POSITION_SPLIT_WHOLE
+                ):
+                    # special case: record has a split directive;
+                    # must be retained for journal integrity
+                    continue
             if (
                 latest_record.ex_date is not None
                 and record.entry_date >= latest_record.ex_date
@@ -57,7 +66,6 @@ def removing_redundancies(
                 is_redundant = True
             if is_redundant:
                 records.remove(record)
-
     return records
 
 
