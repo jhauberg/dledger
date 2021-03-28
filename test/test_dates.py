@@ -171,6 +171,10 @@ def test_in_months():
 
     assert d.year == 2018 and d.month == 12 and d.day == 31
 
+    d = in_months(date(year=2020, month=6, day=1), months=-12)
+
+    assert d.year == 2019 and d.month == 6 and d.day == 1
+
 
 def test_last_of_month():
     d = last_of_month(date(year=2020, month=1, day=1))

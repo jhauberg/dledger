@@ -1,5 +1,3 @@
-import locale
-
 from datetime import date
 
 from dledger.journal import (
@@ -27,16 +25,16 @@ from dledger.projection import GeneratedAmount
 def test_remove_redundant_entries():
     records = [Transaction(date(2019, 1, 1), "ABC", 10)]
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 2, 2))
 
-    assert len(records) == 1
+    assert len(records) == 0
 
     records = [
         Transaction(date(2019, 1, 1), "ABC", 10),
         Transaction(date(2019, 2, 1), "ABC", 10, amount=Amount(1)),
     ]
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 1, 2))
 
     assert len(records) == 1
 
@@ -48,18 +46,22 @@ def test_remove_redundant_entries():
         Transaction(date(2019, 1, 1), "ABC", 10, amount=Amount(1)),
     ]
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 1, 2))
 
     assert len(records) == 1
+    # assert that we got rid of the positional record; not the dividend record
+    assert records[0].amount == Amount(1)
 
     records = [
         Transaction(date(2019, 1, 1), "ABC", 10, amount=Amount(1)),
         Transaction(date(2019, 1, 1), "ABC", 10),
     ]
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 1, 2))
 
     assert len(records) == 1
+    # assert that we got rid of the positional record; not the dividend record
+    assert records[0].amount == Amount(1)
 
     records = [
         Transaction(date(2019, 2, 1), "ABC", 10, amount=Amount(1)),
@@ -67,9 +69,21 @@ def test_remove_redundant_entries():
         Transaction(date(2019, 4, 1), "ABC", 30),
     ]
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 5, 2))
 
     assert len(records) == 3
+
+    records = [
+        Transaction(date(2019, 2, 1), "ABC", 10, amount=Amount(1)),
+        Transaction(date(2019, 3, 1), "ABC", 20, amount=Amount(1)),
+        Transaction(date(2019, 4, 1), "ABC", 30),
+    ]
+
+    # a year later the positional record is no longer useful
+    records = removing_redundancies(records, since=date(2020, 5, 2))
+
+    # assert that we got rid of it
+    assert len(records) == 2
 
     records = [
         Transaction(date(2019, 1, 1), "ABC", 10),
@@ -78,9 +92,14 @@ def test_remove_redundant_entries():
         Transaction(date(2019, 3, 1), "DEF", 10, amount=Amount(1)),
     ]
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 3, 4))
 
     assert len(records) == 3
+
+    assert records[0].position == 10
+    assert records[1].position == 0
+    assert records[2].position == 10
+    assert records[2].ticker == "DEF"
 
 
 def test_adjusting_for_splits_whole():

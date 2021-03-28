@@ -320,7 +320,7 @@ def test_ordering_journal():
 
     assert len(records) == 7
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 12, 1))
 
     assert len(records) == 5
 
@@ -387,7 +387,7 @@ def test_positions_journal():
         entry_attr=EntryAttributes(location=(path, 11), positioning=(20, POSITION_ADD)),
     )
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 12, 1))
 
     assert len(records) == 4
 
@@ -437,7 +437,7 @@ def test_positions_journal():
 
     assert len(records) == 5
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 12, 1))
 
     assert len(records) == 4
 
@@ -487,7 +487,7 @@ def test_positions_format_journal():
 
     assert len(records) == 6
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 12, 1))
 
     assert len(records) == 5
 
@@ -550,7 +550,7 @@ def test_position_inference_journal():
 
     assert len(records) == 4
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 12, 1))
 
     assert len(records) == 3
 
@@ -592,7 +592,7 @@ def test_fractional_positions_journal():
 
     assert len(records) == 5
 
-    records = removing_redundancies(records)
+    records = removing_redundancies(records, since=date(2019, 12, 1))
 
     assert len(records) == 4
 
@@ -1208,7 +1208,8 @@ def test_integrity():
     # that do not necessarily match that of the input journal
     existing_path = "subjects/integrity-input.journal"
     existing_records = removing_redundancies(
-        read(existing_path, kind="journal")
+        read(existing_path, kind="journal"),
+        since=date(2019, 12, 1)
     )
 
     import os
