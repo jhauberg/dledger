@@ -820,7 +820,7 @@ def test_strategic_journal():
         date(2020, 2, 1),
         "ABC",
         10,
-        entry_attr=EntryAttributes(location=(path, 28), positioning=(10, POSITION_SET)),
+        entry_attr=EntryAttributes(location=(path, 24), positioning=(10, POSITION_SET)),
     )
 
 
