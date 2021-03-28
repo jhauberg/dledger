@@ -1,5 +1,7 @@
 import math
 
+from datetime import date
+
 from dledger.journal import (
     Transaction,
     POSITION_SPLIT,
@@ -16,6 +18,7 @@ from dledger.projection import (
     latest_exchange_rates,
 )
 from dledger.formatutil import decimalplaces, truncate_floating_point
+from dledger.dateutil import in_months, todayd
 
 from dataclasses import replace
 from typing import List, Dict, Tuple, Optional
@@ -23,6 +26,7 @@ from typing import List, Dict, Tuple, Optional
 
 def removing_redundancies(
     records: List[Transaction],
+    since: date = todayd(),
 ) -> List[Transaction]:
     for ticker in tickers(records):
         recs = list(by_ticker(records, ticker))
@@ -30,19 +34,15 @@ def removing_redundancies(
         position_records = list(r for r in recs if r.ispositional)
         if len(position_records) == 0:
             continue
-        # find all dividend transactions (e.g. cash received or earned)
+        # find all records with a cash component
         realized_records = list(r for r in recs if r not in position_records)
-        if len(realized_records) == 0:
-            continue
-        latest_record = realized_records[-1]
+        if len(realized_records) > 0:
+            latest_transaction = realized_records[-1]
+        else:
+            latest_transaction = None
         # at this point we no longer need to keep some of the position entries around,
         # as we have already used them to infer and determine position for each realized entry
         for record in position_records:
-            # each position entry dated prior to a dividend entry is basically redundant
-            if record.position == 0:
-                # unless it's a closer, in which case we have to keep it around in any case
-                # (e.g. see example/strategic.journal)
-                continue
             if record.entry_attr is not None:
                 _, directive = record.entry_attr.positioning
                 if (
@@ -52,17 +52,36 @@ def removing_redundancies(
                     # special case: record has a split directive;
                     # must be retained for journal integrity
                     continue
-            if (
-                latest_record.ex_date is not None
-                and record.entry_date >= latest_record.ex_date
-            ):
-                continue
             is_redundant = False
-            if record.entry_date < latest_record.entry_date:
+            if latest_transaction is None:
+                # this record is not used for inference nor forecasts,
+                # because no dividend transactions exist
                 is_redundant = True
-            elif record.entry_date == latest_record.entry_date and math.isclose(
-                record.position, latest_record.position, abs_tol=0.000001
+            elif (
+                record.entry_date < in_months(since, months=-12)
             ):
+                # more than a year has passed;
+                # forecasts will expire naturally, so record is redundant
+                is_redundant = True
+            elif (
+                record.entry_date < latest_transaction.entry_date
+            ):
+                # dated earlier than latest transaction; i.e. this positional
+                # record will not be used for inference nor forecasts
+                if latest_transaction.ex_date is not None:
+                    if record.entry_date < latest_transaction.ex_date:
+                        is_redundant = True
+                else:
+                    is_redundant = True
+            elif (
+                record.entry_date == latest_transaction.entry_date and
+                math.isclose(
+                    record.position,
+                    latest_transaction.position,
+                    abs_tol=0.000001)
+            ):
+                # dated same as a dividend transaction; discard this record
+                # if position on both is approximately identical
                 is_redundant = True
             if is_redundant:
                 records.remove(record)
