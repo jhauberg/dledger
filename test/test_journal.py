@@ -1199,6 +1199,35 @@ def test_write():
     assert records[0].entry_date == existing_records[0].entry_date
 
 
+def test_integrity():
+    # test whether an input journal produces expected output;
+    # effectively mimicking the print command
+    # it is expected that the output is "lossy"; i.e. that
+    # _all_ comments are omitted, and some records _may_ be if deemed redundant
+    # similarly, it is expected that output conforms to a consistent style
+    # that do not necessarily match that of the input journal
+    existing_path = "subjects/integrity-input.journal"
+    existing_records = removing_redundancies(
+        read(existing_path, kind="journal")
+    )
+
+    import os
+    import tempfile
+
+    fd, output_path = tempfile.mkstemp()
+    with os.fdopen(fd, "w", newline="") as tmp:
+        with tempconv(DECIMAL_POINT_PERIOD):
+            write(existing_records, file=tmp)
+    records = read(output_path, kind="journal")
+    assert len(records) == 5
+    with open(output_path, "r") as f:
+        output = f.read()
+    with open("subjects/integrity-output.journal", "r") as f:
+        expected_output = f.read()
+    assert output == expected_output
+    os.remove(output_path)
+
+
 def test_nordnet_import():
     path = "subjects/nordnet_transactions.csv"
 
