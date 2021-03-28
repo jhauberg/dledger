@@ -440,12 +440,13 @@ def read_journal_transaction(
                     f"invalid split directive ('{position_str}')", location
                 )
             try:
-                # actually the split factor in this case, rather than a position
-                position = locale.atof(split_components[0]) / locale.atof(
-                    split_components[1]
-                )
+                # position actually becomes a multiplier in this case,
+                # rather than an absolute position
+                a = locale.atof(split_components[0])
+                b = locale.atof(split_components[1])
             except ValueError:
                 raise ParseError(f"invalid position ('{position_str}')", location)
+            position = a / b
         else:
             try:
                 position = locale.atof(position_str)
@@ -737,7 +738,26 @@ def max_decimal_places(amounts: Iterable[Optional[Amount]]) -> Optional[int]:
     return places
 
 
-def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> None:
+def write(
+    records: List[Transaction],
+    file: Any,
+    *,
+    condensed: bool = False
+) -> None:
+    # the guiding principle of writing/printing is that given an input,
+    # the output must produce identical reports to the input, but written in the
+    # most legible/explicit way possible; to comply with that, there are some
+    # special cases that must be handled- namely positional records;
+    # these can typically be omitted, except for those with split directives;
+    # to produce an identical report, splits must be either retained _or_ past
+    # records adjusted; the latter means altering truths and is not acceptable;
+    # thus, splits must be retained
+    # it could be argued that given this, all positional records should simply
+    # be retained, if only for posterity, however, 1) they are not required to
+    # produce identical reports, and 2) they are primarily used as interim records
+    # to improve forecasting; dledger is not a portfolio tracker, and buy/sells
+    # are not the focus of the program- splits are an exception, as those are
+    # useful pieces of information to retain
     position_decimal_places: Dict[str, Optional[int]] = dict()
     payout_decimal_places: Dict[str, Optional[int]] = dict()
     dividend_decimal_places: Dict[str, Optional[int]] = dict()
@@ -749,7 +769,12 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
             (r.dividend for r in records if r.ticker == ticker)
         )
         position_decimal_places[ticker] = max(
-            decimalplaces(r.position) for r in records if r.ticker == ticker
+            decimalplaces(r.position) for r in records if
+            r.ticker == ticker and
+            # don't include split directives (as the position property
+            # holds a multiplier; not an absolute position)
+            (r.entry_attr.positioning[1] != POSITION_SPLIT and
+             r.entry_attr.positioning[1] != POSITION_SPLIT_WHOLE)
         )
     for record in records:
         indicator = ""
@@ -758,11 +783,25 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
         elif record.kind is Distribution.INTERIM:
             indicator = "^ "
         datestamp = record.entry_date.strftime("%Y/%m/%d")
-        decimals = position_decimal_places[record.ticker]
-        if decimals is not None:
-            p = format_amount(record.position, trailing_zero=False, places=decimals)
+        transient_position, directive = record.entry_attr.positioning
+        if (
+            directive == POSITION_SPLIT or
+            directive == POSITION_SPLIT_WHOLE
+        ):
+            assert transient_position is not None
+            from fractions import Fraction
+            fraction = Fraction(transient_position).limit_denominator()
+            split = f"{fraction.numerator}/{fraction.denominator}"
+            if record.entry_attr.positioning[1] == POSITION_SPLIT_WHOLE:
+                p = f"x {split}"
+            else:
+                p = f"X {split}"
         else:
-            p = format_amount(record.position, trailing_zero=False, rounded=False)
+            decimals = position_decimal_places[record.ticker]
+            if decimals is not None:
+                p = format_amount(record.position, trailing_zero=False, places=decimals)
+            else:
+                p = format_amount(record.position, trailing_zero=False, rounded=False)
         line = f"{datestamp} {indicator}{record.ticker} ({p})"
         if not condensed:
             print(line, file=file)
