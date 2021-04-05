@@ -325,25 +325,27 @@ def scheduled_transactions(
         if sample_record.amount is None:
             # skip buy/sell transactions; they should not have any effect on this bit of filtering
             continue
-        # look for projections dated same month, or less than 15 days between a realized transaction
+        # look for potential false-positive forecasts
+        # todo: why not just filter instead of individual removal?
         discards = [
             r
             for r in scheduled
             if r.ticker == sample_record.ticker
             and (
                 (
+                    # if a transaction is dated same month and same year
+                    # then consider this forecast a false-positive
                     r.entry_date.year == sample_record.entry_date.year
                     and r.entry_date.month == sample_record.entry_date.month
                 )
                 or (
-                    abs((r.entry_date - sample_record.entry_date).days)
-                    <= EARLY_LATE_THRESHOLD
+                    # look back far enough to cover earlier-than-expected
+                    # transactions, but not so far to hit _other_ forecasts
+                    # if there's a hit, consider this forecast a false-positive
+                    abs((r.entry_date - sample_record.entry_date).days) <= 28
                 )
             )
         ]
-        # assuming these projections are incorrect, we discard them
-        # note that this method does have false-positive scenarios (see tests),
-        # but prefer less projections (pessimistic) over too many projections (optimistic)
         for discarded_record in discards:
             scheduled.remove(discarded_record)
     for ticker in tickers(scheduled):

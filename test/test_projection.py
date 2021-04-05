@@ -847,6 +847,30 @@ def test_scheduled_grace_period():
 
     assert len(scheduled) == 3
 
+    for n in range(0, 14):
+        # going back 13 days; spanning 2021/03/18 - 2021/04/15; a 28 day period
+        records = [
+            Transaction(date(2020, 4, 7), "ABC", 1, Amount(1)),
+            Transaction(date(2021, 3, 31 - n), "ABC", 1, Amount(1)),
+        ]
+
+        scheduled = scheduled_transactions(records, since=date(2021, 3, 31))
+
+        assert len(scheduled) == 1
+
+    records = [
+        Transaction(date(2020, 4, 7), "ABC", 1, Amount(1)),
+        # note that this date is the first date far enough back that
+        # it is not considered a fit for the april forecast
+        # i.e. if the date was one day later (2021/03/18), it would be
+        # considered a fit, and the forecast would be discarded
+        Transaction(date(2021, 3, 17), "ABC", 1, Amount(1)),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2021, 3, 31))
+
+    assert len(scheduled) == 2
+
 
 def test_scheduled_transactions_closed_position():
     records = [
