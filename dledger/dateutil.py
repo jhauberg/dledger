@@ -245,7 +245,6 @@ def parse_period_component(component: str) -> Tuple[date, date]:
         return today + timedelta(days=-1), today
     if component == "q1" or component == "q2" or component == "q3" or component == "q4":
         months = months_in_quarter(int(component[-1]))
-        print(months)
         return date(today.year, months[0], 1), next_month(
             date(today.year, months[-1], 1)
         )
