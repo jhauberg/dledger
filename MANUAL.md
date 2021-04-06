@@ -2,7 +2,7 @@
 
 This document provides a reference to the usage and inner workings of the `dledger` command-line interface tool. 
 
-Documentation is based on [dledger 0.7.0](https://github.com/jhauberg/dledger/releases/tag/0.7.0).
+Documentation is based on [dledger 0.8.0](https://github.com/jhauberg/dledger/releases/tag/0.8.0).
 
 ## Introduction
 
@@ -33,7 +33,7 @@ $ dledger --version
 ```
 
 ```console
-dledger 0.7.0
+dledger 0.8.0
 ```
 
 Depending on your Python setup, you might have to run `dledger` as a module:
