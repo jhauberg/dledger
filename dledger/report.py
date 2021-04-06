@@ -152,7 +152,7 @@ def print_simple_quarterly_report(records: List[Transaction]) -> None:
                 ending_month = months[-1]
 
                 quarterly_transactions = []
-                for month in range(starting_month, ending_month):
+                for month in range(starting_month, ending_month + 1):
                     monthly_transactions = monthly(
                         matching_transactions, year=year, month=month
                     )
