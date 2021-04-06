@@ -1,13 +1,23 @@
 import math
 
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 from dataclasses import dataclass, replace
 
 from statistics import multimode, fmean
 
-from dledger.journal import Transaction, Distribution, Amount, ParseError
-from dledger.dateutil import last_of_month, months_between, in_months, next_month
-from dledger.formatutil import decimalplaces
+from dledger.journal import (
+    Transaction,
+    Distribution,
+    Amount,
+    ParseError,
+)
+from dledger.dateutil import (
+    last_of_month,
+    months_between,
+    in_months,
+    next_month,
+    todayd,
+)
 from dledger.record import (
     by_ticker,
     tickers,
@@ -199,121 +209,10 @@ def projected_date(d: date, *, timeframe: int) -> GeneratedDate:
     raise ValueError(f"invalid timeframe")
 
 
-def convert_estimates(
-    records: List[Transaction], rates: Optional[Dict[Tuple[str, str], float]] = None
-) -> List[Transaction]:
-    """ Return a list of transactions, replacing missing amounts with estimates. """
-    rates = rates if rates is not None else latest_exchange_rates(records)
-    transactions = list(r for r in records if r.amount is not None)
-    estimate_records = (
-        r for r in records if (r.amount is None and r.dividend is not None)
-    )
-    for rec in estimate_records:
-        conversion_factor = 1.0
-        assert rec.dividend is not None
-        if rec.entry_attr is not None and rec.entry_attr.preliminary_amount is not None:
-            estimate_symbol = rec.entry_attr.preliminary_amount.symbol
-            estimate_format = rec.entry_attr.preliminary_amount.fmt
-            assert rec.dividend.symbol is not None
-            assert estimate_symbol is not None
-            conversion_factor = rates[(rec.dividend.symbol, estimate_symbol)]
-        else:
-            estimate_symbol = rec.dividend.symbol
-            estimate_format = rec.dividend.fmt
-            latest_transaction = latest(by_ticker(transactions, rec.ticker))
-            if latest_transaction is not None:
-                assert latest_transaction.amount is not None
-                estimate_symbol = latest_transaction.amount.symbol
-                estimate_format = latest_transaction.amount.fmt
-                if rec.dividend.symbol != latest_transaction.amount.symbol:
-                    assert rec.dividend.symbol is not None
-                    assert latest_transaction.amount.symbol is not None
-                    conversion_factor = rates[
-                        (rec.dividend.symbol, latest_transaction.amount.symbol)
-                    ]
-        estimate_amount = GeneratedAmount(
-            value=(rec.position * rec.dividend.value) * conversion_factor,
-            symbol=estimate_symbol,
-            fmt=estimate_format,
-        )
-        estimate = replace(rec, amount=estimate_amount)
-        i = records.index(rec)
-        records.pop(i)
-        records.insert(i, estimate)
-
-    return records
-
-
-def convert_to_native_currency(records: List[Transaction]) -> List[Transaction]:
-    """ Return a list of transactions, replacing amounts with the sum of dividend times position. """
-    for r in records:
-        if r.dividend is None:
-            continue
-        native_value = r.dividend.value * r.position
-        native_amount = replace(
-            r.amount,
-            value=native_value,
-            symbol=r.dividend.symbol,
-            fmt=r.dividend.fmt,
-            places=None,
-        )
-        native_record = replace(r, amount=native_amount)
-        i = records.index(r)
-        records.pop(i)
-        records.insert(i, native_record)
-
-    return records
-
-
-def convert_to_currency(
-    records: List[Transaction],
-    *,
-    symbol: str,
-    rates: Optional[Dict[Tuple[str, str], float]] = None,
-) -> List[Transaction]:
-    """ Return a list of transactions, replacing amounts with estimates in given currency. """
-    rates = rates if rates is not None else latest_exchange_rates(records)
-    transactions = list(r for r in records if r.amount is not None)
-    convertible_records = (
-        r for r in records if (r.amount is not None and r.amount.symbol != symbol)
-    )
-    for rec in convertible_records:
-        assert rec.amount is not None
-        assert rec.amount.symbol is not None
-        try:
-            conversion_factor = rates[(rec.amount.symbol, symbol)]
-        except KeyError:
-            try:
-                conversion_factor = rates[(symbol, rec.amount.symbol)]
-                conversion_factor = 1.0 / conversion_factor
-            except KeyError:
-                raise ValueError(f"can't exchange between {rec.amount.symbol}/{symbol}")
-        estimate_format: Optional[str] = None
-        for t in reversed(transactions):
-            assert t.amount is not None
-            if t.amount.symbol == symbol:
-                estimate_format = t.amount.fmt
-            elif t.dividend is not None and t.dividend.symbol == symbol:
-                estimate_format = t.dividend.fmt
-            if estimate_format is not None:
-                break
-        estimate_amount = GeneratedAmount(
-            value=rec.amount.value * conversion_factor,
-            symbol=symbol,
-            fmt=estimate_format,
-        )
-        estimate = replace(rec, amount=estimate_amount)
-        i = records.index(rec)
-        records.pop(i)
-        records.insert(i, estimate)
-
-    return records
-
-
 def scheduled_transactions(
     records: List[Transaction],
     *,
-    since: date = datetime.today().date(),
+    since: date = todayd(),
     rates: Optional[Dict[Tuple[str, str], float]] = None,
 ) -> List[GeneratedTransaction]:
     """ Return a list of forecasted transactions. """
@@ -426,25 +325,27 @@ def scheduled_transactions(
         if sample_record.amount is None:
             # skip buy/sell transactions; they should not have any effect on this bit of filtering
             continue
-        # look for projections dated same month, or less than 15 days between a realized transaction
+        # look for potential false-positive forecasts
+        # todo: why not just filter instead of individual removal?
         discards = [
             r
             for r in scheduled
             if r.ticker == sample_record.ticker
             and (
                 (
+                    # if a transaction is dated same month and same year
+                    # then consider this forecast a false-positive
                     r.entry_date.year == sample_record.entry_date.year
                     and r.entry_date.month == sample_record.entry_date.month
                 )
                 or (
-                    abs((r.entry_date - sample_record.entry_date).days)
-                    <= EARLY_LATE_THRESHOLD
+                    # look back far enough to cover earlier-than-expected
+                    # transactions, but not so far to hit _other_ forecasts
+                    # if there's a hit, consider this forecast a false-positive
+                    abs((r.entry_date - sample_record.entry_date).days) <= 28
                 )
             )
         ]
-        # assuming these projections are incorrect, we discard them
-        # note that this method does have false-positive scenarios (see tests),
-        # but prefer less projections (pessimistic) over too many projections (optimistic)
         for discarded_record in discards:
             scheduled.remove(discarded_record)
     for ticker in tickers(scheduled):
@@ -588,7 +489,6 @@ def estimated_transactions(
             future_amount = amount_per_share(latest_transaction) * future_position
             future_dividend = next_linear_dividend(reference_records)
             future_dividend_value: Optional[float] = None
-            future_dividend_places: Optional[int] = None
             if future_dividend is not None:
                 if future_dividend.symbol != latest_transaction.amount.symbol:
                     assert future_dividend.symbol is not None
@@ -625,12 +525,6 @@ def estimated_transactions(
                         )
                     ]
                     future_dividend_value = fmean(divs)
-                    future_dividend_places = max(decimalplaces(div) for div in divs)
-                    assert future_dividend_places is not None
-                    # truncate/round off to fit longest decimal place count observed
-                    # in all of the real transactions
-                    s = f"{future_dividend_value:.{future_dividend_places}f}"
-                    future_dividend_value = float(s)
                     future_amount = future_dividend_value * future_position
                     future_amount = future_amount * conversion_factor
                 elif len(aps) > 0:
@@ -643,14 +537,12 @@ def estimated_transactions(
                 future_position,
                 amount=GeneratedAmount(
                     future_amount,
-                    places=latest_transaction.amount.places,
                     symbol=latest_transaction.amount.symbol,
                     fmt=latest_transaction.amount.fmt,
                 ),
                 dividend=(
                     GeneratedAmount(
                         future_dividend_value,
-                        places=future_dividend_places,
                         symbol=latest_transaction.dividend.symbol,
                         fmt=latest_transaction.dividend.fmt,
                     )
@@ -705,9 +597,7 @@ def next_linear_dividend(
         latest_comparable = latest(comparable_transactions)
         assert latest_comparable is not None
         div = latest_comparable.dividend
-        return GeneratedAmount(
-            div.value, places=div.places, symbol=div.symbol, fmt=div.fmt
-        )
+        return GeneratedAmount(div.value, symbol=div.symbol, fmt=div.fmt)
 
     return None
 
@@ -716,7 +606,7 @@ def next_position(
     records: List[Transaction],
     ticker: str,
     *,
-    earlier_than: date = datetime.today().date(),
+    earlier_than: date = todayd(),
 ) -> float:
     """Return the position of a ticker prior to a date.
 
@@ -808,7 +698,6 @@ def future_transactions(
             future_position,
             amount=GeneratedAmount(
                 future_amount,
-                places=transaction.amount.places,
                 symbol=latest_transaction.amount.symbol,
                 fmt=latest_transaction.amount.fmt,
             ),

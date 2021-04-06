@@ -2,13 +2,13 @@
 
 `dledger` is a local-first, command-line tool for tracking and forecasting dividend income.
 
-In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accounting-apps) and [plain-text accounting](https://plaintextaccounting.org), `dledger` is small, portable and reliable, and operates on plain-text journals that are both easy to read and quick to edit- and most importantly, all yours.
+In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accounting-apps) and [plain-text accounting](https://plaintextaccounting.org), `dledger` is small, portable and reliable, and operates on plain-text journals that are both easy to read and quick to edit- and most importantly, future-proof and all yours.
 
 Reports and forecasts are based entirely on your own data; no external data sources are used. This allows `dledger` to work for any investor, no matter the location and choice of currency.
 
 <br />
 
-| [Latest release (0.7.0)](https://github.com/jhauberg/dledger/releases/tag/0.7.0) | Download the latest stable release.                 |
+| [Latest release (0.8.0)](https://github.com/jhauberg/dledger/releases/tag/0.8.0) | Download the latest stable release.                 |
 | :------------------------------------------------------------------------------- | :-------------------------------------------------- |
 | [Issue tracker](https://github.com/jhauberg/dledger/issues)                      | Contribute your bugs, comments or feature requests. |
 | [Manual](MANUAL.md)                                                              | Instructions on [setup](MANUAL.md#install) and detailed usage.           |

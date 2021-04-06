@@ -14,8 +14,6 @@ from dledger.projection import (
     conversion_factors,
     latest_exchange_rates,
     scheduled_transactions,
-    convert_estimates,
-    convert_to_currency,
 )
 
 
@@ -849,6 +847,30 @@ def test_scheduled_grace_period():
 
     assert len(scheduled) == 3
 
+    for n in range(0, 14):
+        # going back 13 days; spanning 2021/03/18 - 2021/04/15; a 28 day period
+        records = [
+            Transaction(date(2020, 4, 7), "ABC", 1, Amount(1)),
+            Transaction(date(2021, 3, 31 - n), "ABC", 1, Amount(1)),
+        ]
+
+        scheduled = scheduled_transactions(records, since=date(2021, 3, 31))
+
+        assert len(scheduled) == 1
+
+    records = [
+        Transaction(date(2020, 4, 7), "ABC", 1, Amount(1)),
+        # note that this date is the first date far enough back that
+        # it is not considered a fit for the april forecast
+        # i.e. if the date was one day later (2021/03/18), it would be
+        # considered a fit, and the forecast would be discarded
+        Transaction(date(2021, 3, 17), "ABC", 1, Amount(1)),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2021, 3, 31))
+
+    assert len(scheduled) == 2
+
 
 def test_scheduled_transactions_closed_position():
     records = [
@@ -1463,72 +1485,6 @@ def test_conversion_factors():
     assert len(factors) == 1
     assert factors[("$", "kr")] == [1, 1.1]
     assert rates[("$", "kr")] == 1.1
-
-
-def test_convert_estimates():
-    records = [
-        Transaction(date(2019, 6, 1), "ABC", 100, dividend=Amount(1, symbol="$"))
-    ]
-
-    records = convert_estimates(records)
-
-    assert records[0].amount == GeneratedAmount(100, symbol="$")
-
-    records = [
-        Transaction(
-            date(2019, 3, 1),
-            "ABC",
-            100,
-            amount=Amount(150, symbol="kr"),
-            dividend=Amount(1.5, symbol="$"),
-        ),
-        Transaction(date(2019, 6, 1), "ABC", 100, dividend=Amount(1.5, symbol="$")),
-    ]
-
-    records = convert_estimates(records)
-
-    assert records[1].amount == GeneratedAmount(150, symbol="kr")
-
-
-def test_convert_to_currency():
-    records = [
-        Transaction(
-            date(2019, 3, 1),
-            "ABC",
-            100,
-            amount=Amount(150, symbol="kr"),
-            dividend=Amount(1, symbol="$"),
-        )
-    ]
-
-    records = convert_to_currency(records, symbol="$")
-
-    assert records[0].amount == GeneratedAmount(100, symbol="$")
-
-    records = [
-        Transaction(
-            date(2019, 3, 1),
-            "ABC",
-            100,
-            amount=Amount(150, symbol="kr"),
-            dividend=Amount(1, symbol="$"),
-        ),
-        Transaction(
-            date(2019, 3, 2),
-            "DEF",
-            100,
-            amount=Amount(50, symbol="kr"),
-            dividend=Amount(0.5, symbol="kr"),
-        ),
-    ]
-
-    records = convert_to_currency(records, symbol="$")
-
-    assert records[0].amount == GeneratedAmount(100, symbol="$")
-    assert isinstance(records[1].amount, GeneratedAmount)
-    import math
-
-    assert math.floor(records[1].amount.value) == 33  # floor to ignore decimals
 
 
 def test_secondary_date_monthly():

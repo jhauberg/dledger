@@ -227,6 +227,15 @@ def test_dividends():
     ]
 
     assert dividends(records) == [Amount(1), Amount(2)]
+    assert dividends(records, "$") == []
+
+    records = [
+        Transaction(date(2019, 3, 1), "ABC", 1, dividend=Amount(1, symbol="$")),
+        Transaction(date(2019, 6, 1), "ABC", 1, dividend=Amount(2)),
+    ]
+
+    assert dividends(records) == [Amount(1, symbol="$"), Amount(2)]
+    assert dividends(records, "$") == [Amount(1, symbol="$")]
 
 
 def test_deltas():

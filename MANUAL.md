@@ -2,11 +2,11 @@
 
 This document provides a reference to the usage and inner workings of the `dledger` command-line interface tool. 
 
-Documentation is based on [dledger 0.7.0](https://github.com/jhauberg/dledger/releases/tag/0.7.0).
+Documentation is based on [dledger 0.8.0](https://github.com/jhauberg/dledger/releases/tag/0.8.0).
 
 ## Introduction
 
-`dledger` is a local-first, command-line tool for tracking and forecasting dividend income; hence the name "dividend" or "dollar ledger", both "dledger" for short.
+`dledger` is a local-first, command-line tool and file-format for tracking and forecasting dividend income; hence the name "dividend" or "dollar ledger", both "dledger" for short.
 
 In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accounting-apps) and [plain-text accounting](https://plaintextaccounting.org), `dledger` is small, portable and reliable, and operates on plain-text journals that are both easy to read and quick to edit- and most importantly, all yours.
 
@@ -33,7 +33,7 @@ $ dledger --version
 ```
 
 ```console
-dledger 0.7.0
+dledger 0.8.0
 ```
 
 Depending on your Python setup, you might have to run `dledger` as a module:
@@ -78,7 +78,7 @@ The journal is where you keep all your transactions. Each transaction is recorde
 
 There are no requirements on how you edit or name your journal files, nor which extension to use. A common practice is to apply the `.journal` extension.
 
-Here's an [example journal-file](dledger/example/simple.journal), for reference:
+Here's an [example journal-file](example/simple.journal), for reference:
 
 ```
 # this file serves as an example journal for dledger
@@ -254,6 +254,116 @@ Recording an interim dividend transaction is similar to [recording a special div
 
 This indicates that the transaction *is* part of the schedule and *should* be accounted for in forecasts, but the dividend projection should be independent of the regular (final) dividend.
 
+### Stock splits
+
+A company may issue a stock split at any time. A stock split always affects your position, but is typically a purely technical event; meaning that, while your position (and dividend) changes, it does so proportionally, leaving you with the same amount of cash in the end (disclaimer: this may vary; for example, if the split results in a fractional position you typically end up with a slightly smaller position but receive cash for the remainder).
+
+For record keeping with `dledger` there's two ways to approach a stock split:
+
+1) [Record the split](#recording-a-stock-split) when it takes effect, or
+2) Do nothing and record your transactions as usual
+
+The second approach requires no effort other than adjusting position (and dividend) accordingly on the next dividend transaction.
+
+Here's an example when AAPL completed a 4-for-1 split during 2020:
+
+```
+2020/07/01 AAPL (10)     # initial purchase of 10 shares
+
+2020/08/14 AAPL          # dividend distribution; still holding 10 shares
+  [2020/08/13] $ 8.2
+@ [2020/08/07] $ 0.82
+
+## ...then a 4-to-1 split happened at some point, position up by 30 shares
+
+2020/11/13 AAPL (40)     # dividend distribution post-split; position increased from 10 to 40
+  [2020/11/12] $ 8.2     # note same exact payout as previous distribution
+@ [2020/11/06] $ 0.205   # however, dividend has been adjusted from $0.82 previous, to $0.205 current
+```
+
+However, there are two issues with this approach: **1)** past transactions are not adjusted accordingly, and **2)** recording buy/sell _post-split_ cause forecasted dividends to be out of propotion, as `dledger` has no way of knowing how to adjust the dividend automatically.
+
+To account for splits and solve both these issues, you must record the split using a split directive.
+
+#### Recording a stock split
+
+The split directive is similar to [buy/sell](#buy-sell) transactions. A split directive is used to adjust the position of a holding using a calculation rather than by an explicit amount. The benefit is that the calculation can also be applied to adjust past and forecasted transactions, proportionally.
+
+Here's how you would record the previous `AAPL` example:
+
+```
+2020/08/28 AAPL (x 4/1)  # 4-to-1 stock split
+```
+
+Note the `x` here, indicating that the position for `AAPL` should be adjusted (multiplied) by the result of the following calculation, in this case `4 / 1`, resulting in `4`. The calculation _only_ supports the division operator.
+
+The example can now be recorded like this:
+
+```
+2020/07/01 AAPL (10)     # initial purchase of 10 shares
+
+2020/08/14 AAPL          # first dividend distribution; still holding 10 shares
+  [2020/08/13] $ 8.2
+@ [2020/08/07] $ 0.82
+
+2020/08/28 AAPL (x 4/1)  # 4-to-1 stock split => position up by 30 shares
+
+2020/11/13 AAPL          # note that position is automatically adjusted here (i.e. now holding 40 shares)
+  [2020/11/12] $ 8.2
+@ [2020/11/06] $ 0.205   # as number of shares went up, dividend went down proportionally
+```
+
+Recording a split using the split directive also has the effect of adjusting _past_ transactions accordingly, making comparison of past and future transactions more effective.
+
+You can still run reports without adjusting past transactions using the `--without-adjustment` flag.
+
+##### Split results in fractional shares
+
+Sometimes, a split can not be applied without resulting in a fractional, non-whole amount of shares.
+
+What typically happens in these cases is that the fractional part is redeemed as cash. That's not _always_ the case, however. It depends on your broker and the issuing company.
+
+The split directive can account for both options (not counting any redemption), using either an upper- or lowercase `x`.
+
+| Directive       | Effect                 |
+| --------------- | ---------------------- |
+| x (_lowercase_) | Keep whole shares      |
+| X (_uppercase_) | Keep fractional shares |
+
+For example, a hypothetical split keeping fractional shares:
+
+```
+2020/08/28 AAPL (X 4/3)  # 4-to-3 => position up by 3.3333333333 shares
+```
+
+or, keeping only whole shares (nearest whole number less than, or equal to, the fractional position), effectively discarding any fractional share remainder:
+
+```
+2020/08/28 AAPL (x 4/3)  # 4-to-3 => position up by 3 shares
+```
+
+*Note that share redemption for cash should not be accounted for, as it is not considered a dividend.*
+
+##### Reverse splits
+
+Recording a reverse split is done the same way as any other split; a reverse split is simply when the calculation results in a number smaller than 1; i.e. the number of shares held is reduced.
+
+For example, a hypothetical reverse split using previous scenario:
+
+```
+2020/07/01 AAPL (10)     # initial purchase of 10 shares
+
+2020/08/14 AAPL          # first dividend distribution; still holding 10 shares
+  [2020/08/13] $ 8.2
+@ [2020/08/07] $ 0.82
+
+2020/08/28 AAPL (x 2/4)  # 2-to-4 stock split => position down by 5 shares
+
+2020/11/13 AAPL          # note that position is automatically adjusted here (i.e. now holding 5 shares)
+  [2020/11/12] $ 8.2
+@ [2020/11/06] $ 1.64    # as number of shares went down, dividend went up proportionally
+```
+
 ## Locale
 
 For the best results, `dledger` requires a reasonably well-configured environment. This includes an expectation of a configured system locale.
@@ -262,7 +372,7 @@ For macOS and Linux, this typically means setting the `LC_ALL` variable to your 
 
 The locale defines the rules on how `dledger` reads and understands numbers; specifically decimal/grouping separators (or, comma vs period).
 
-In a case where no locale has been configured (or is incorrectly configured), `dledger` will default to a US locale (en-US), which expects a period to represent the decimal separator, and commas for grouping.
+In a case where no locale has been configured (or is incorrectly configured), `dledger` will simply not run.
 
 You can run the [`stats`](#stats) command to see which locale `dledger` is using.
 
@@ -399,7 +509,7 @@ $ dledger report example/simple.journal --annual
 
 The report includes [forecasts](#forecasts) and preliminary records, as indicated by a `~` (tilde) prefix. In general, whenever you see a `~` to the left of an amount, this indicates that the amount is an *estimate*.
 
-Taking a look at the last row, we might also notice that the date stands out from the others in two ways: 1) it is set in the future, and 2) it has a `<` next to it. Here, the `<` is to be read as a backwards facing arrow, indicating "by/before this date". So with this knowledge, the row now reads: "approximately $308 received by November 2020".
+Taking a look at the last row, we might also notice that the date stands out from the others in two ways: **1)** it is set in the future, and **2)** it has a `<` next to it. Here, the `<` is to be read as a backwards facing arrow, indicating "by/before this date". So with this knowledge, the row now reads: "approximately $308 received by November 2020".
 
 If a journal contains income of multiple currencies, the report is split in a section for each currency (unless `--as-currency` is specified, see [consolidating income reports](#consolidating-income-reports)).
 
@@ -770,25 +880,3 @@ For example:
 It is good practice for your future self to leave a note as to why this line exists.
 
 If the distribution resumes, you can simply remove this line. If you prefer to leave it for posterity, you must "open" the position again when recording the next distribution.
-
-## Company ABC completed a split; what should I do?
-
-A stock split is a purely technical event, and generally you do not have to do anything other than record your transactions as usual.
-
-However, what _does_ change, is the number of shares you hold, and, typically, the dividend per share. So, depending on what you track, the next transaction you record should, at least, include the new number of shares held.
-
-Here's an example when AAPL completed a 4-for-1 split during 2020:
-
-```
-2020/07/01 AAPL (10)    # initial purchase of 10 shares
-
-2020/08/14 AAPL         # first dividend distribution
-  [2020/08/13] $ 8.2
-@ [2020/08/07] $ 0.82
-
-2020/11/13 AAPL (40)    # second dividend distribution after a 4-for-1 split; position increased from 10 to 40
-  [2020/11/12] $ 8.2    # note same exact payout as previous distribution
-@ [2020/11/06] $ 0.205  # however, dividend has been adjusted from $0.82 previous, to $0.205 current
-```
-
-*Note that you might not want to record a split until the following dividend has been declared. If you do, you must estimate the expected dividend yourself to avoid it simply repeating past distributions without adjustment.*

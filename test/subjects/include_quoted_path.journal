@@ -1,12 +1,6 @@
 # this file serves as an example journal for dledger
 
+include "../../example/simple.journal"
+
 2020/02/13 AAPL
   $ 77
-
-include simple.journal
-
-2020/05/15 AAPL
-  $ 82
-
-2020/08/14 AAPL
-  $ 82

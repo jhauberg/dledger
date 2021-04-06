@@ -4,11 +4,14 @@
 usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
                                       [--without-forecast]
+                                      [--without-adjustment]
                                       [--by-ticker=<ticker>]
                                       [--by-payout-date | --by-ex-date]
+                                      [--in-currency=<symbol>]
                                       [--as-currency=<symbol> | --as-native-currency]
        dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
                                       [--by-payout-date | --by-ex-date]
+                                      [--in-currency=<symbol>]
                                       [--as-currency=<symbol> | --as-native-currency]
        dledger stats   [<journal>]... [--period=<interval>] [-v]
        dledger print   [<journal>]... [--condensed]
@@ -23,11 +26,13 @@ OPTIONS:
      --output=<journal>       Specify journal filename [default: ledger.journal]
      --period=<interval>      Specify reporting date interval
      --without-forecast       Don't include forecasted transactions
+     --without-adjustment     Don't adjust past transactions for splits
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
+     --in-currency=<symbol>   Show income exchanged from currency
      --as-currency=<symbol>   Show income as if exchanged to currency
-     --as-native-currency     Show income as received, prior to any exchange
+     --as-native-currency     Show income prior to any exchange
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
      --by-currency            Show drift from target currency exposure
@@ -52,7 +57,6 @@ from docopt import docopt  # type: ignore
 
 from dledger import __version__
 from dledger.dateutil import parse_period
-from dledger.localeutil import trysetlocale
 from dledger.printutil import enable_color_escapes
 from dledger.record import in_period, tickers
 from dledger.report import (
@@ -72,13 +76,22 @@ from dledger.report import (
 )
 from dledger.projection import (
     scheduled_transactions,
-    convert_estimates,
-    convert_to_currency,
-    convert_to_native_currency,
     latest_exchange_rates,
     conversion_factors,
 )
-from dledger.journal import Transaction, write, read, SUPPORTED_TYPES
+from dledger.journal import (
+    Transaction,
+    write,
+    read,
+    SUPPORTED_TYPES,
+)
+from dledger.convert import (
+    removing_redundancies,
+    adjusting_for_splits,
+    with_estimates,
+    in_currency,
+    in_dividend_currency,
+)
 
 from dataclasses import replace
 
@@ -95,12 +108,13 @@ def main() -> None:
 
     enable_color_escapes()
 
+    # todo: should catch ParseError rather than showing stack trace; not useful for end-user
+
     try:
-        # default to system locale, if able
+        # default to current system locale
         locale.setlocale(locale.LC_ALL, "")
     except (locale.Error, ValueError):
-        # fallback to US locale
-        trysetlocale(locale.LC_NUMERIC, ["en_US", "en-US", "en"])
+        sys.exit("locale not specified")
 
     input_paths = args["<file>"] if args["convert"] else args["<journal>"]
 
@@ -131,7 +145,14 @@ def main() -> None:
         records.extend(read(input_path, input_type))
     if len(records) == 0:
         sys.exit(0)
-    records = sorted(records)
+
+    if args["print"]:
+        # disable adjusting for splits for print command
+        args["--without-adjustment"] = True
+
+    if not args["--without-adjustment"]:
+        records = adjusting_for_splits(records)
+    records = sorted(removing_redundancies(records))
 
     if args["--descending"]:
         # assuming argument is not passed for any reporting command;
@@ -173,9 +194,10 @@ def main() -> None:
                 ticker = matching_tickers[0]
         # filter down to only include records by ticker
         records = list(r for r in records if r.ticker == ticker)
+
     # produce estimate amounts for preliminary or incomplete records,
     # transforming them into transactions for all intents and purposes from this point onwards
-    records = convert_estimates(records, rates=exchange_rates)
+    records = with_estimates(records, rates=exchange_rates)
     # keep a copy of the list of records as they were before any date swapping, so that we can
     # produce diagnostics only on those transactions entered manually; i.e. not forecasts
     # note that because we copy the list at this point (i.e. *before* period filtering),
@@ -211,7 +233,7 @@ def main() -> None:
         ]
 
     if args["--as-native-currency"]:
-        records = convert_to_native_currency(records)
+        records = in_dividend_currency(records)
 
     if not args["--without-forecast"]:
         # produce forecasted transactions dated into the future
@@ -223,13 +245,20 @@ def main() -> None:
     if interval is not None:
         # filter down to only transactions within period interval
         transactions = list(in_period(transactions, interval))
+
+    filter_symbol = args["--in-currency"]
+    if filter_symbol is not None:
+        transactions = [
+            txn for txn in transactions if txn.dividend.symbol == filter_symbol
+        ]
+
     # (redundantly) sort for good measure
     transactions = sorted(transactions)
 
     exchange_symbol = args["--as-currency"]
     if exchange_symbol is not None:
         # forcefully apply an exchange to given currency
-        transactions = convert_to_currency(
+        transactions = in_currency(
             transactions, symbol=exchange_symbol, rates=exchange_rates
         )
 
@@ -300,7 +329,8 @@ def main() -> None:
         from dledger.projection import GeneratedAmount
 
         ambiguous_exchange_rates = conversion_factors(
-            # only include journaled records, but don't include preliminary estimates (signified by GeneratedAmount)
+            # only include journaled records, but don't include preliminary
+            # estimates (signified by GeneratedAmount)
             [
                 record
                 for record in journaled_transactions
@@ -311,7 +341,8 @@ def main() -> None:
         for symbols, rates in ambiguous_exchange_rates.items():
             if len(rates) > 1:
                 print(
-                    f"ambiguous exchange rate {symbols} = {exchange_rates[symbols]}:\n or, {rates[:-1]}",
+                    f"ambiguous exchange rate {symbols} = "
+                    f"{exchange_rates[symbols]}:\n or, {rates[:-1]}?",
                     file=sys.stderr,
                 )
 

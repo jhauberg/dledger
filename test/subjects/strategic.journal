@@ -1,0 +1,30 @@
+# this file serves as a test journal for dledger to illustrate
+# a strategic sell-off preceding a forecasted ex-date, followed by
+# a buy-back afterwards
+
+# this journal assumes a system locale using period as decimal separator
+
+2019/01/20 ABC (10)
+  $ 1
+
+2019/04/20 ABC
+  $ 2
+
+2019/07/20 ABC
+  $ 2
+
+2019/10/20 ABC
+  $ 2
+
+2020/01/19 ABC (0)    # closing position before ex-date
+
+# 2020/01/20 ABC      # actual ex-date; sold off to skip this distribution
+#   $ 0
+
+2020/02/01 ABC (10)   # opening position after ex-date (see note below)
+
+# note that ideally the opening date would be 2020/01/21 (a day later than ex-date),
+# however, due to the grace period on forecasts, we have to date it a bit later
+# (the forecast will expect a dividend in the span between 2020/01/15 to 2020/01/31,
+#  so the only way to avoid that forecast is to avoid having an open position
+#  in that timespan; thus the later date)

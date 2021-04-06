@@ -1,7 +1,7 @@
 import locale
 import os
 
-from datetime import datetime, date
+from datetime import date
 
 from dledger.journal import Transaction, Distribution, max_decimal_places
 from dledger.formatutil import format_amount, decimalplaces
@@ -12,7 +12,7 @@ from dledger.printutil import (
     COLOR_UNDERLINED,
     COLOR_MARKED,
 )
-from dledger.dateutil import previous_month, last_of_month, months_in_quarter
+from dledger.dateutil import previous_month, last_of_month, months_in_quarter, todayd
 from dledger.projection import GeneratedAmount, GeneratedTransaction
 from dledger.record import (
     income,
@@ -25,18 +25,21 @@ from dledger.record import (
     earliest,
     before,
     after,
+    dividends,
+    amounts,
 )
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Iterable, Callable
 
 
 def print_simple_annual_report(records: List[Transaction]) -> None:
-    today = datetime.today().date()
+    today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
 
     commodities = sorted(symbols(records, excluding_dividends=True))
+    amount_decimals, _, _ = decimals_per_component(records)
 
     for commodity in commodities:
         matching_transactions = list(
@@ -51,7 +54,11 @@ def print_simple_annual_report(records: List[Transaction]) -> None:
                 continue
 
             total = income(yearly_transactions)
-            amount = format_amount(total, trailing_zero=False)
+            decimals = amount_decimals[commodity]
+            if decimals is not None:
+                amount = format_amount(total, places=decimals)
+            else:
+                amount = format_amount(total)
             amount = latest_transaction.amount.fmt % amount
             d = f"{year}"
             if any(isinstance(r.amount, GeneratedAmount) for r in yearly_transactions):
@@ -73,12 +80,13 @@ def print_simple_annual_report(records: List[Transaction]) -> None:
 
 
 def print_simple_monthly_report(records: List[Transaction]) -> None:
-    today = datetime.today().date()
+    today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
 
     commodities = sorted(symbols(records, excluding_dividends=True))
+    amount_decimals, _, _ = decimals_per_component(records)
 
     for commodity in commodities:
         matching_transactions = list(
@@ -96,7 +104,11 @@ def print_simple_monthly_report(records: List[Transaction]) -> None:
                     continue
 
                 total = income(monthly_transactions)
-                amount = format_amount(total, trailing_zero=False)
+                decimals = amount_decimals[commodity]
+                if decimals is not None:
+                    amount = format_amount(total, places=decimals)
+                else:
+                    amount = format_amount(total)
                 amount = latest_transaction.amount.fmt % amount
                 month_indicator = f"{month}".zfill(2)
                 d = f"{year}/{month_indicator}"
@@ -118,12 +130,13 @@ def print_simple_monthly_report(records: List[Transaction]) -> None:
 
 
 def print_simple_quarterly_report(records: List[Transaction]) -> None:
-    today = datetime.today().date()
+    today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
 
     commodities = sorted(symbols(records, excluding_dividends=True))
+    amount_decimals, _, _ = decimals_per_component(records)
 
     for commodity in commodities:
         matching_transactions = list(
@@ -139,7 +152,7 @@ def print_simple_quarterly_report(records: List[Transaction]) -> None:
                 ending_month = months[-1]
 
                 quarterly_transactions = []
-                for month in range(starting_month, ending_month):
+                for month in range(starting_month, ending_month + 1):
                     monthly_transactions = monthly(
                         matching_transactions, year=year, month=month
                     )
@@ -148,7 +161,11 @@ def print_simple_quarterly_report(records: List[Transaction]) -> None:
                     continue
 
                 total = income(quarterly_transactions)
-                amount = format_amount(total, trailing_zero=False)
+                decimals = amount_decimals[commodity]
+                if decimals is not None:
+                    amount = format_amount(total, places=decimals)
+                else:
+                    amount = format_amount(total)
                 amount = latest_transaction.amount.fmt % amount
                 d = f"{year}/Q{quarter}"
                 if any(
@@ -169,22 +186,12 @@ def print_simple_quarterly_report(records: List[Transaction]) -> None:
 
 
 def print_simple_report(records: List[Transaction], *, detailed: bool = False) -> None:
-    today = datetime.today().date()
-    payout_decimal_places: Dict[str, Optional[int]] = dict()
-    dividend_decimal_places: Dict[str, Optional[int]] = dict()
-    position_decimal_places: Dict[str, Optional[int]] = dict()
-    for ticker in tickers(records):
-        payout_decimal_places[ticker] = max_decimal_places(
-            (r.amount for r in records if r.ticker == ticker)
-        )
-    if detailed:
-        for ticker in tickers(records):
-            dividend_decimal_places[ticker] = max_decimal_places(
-                (r.dividend for r in records if r.ticker == ticker)
-            )
-            position_decimal_places[ticker] = max(
-                decimalplaces(r.position) for r in records if r.ticker == ticker
-            )
+    today = todayd()
+
+    amount_decimals, dividend_decimals, position_decimals = decimals_per_component(
+        records
+    )
+
     underlined_record = next(
         (x for x in reversed(records) if x.entry_date < today), None
     )
@@ -194,9 +201,9 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False) -
     for transaction in records:
         should_colorize_expired_transaction = False
         payout = transaction.amount.value
-        amount_decimal_places = payout_decimal_places[transaction.ticker]
-        if amount_decimal_places is not None:
-            amount = format_amount(payout, places=amount_decimal_places)
+        decimals = amount_decimals[transaction.amount.symbol]
+        if decimals is not None:
+            amount = format_amount(payout, places=decimals)
         else:
             amount = format_amount(payout)
         amount = transaction.amount.fmt % amount
@@ -239,10 +246,10 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False) -
                     line = f"{line}    {d} {transaction.ticker.ljust(8)}"
 
         if detailed:
-            p_decimal_places = position_decimal_places[transaction.ticker]
-            if p_decimal_places is not None:
+            decimals = position_decimals[transaction.ticker]
+            if decimals is not None:
                 p = format_amount(
-                    transaction.position, trailing_zero=False, places=p_decimal_places
+                    transaction.position, trailing_zero=False, places=decimals
                 )
             else:
                 p = format_amount(
@@ -253,11 +260,9 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False) -
 
             assert transaction.dividend is not None
 
-            div_decimal_places = dividend_decimal_places[transaction.ticker]
-            if div_decimal_places is not None:
-                dividend = format_amount(
-                    transaction.dividend.value, places=div_decimal_places
-                )
+            decimals = dividend_decimals[transaction.dividend.symbol]
+            if decimals is not None:
+                dividend = format_amount(transaction.dividend.value, places=decimals)
             else:
                 dividend = format_amount(transaction.dividend.value)
             dividend = transaction.dividend.fmt % dividend
@@ -277,6 +282,8 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False) -
 def print_simple_weight_by_ticker(records: List[Transaction]) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
 
+    amount_decimals, _, _ = decimals_per_component(records)
+
     for commodity in commodities:
         matching_transactions = list(
             filter(lambda r: r.amount.symbol == commodity, records)
@@ -291,7 +298,11 @@ def print_simple_weight_by_ticker(records: List[Transaction]) -> None:
             filtered_records = list(by_ticker(records, ticker))
             income_by_ticker = income(filtered_records)
 
-            amount = format_amount(income_by_ticker, trailing_zero=False)
+            decimals = amount_decimals[commodity]
+            if decimals is not None:
+                amount = format_amount(income_by_ticker, places=decimals)
+            else:
+                amount = format_amount(income_by_ticker)
             amount = latest_transaction.amount.fmt % amount
 
             weight = income_by_ticker / total_income * 100
@@ -304,7 +315,7 @@ def print_simple_weight_by_ticker(records: List[Transaction]) -> None:
         weights.sort(key=lambda w: w[2], reverse=True)
         for weight in weights:
             ticker, amount, pct, is_estimate = weight
-            pct = f"{format_amount(pct)}%"
+            pct = f"{format_amount(pct, places=2)}%"
             if is_estimate:
                 print(f"~ {amount.rjust(18)}    {pct.rjust(7)}    {ticker}")
             else:
@@ -316,6 +327,8 @@ def print_simple_weight_by_ticker(records: List[Transaction]) -> None:
 def print_simple_sum_report(records: List[Transaction]) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
 
+    amount_decimals, _, _ = decimals_per_component(records)
+
     for commodity in commodities:
         matching_transactions = list(
             filter(lambda r: r.amount.symbol == commodity, records)
@@ -325,7 +338,11 @@ def print_simple_sum_report(records: List[Transaction]) -> None:
         latest_transaction = latest(matching_transactions)
 
         total = income(matching_transactions)
-        amount = format_amount(total, trailing_zero=False)
+        decimals = amount_decimals[commodity]
+        if decimals is not None:
+            amount = format_amount(total, places=decimals)
+        else:
+            amount = format_amount(total)
         amount = latest_transaction.amount.fmt % amount
 
         if any(isinstance(r.amount, GeneratedAmount) for r in matching_transactions):
@@ -377,34 +394,21 @@ def print_stats(
             print_stat_row(f"{from_symbol}/{to_symbol}", f"{conversion_rate_amount}")
 
 
-def most_prominent_payers(records: List[Transaction]) -> List[str]:
-    combined_income_per_ticker = []
-    for ticker in tickers(records):
-        filtered_records = list(by_ticker(records, ticker))
-        combined_income_per_ticker.append((ticker, income(filtered_records)))
-    combined_income_per_ticker.sort(key=lambda x: x[1], reverse=True)
-    return [ticker for ticker, _ in combined_income_per_ticker]
-
-
-def formatted_prominent_payers(records: List[Transaction], *, limit: int = 3) -> str:
-    payers = most_prominent_payers(records)
-    top = payers[:limit]
-    bottom = [payer for payer in payers if payer not in top]
-    formatted = ", ".join(top)
-    formatted = (formatted[:30] + "…") if len(formatted) > 30 else formatted
-    if len(bottom) > 0:
-        additionals = f"(+{len(bottom)})"
-        formatted = f"{formatted} {additionals}"
-    return formatted
-
-
 def print_simple_rolling_report(records: List[Transaction]) -> None:
-    today = datetime.today().date()
+    # note that this report can be confusing; the "next 12m" row
+    # indicates the sum of all forecasted/preliminary records, however
+    # having preliminary records that just pass their entry date can
+    # incur a drop in the sum, which can look like it just disappeared
+    # out of thin air - it will be included when the month passes
+    # todo: consider including past preliminary records as still being "in the future"
+    today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
 
     commodities = sorted(symbols(records, excluding_dividends=True))
+
+    amount_decimals, _, _ = decimals_per_component(records)
 
     for commodity in commodities:
         matching_transactions = list(
@@ -430,7 +434,11 @@ def print_simple_rolling_report(records: List[Transaction]) -> None:
                 if len(rolling_transactions) == 0:
                     continue
                 total = income(rolling_transactions)
-                amount = format_amount(total, trailing_zero=False)
+                decimals = amount_decimals[commodity]
+                if decimals is not None:
+                    amount = format_amount(total, places=decimals)
+                else:
+                    amount = format_amount(total)
                 amount = latest_transaction.amount.fmt % amount
                 d = ending_date.strftime("%Y/%m")
                 if any(
@@ -450,7 +458,11 @@ def print_simple_rolling_report(records: List[Transaction]) -> None:
         future_transactions = [r for r in matching_transactions if r.entry_date > today]
         if len(future_transactions) > 0:
             total = income(future_transactions)
-            amount = format_amount(total, trailing_zero=False)
+            decimals = amount_decimals[commodity]
+            if decimals is not None:
+                amount = format_amount(total, places=decimals)
+            else:
+                amount = format_amount(total)
             amount = latest_transaction.amount.fmt % amount
             payers = formatted_prominent_payers(future_transactions)
             print(f"~ {amount.rjust(18)}    next 12m   {payers}")
@@ -464,14 +476,17 @@ DRIFT_BY_WEIGHT = 0
 DRIFT_BY_AMOUNT = 1
 DRIFT_BY_POSITION = 2
 
-# todo: possibly, balance should _not_ include special dividends? i.e. a position in balance could look larger than expected
-#       in a web version we could show an asterisk (*includes one or more special dividends)
-
 
 def print_balance_report(
     records: List[Transaction], *, deviance: int = DRIFT_BY_WEIGHT
 ) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
+    # todo: note that this isn't actually very useful; every record here
+    #       is likely to be a generated one; i.e. a forecasted record,
+    #       and these typically have no preference on decimal places
+    #       so what will happen is format_amount will always fallback
+    #       to the default number of decimal places
+    amount_decimals, _, _ = decimals_per_component(records)
 
     for commodity in commodities:
         matching_transactions = list(
@@ -492,13 +507,9 @@ def print_balance_report(
             position = latest_transaction_by_ticker.position
             income_by_ticker = income(filtered_records)
             number_of_payouts = len(filtered_records)
-            # amount = format_amount(income_by_ticker, trailing_zero=False)
-            # amount = latest_transaction.amount.fmt % amount
             weight = income_by_ticker / total_income * 100
             weight_drift = target_weight - weight
             amount_drift = target_income - income_by_ticker
-            # amount_drift = format_amount(amount_drift, trailing_zero=False)
-            # amount_drift = latest_transaction.amount.fmt % amount_drift
             aps = income_by_ticker / position
             position_drift = amount_drift / aps
             drift = (weight_drift, amount_drift, position_drift)
@@ -521,9 +532,14 @@ def print_balance_report(
         for weight in weights:
             ticker, amount, fmt, pct, p, drift, n, has_estimate = weight
             wdrift, adrift, pdrift = drift
-            pct = f"{format_amount(pct)}%"
+            pct = f"{format_amount(pct, places=2)}%"
             freq = f"{n}"
-            amount = fmt % format_amount(amount, trailing_zero=False)
+            decimals = amount_decimals[commodity]
+            if decimals is not None:
+                amount = format_amount(amount, places=decimals)
+            else:
+                amount = format_amount(amount)
+            amount = fmt % amount
             if has_estimate:
                 line = f"~ {amount.rjust(18)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}"
             else:
@@ -533,11 +549,11 @@ def print_balance_report(
             position = f"({p})".rjust(18)
             if deviance == DRIFT_BY_WEIGHT:
                 if wdrift >= 0:
-                    drift = f"+ {format_amount(wdrift)}%".rjust(16)
+                    drift = f"+ {format_amount(wdrift, places=2)}%".rjust(16)
                 else:
-                    drift = f"- {format_amount(abs(wdrift))}%".rjust(16)
+                    drift = f"- {format_amount(abs(wdrift), places=2)}%".rjust(16)
             elif deviance == DRIFT_BY_AMOUNT:
-                amount_drift = fmt % format_amount(abs(adrift), trailing_zero=False)
+                amount_drift = fmt % format_amount(abs(adrift))
                 if adrift >= 0:
                     drift = f"+ {amount_drift}".rjust(16)
                 else:
@@ -559,6 +575,8 @@ def print_balance_report(
 
 def print_currency_balance_report(records: List[Transaction]) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
+    # todo: see note in print_balance_report
+    amount_decimals, _, _ = decimals_per_component(records)
     for commodity in commodities:
         matching_transactions = list(
             filter(lambda r: r.amount.symbol == commodity, records)
@@ -598,13 +616,18 @@ def print_currency_balance_report(records: List[Transaction]) -> None:
         weights.sort(key=lambda w: w[1], reverse=True)
         for weight in weights:
             symbol, amount, fmt, pct, wdrift, p, has_estimate = weight
-            pct = f"{format_amount(pct)}%"
-            amount = fmt % format_amount(amount, trailing_zero=False)
+            pct = f"{format_amount(pct, places=2)}%"
+            decimals = amount_decimals[commodity]
+            if decimals is not None:
+                amount = format_amount(amount, places=decimals)
+            else:
+                amount = format_amount(amount)
+            amount = fmt % amount
             positions = f"({p})".rjust(18)
             if wdrift >= 0:
-                drift = f"+ {format_amount(wdrift)}%".rjust(16)
+                drift = f"+ {format_amount(wdrift, places=2)}%".rjust(16)
             else:
-                drift = f"- {format_amount(abs(wdrift))}%".rjust(16)
+                drift = f"- {format_amount(abs(wdrift), places=2)}%".rjust(16)
             if has_estimate:
                 line = f"~ {amount.rjust(18)}"
             else:
@@ -613,3 +636,57 @@ def print_currency_balance_report(records: List[Transaction]) -> None:
             print(line)
         if commodity != commodities[-1]:
             print()
+
+
+def most_prominent_payers(records: List[Transaction]) -> List[str]:
+    combined_income_per_ticker = []
+    for ticker in tickers(records):
+        filtered_records = list(by_ticker(records, ticker))
+        combined_income_per_ticker.append((ticker, income(filtered_records)))
+    combined_income_per_ticker.sort(key=lambda x: x[1], reverse=True)
+    return [ticker for ticker, _ in combined_income_per_ticker]
+
+
+def formatted_prominent_payers(records: List[Transaction], *, limit: int = 3) -> str:
+    payers = most_prominent_payers(records)
+    top = payers[:limit]
+    bottom = [payer for payer in payers if payer not in top]
+    formatted = ", ".join(top)
+    formatted = (formatted[:30] + "…") if len(formatted) > 30 else formatted
+    if len(bottom) > 0:
+        additionals = f"(+{len(bottom)})"
+        formatted = f"{formatted} {additionals}"
+    return formatted
+
+
+def decimals_per_component(
+    records: List[Transaction],
+) -> Tuple[
+    Dict[str, Optional[int]], Dict[str, Optional[int]], Dict[str, Optional[int]]
+]:
+    amount_decimal_places: Dict[str, Optional[int]] = dict()
+    dividend_decimal_places: Dict[str, Optional[int]] = dict()
+    position_decimal_places: Dict[str, Optional[int]] = dict()
+
+    for symbol in symbols(records):
+        amount_decimal_places[symbol] = max_decimal_places(amounts(records, symbol))
+        # todo: note that this is not necessarily what we want; i think preferably
+        #       this component had another layer of specificity; i.e. the ticker
+        #       the problem is that if there's just _one_ occurrence of a dividend
+        #       of e.g. 4 decimals, then _all_ dividends will be set to this precision
+        #       right now this is not a problem, because there is no report that includes
+        #       the dividend of more than just one ticker anyway
+        dividend_decimal_places[symbol] = max_decimal_places(dividends(records, symbol))
+        # todo: this would work as a fallback and could be useful
+        #       in particular for forecasted records with no preference
+        #       toward decimal places; however, it would also lead to
+        #       probably unexpected number of decimals... same issue as above
+        #       for example, a "$ 0.1925" dividend would cause all payouts to have 4 decimal places
+        # if amount_decimal_places[symbol] is None:
+        #     amount_decimal_places[symbol] = dividend_decimal_places[symbol]
+    for ticker in tickers(records):
+        # note ticker key for position component; not symbol
+        position_decimal_places[ticker] = max(
+            decimalplaces(r.position) for r in records if r.ticker == ticker
+        )
+    return (amount_decimal_places, dividend_decimal_places, position_decimal_places)

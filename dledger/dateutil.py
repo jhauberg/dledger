@@ -1,11 +1,16 @@
 import calendar
-import locale
 
 from datetime import datetime, timedelta, date
 
 from typing import Tuple, Optional, List
 
-from dledger.localeutil import trysetlocale
+
+def todayd() -> date:
+    """Return today's date.
+    This function should always be used to determine today's date.
+    For debugging purposes, the function may be altered to return any other date.
+    """
+    return datetime.today().date()
 
 
 def months_between(a: date, b: date, *, ignore_years: bool = False) -> int:
@@ -95,6 +100,24 @@ def next_month(d: date) -> date:
     return d
 
 
+def parse_month(name: str) -> Optional[int]:
+    """Return the month that unambiguously matches name partially or fully.
+
+    Return None if more than one month matches.
+
+    Month names that are matched against are localized according to the
+    currently active system locale.
+    """
+    comparable_name = name.lower()
+    months = [
+        n
+        for n, m in enumerate(calendar.month_name)
+        if n > 0 and m.lower().startswith(comparable_name)
+    ]
+    # ambiguous if more than one match; return None
+    return None if len(months) != 1 else months[0]
+
+
 def parse_datestamp(datestamp: str, *, strict: bool = False) -> date:
     """Return the date that maps to datestamp.
 
@@ -176,7 +199,7 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     today to tomorrow, exactly including only today. Similarly, if component is '2019', then the
     date interval will range from 2019/01/01 to 2020/01/01, including the full year period of 2019.
     """
-    today = datetime.today().date()
+    today = todayd()
     component = component.lower()
     month: Optional[int]
     try:
@@ -188,7 +211,29 @@ def parse_period_component(component: str) -> Tuple[date, date]:
             pass
     except ValueError:  # component assumed to be typical datestamp or textual key
         pass
-    textual_keys = ["today", "tomorrow", "yesterday", "q1", "q2", "q3", "q4"]
+    default_month_keys = [
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
+    ]
+    textual_keys = [
+        "today", "tomorrow", "yesterday",
+        "q1", "q2", "q3", "q4",
+    ]
+    # note that we include english named months here as the default option
+    # this allows us to not have to trigger any change in system locale
+    # (otherwise this would require two changes;
+    # first to en_US, then another back to what it was initially)
+    textual_keys.extend(default_month_keys)
     matching_keys = [k for k in textual_keys if k.startswith(component)]
     if len(matching_keys) == 1:
         component = matching_keys[0]
@@ -200,35 +245,23 @@ def parse_period_component(component: str) -> Tuple[date, date]:
         return today + timedelta(days=-1), today
     if component == "q1" or component == "q2" or component == "q3" or component == "q4":
         months = months_in_quarter(int(component[-1]))
-        print(months)
         return date(today.year, months[0], 1), next_month(
             date(today.year, months[-1], 1)
         )
-
-    def month_if_any(name: str) -> Optional[int]:
-        matches = [
-            n for n, m in enumerate(calendar.month_name) if m.lower().startswith(name)
-        ]
-        # ambiguous if more than one match; return None
-        return None if len(matches) != 1 else matches[0]
-
-    # check against month names (both abbreviated and full e.g. 'march', 'jun', etc.)
-    # bias toward english month names first, then try localized month names
-    prev_locale = locale.getlocale(locale.LC_TIME)
-    trysetlocale(locale.LC_TIME, ["en_US", "en-US", "en"])
-    # enumerate every month name for this locale so we can capture
-    month = month_if_any(component)
-    locale.setlocale(locale.LC_TIME, prev_locale)
-    if month is None:
-        month = month_if_any(component)
-    # note that a combination of component types is not supported for the time being
-    # as it would require parse_datestamp() to include this bit and automatically
-    # letting the format loose in journal entries as well; e.g. `2019/mar/14 A  $ 2`
-    # might reconsider later
+    if component in default_month_keys:
+        starting = date(today.year, default_month_keys.index(component) + 1, 1)
+        return starting, next_month(starting)
+    # check against localized month names
+    # (both abbreviated and full e.g. 'march', 'jun', etc.)
+    month = parse_month(component)
     if month is not None:
         starting = date(today.year, month, 1)
         return starting, next_month(starting)
     # assume component is typical datestamp, as no textual keys match
+    # note that a combination of component types is not supported for the time being
+    # as it would require parse_datestamp() to include this bit and automatically
+    # letting the format loose in journal entries as well; e.g. `2019/mar/14 A  $ 2`
+    # might reconsider later
     starting = parse_datestamp(component)
     # determine number of datestamp components
     # (assuming valid datestamp; i.e. only one separator kind, no combination)
@@ -238,6 +271,7 @@ def parse_period_component(component: str) -> Tuple[date, date]:
         component.count(".")
     )
     if num_separators > 2:  # too many components
+        # todo: i don't think there's any case where this can happen
         raise ValueError(f"invalid date format ('{component}')")
     if num_separators == 0:  # year component
         return starting, starting.replace(year=starting.year + 1)

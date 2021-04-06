@@ -43,9 +43,9 @@ def decimalplaces(value: Union[str, float, int]) -> int:
 
     Use 'decimal_point' from current system locale to determine decimal separator.
     """
-    places = 0
     if isinstance(value, int):
-        return places
+        return 0
+    places = 0
     separator: str = locale.localeconv()["decimal_point"]  # type: ignore
     if isinstance(value, float):
         separator = "."  # assume always period separator for non-string values
@@ -57,5 +57,11 @@ def decimalplaces(value: Union[str, float, int]) -> int:
         if separator_index != -1:
             places = separator_index
         if places == 1 and value.endswith("0"):
-            places = 0
+            return 0
     return places
+
+
+def truncate_floating_point(value: float, *, places: int = 2) -> float:
+    v = Decimal(value)
+    v = round(v, places)
+    return float(v)

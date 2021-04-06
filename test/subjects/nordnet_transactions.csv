@@ -1,0 +1,4 @@
+Id	Bogføringsdag	Handelsdag	Valørdag	Transaktionstype	Værdipapirer	Værdipapirtype	ISIN	Antal	Kurs	Rente	Afgifter	Beløb	Valuta	Indkøbsværdi	Resultat	Totalt antal	Saldo	Vekslingskurs	Transaktionstekst	Makuleringsdato	Notanummer	Verifikationsnummer
+[REDACTED]	2021-03-04	2021-03-02	2021-03-04	UDB.	ORSTED	Aktier	DK0060094928	10	11,5	0	0	115	DKK	0	0	0	[REDACTED]	1	UDBYTTE ORSTED 11.5 DKK/AKSJE			[REDACTED]
+[REDACTED]	2021-02-17	2021-01-29	2021-02-16	UDB.	O	Aktier	US7561091049	10	0,2345	0	0	14,45	DKK	0	0	0	[REDACTED]	1	UDBYTTE O 0.2345 USD/AKSJE			[REDACTED]
+[REDACTED]	2021-02-12	2021-02-05	2021-02-11	UDB.	AAPL	Aktier	US0378331005	10	0,205	0	0	12,66	DKK	0	0	[REDACTED]	[REDACTED]	1	UDBYTTE AAPL 0.205 USD/AKSJE			[REDACTED]

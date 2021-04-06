@@ -1,8 +1,7 @@
-import locale
+import calendar
 
 from datetime import datetime, date, timedelta
 
-from dledger.localeutil import trysetlocale
 from dledger.dateutil import (
     months_between,
     in_months,
@@ -11,6 +10,7 @@ from dledger.dateutil import (
     last_of_month,
     parse_period,
     parse_datestamp,
+    parse_month,
     months_in_quarter,
 )
 
@@ -123,6 +123,20 @@ def test_months_in_quarter():
     assert months_in_quarter(3) == [7, 8, 9]
     assert months_in_quarter(4) == [10, 11, 12]
 
+    try:
+        _ = months_in_quarter(5)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        _ = months_in_quarter(-1)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
 
 def test_in_months():
     d = in_months(date(year=2019, month=1, day=1), months=1)
@@ -156,6 +170,10 @@ def test_in_months():
     d = in_months(date(year=2019, month=1, day=31), months=-1)
 
     assert d.year == 2018 and d.month == 12 and d.day == 31
+
+    d = in_months(date(year=2020, month=6, day=1), months=-12)
+
+    assert d.year == 2019 and d.month == 6 and d.day == 1
 
 
 def test_last_of_month():
@@ -224,8 +242,24 @@ def test_parse_datestamp():
     assert parse_datestamp("2019.11") == date(2019, 11, 1)
     assert parse_datestamp("2019") == date(2019, 1, 1)
 
+    assert parse_datestamp("2019/11/11", strict=True) == date(2019, 11, 11)
+
+    try:
+        parse_datestamp("2019/11", strict=True)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
     try:
         parse_datestamp("")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        parse_datestamp("2019/11/11/11")
     except ValueError:
         assert True
     else:
@@ -281,6 +315,20 @@ def test_parse_period():
         date(2019, 11, 11),
     )
 
+    try:
+        parse_period("")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        parse_period("2019/11/11:2020/11/11:2021/11/11")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
     today = datetime.today().date()
 
     assert parse_period("11") == (date(today.year, 11, 1), date(today.year, 12, 1))
@@ -314,27 +362,27 @@ def test_parse_period():
     assert parse_period("y:tom") == (yesterday, tomorrow)
 
 
-def test_parse_period_localized():
-    trysetlocale(locale.LC_TIME, ["en_US", "en-US", "en"])
-
-    today = datetime.today().date()
+def test_parse_period_months():
+    year = datetime.today().date().year
 
     assert parse_period("november") == (
-        date(today.year, 11, 1),
-        date(today.year, 12, 1),
+        date(year, 11, 1),
+        date(year, 12, 1),
     )
     assert parse_period("November") == (
-        date(today.year, 11, 1),
-        date(today.year, 12, 1),
+        date(year, 11, 1),
+        date(year, 12, 1),
     )
-    assert parse_period("nov") == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period("no") == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period("n") == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period("nov") == (date(year, 11, 1), date(year, 12, 1))
+    assert parse_period("no") == (date(year, 11, 1), date(year, 12, 1))
+    assert parse_period("n") == (date(year, 11, 1), date(year, 12, 1))
 
-    assert parse_period("nov:dec") == (date(today.year, 11, 1), date(today.year, 12, 1))
+    assert parse_period("nov:dec") == (date(year, 11, 1), date(year, 12, 1))
 
-    trysetlocale(locale.LC_TIME, ["da_DK", "da-DK", "da"])
 
-    assert parse_period("marts") == (date(today.year, 3, 1), date(today.year, 4, 1))
-    assert parse_period("feb") == (date(today.year, 2, 1), date(today.year, 3, 1))
-    assert parse_period("oct") == (date(today.year, 10, 1), date(today.year, 11, 1))
+def test_parse_month():
+    for n, name in enumerate(calendar.month_name):
+        if n == 0:
+            assert parse_month(name) is None
+        else:
+            assert parse_month(name) == n
