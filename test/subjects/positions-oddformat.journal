@@ -11,7 +11,7 @@ AAPL          # position = 100
 $ 77
 
 2019/06/04 AAPL
-  (+20)    # additional 20 shares purchased, position = 120
+  (+ 20)    # additional 20 shares purchased, position = 120
 
   2019/08/15 AAPL          # position = 120
   $ 92.4

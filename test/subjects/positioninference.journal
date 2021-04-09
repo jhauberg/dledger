@@ -5,7 +5,7 @@
 2019/02/14 AAPL (100)         # starting position = 100
   $ 73
 
-2019/05/14 AAPL (+20)         # puchased 20 additional shares, position = 120
+2019/05/14 AAPL (+ 20)        # puchased 20 additional shares, position = 120
 
 # now, the following transaction would typically infer position to 120, however,
 # we can fix that by attaching an ex-date to the dividend component

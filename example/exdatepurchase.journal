@@ -4,7 +4,7 @@
 2019/02/14 AAPL (100)    # starting position of 100
   $ 73
 
-2019/05/14 AAPL (+20)    # position = 120
+2019/05/14 AAPL (+ 20)   # position = 120
 
 # now, the following transaction will infer position to 120, however,
 # the additional 20 shares were purchased *after* the ex-date, resulting

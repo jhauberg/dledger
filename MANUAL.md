@@ -208,7 +208,7 @@ A buy or sell transaction looks exactly like a dividend transaction, except it d
 Here's a transaction where an additional 10 shares of ABC are bought:
 
 ```
-2019/01/17 ABC (+10)
+2019/01/17 ABC (+ 10)
 ```
 
 This transaction establishes that by January 17th, the position in ABC now totals 20 shares (following previous example).
@@ -216,7 +216,7 @@ This transaction establishes that by January 17th, the position in ABC now total
 Similarly, in this counter-example, 20 shares are sold the day after, effectively closing the position:
 
 ```
-2019/01/18 ABC (-20)
+2019/01/18 ABC (- 20)
 ```
 
 Alternatively, to avoid any confusion, the total new number of shares can be put in for each event:
