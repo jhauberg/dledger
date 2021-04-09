@@ -17,11 +17,11 @@ from enum import Enum
 
 SUPPORTED_TYPES = ["journal", "nordnet"]
 
-POSITION_SET = 0  # directive to set or infer absolute position
-POSITION_ADD = 1  # directive/multiplier to add to previous position
-POSITION_SUB = -1  # directive/multiplier to subtract from previous position
-POSITION_SPLIT = -2
-POSITION_SPLIT_WHOLE = -3
+POSITION_SET = 0           # (= 1) or blank; directive to set or infer absolute position
+POSITION_ADD = 1           # (+ 1) directive/multiplier to add to previous position
+POSITION_SUB = -1          # (- 1) directive/multiplier to subtract from previous position
+POSITION_SPLIT = -2        # (X 2/1) directive to split keeping fractional position
+POSITION_SPLIT_WHOLE = -3  # (x 2/1) directive to split keeping whole position
 
 
 class Distribution(Enum):
@@ -405,22 +405,24 @@ def read_journal_transaction(
         break_index = condensed_line.index(")") + 1
         position_str = condensed_line[:break_index].strip()
         position_str = position_str[1:-1].strip()
-        if position_str.startswith("+"):
+
+        def parse_position(text: str) -> float:
+            try:
+                return locale.atof(text)
+            except ValueError:
+                raise ParseError(f"invalid position ('{text}')", location)
+        if position_str.startswith("="):
+            # for example: "(= 10)"
+            position_change_directive = POSITION_SET
+            position = parse_position(position_str[1:])
+        elif position_str.startswith("+"):
             # for example: "(+ 10)"
             position_change_directive = POSITION_ADD
-            position_str = position_str[1:]
-            try:
-                position = locale.atof(position_str)
-            except ValueError:
-                raise ParseError(f"invalid position ('{position_str}')", location)
+            position = parse_position(position_str[1:])
         elif position_str.startswith("-"):
             # for example: "(- 10)"
             position_change_directive = POSITION_SUB
-            position_str = position_str[1:]
-            try:
-                position = locale.atof(position_str)
-            except ValueError:
-                raise ParseError(f"invalid position ('{position_str}')", location)
+            position = parse_position(position_str[1:])
         elif position_str.lower().startswith("x"):
             # for example: "(x 4/1)"
             # todo: maybe prefer something that augments the "x"; maybe "x~" ?
@@ -448,10 +450,9 @@ def read_journal_transaction(
                 raise ParseError(f"invalid position ('{position_str}')", location)
             position = a / b
         else:
-            try:
-                position = locale.atof(position_str)
-            except ValueError:
-                raise ParseError(f"invalid position ('{position_str}')", location)
+            # default to set/= directive
+            position_change_directive = POSITION_SET
+            position = parse_position(position_str)
         condensed_line = condensed_line[break_index:].strip()
     if len(condensed_line) == 0:
         return Transaction(
