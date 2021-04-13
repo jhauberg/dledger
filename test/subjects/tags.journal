@@ -1,0 +1,14 @@
+# this file serves as an example journal for dledger
+
+2019/02/14 AAPL (= 100) ;initial-transaction ;tag
+  $ 73 ;spring;  # note this is a single tag; i.e. "spring;", because only whitespace character separates tags
+
+2019/05/16 AAPL
+  ;summer $ 77 ;;a  # similarly, the whitespace rule makes this ";a"
+
+2019/08/15 AAPL
+  $ 77 ;fall;fall2  # and here, this is a single tag "fall;fall2"
+
+2019/11/14 ;winter AAPL
+
+  $ 77 ;winter   # duplicates are allowed and remain; produces diagnostic

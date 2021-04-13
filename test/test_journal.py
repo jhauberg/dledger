@@ -140,8 +140,7 @@ def test_parse_amount():
 def test_empty_journal():
     path = "subjects/empty.journal"
 
-    with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+    records = read(path, kind="journal")
 
     assert len(records) == 0
 
@@ -149,8 +148,7 @@ def test_empty_journal():
 def test_single_journal():
     path = "subjects/single.journal"
 
-    with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+    records = read(path, kind="journal")
 
     assert len(records) == 1
 
@@ -167,8 +165,7 @@ def test_single_journal():
 def test_simple_journal():
     path = "../example/simple.journal"
 
-    with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+    records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -213,8 +210,7 @@ def test_simple_journal():
 
     path = "../example/simple-condensed.journal"
 
-    with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+    records = read(path, kind="journal")
 
     assert len(records) == 4
 
@@ -1429,4 +1425,55 @@ def test_reverse_split():
         entry_attr=EntryAttributes(
             location=(path, 10), positioning=(None, POSITION_SET)
         ),
+    )
+
+
+def test_tags():
+    path = "subjects/tags.journal"
+
+    records = read(path, kind="journal")
+
+    assert len(records) == 4
+
+    assert records[0] == Transaction(
+        date(2019, 2, 14),
+        "AAPL",
+        100,
+        amount=Amount(73, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.73, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(location=(path, 3), positioning=(100, POSITION_SET)),
+        tags=["initial-transaction", "tag", "spring;"],
+    )
+    assert records[1] == Transaction(
+        date(2019, 5, 16),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 6), positioning=(None, POSITION_SET)
+        ),
+        tags=["summer", ";a"],
+    )
+    assert records[2] == Transaction(
+        date(2019, 8, 15),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 9), positioning=(None, POSITION_SET)
+        ),
+        tags=["fall;fall2"],  # tags only split by whitespace
+    )
+    assert records[3] == Transaction(
+        date(2019, 11, 14),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 12), positioning=(None, POSITION_SET)
+        ),
+        tags=["winter", "winter"],  # duplicates expected to remain
     )
