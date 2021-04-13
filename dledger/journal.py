@@ -76,6 +76,7 @@ class Transaction:
     kind: Distribution = Distribution.FINAL
     payout_date: Optional[date] = None
     ex_date: Optional[date] = None
+    tags: Optional[List[str]] = None
     entry_attr: Optional[EntryAttributes] = None
 
     @property
@@ -347,6 +348,18 @@ def infer(entries: Iterable[Transaction]) -> List[Transaction]:
     return transactions
 
 
+def strip_tags(text: str) -> Tuple[str, List[str]]:
+    def strip_tag(match) -> str:
+        tags.append(match.group(0))
+        return ""
+
+    tags: List[str] = []
+    text = re.sub(r";\S+", strip_tag, text)
+    #tags = list(set([tag[1:] for tag in tags]))
+    tags = [tag[1:] for tag in tags]
+    return text, tags
+
+
 def read_journal_transaction(
     lines: List[Tuple[int, str]], *, location: Tuple[str, int]
 ) -> Transaction:
@@ -361,9 +374,11 @@ def read_journal_transaction(
     full_line = "  ".join([l for (_, l) in lines])
     # strip leading and trailing whitespace; we don't need to keep edging linebreaks
     condensed_line = full_line.strip()
+    # strip and keep tags
+    condensed_line, tags = strip_tags(condensed_line)
     try:
         # date must be followed by either of the following separators (one or more)
-        datestamp_end_index = anyindex(condensed_line, [" ", "\n", "\t"])
+        datestamp_end_index = anyindex(condensed_line, [" ", "\n", "\t"])  # todo: \n would never occur since we wrap to single line
     except ValueError:
         raise ParseError(f"invalid transaction", location)
     datestamp = condensed_line[:datestamp_end_index]
@@ -459,6 +474,7 @@ def read_journal_transaction(
             d,
             ticker,
             -1,  # note -1 position; consider this None
+            tags=tags if len(tags) > 0 else None,
             entry_attr=EntryAttributes(
                 location, positioning=(position, position_change_directive)
             ),
@@ -520,6 +536,7 @@ def read_journal_transaction(
         ex_date=d3,
         amount=amount,
         dividend=dividend,
+        tags=tags if len(tags) > 0 else None,
         entry_attr=EntryAttributes(
             location, positioning=(position, position_change_directive)
         ),
