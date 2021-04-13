@@ -346,6 +346,16 @@ def main() -> None:
                     file=sys.stderr,
                 )
 
+        # find duplicate tags
+        for txn in journaled_transactions:
+            if txn.tags is not None:
+                unique_tags = set(txn.tags)
+                for tag in unique_tags:
+                    if txn.tags.count(tag) > 1:
+                        assert txn.entry_attr is not None
+                        journal, linenumber = txn.entry_attr.location
+                        print(f"{journal}:{linenumber} transaction has duplicate tag: {tag}", file=sys.stderr)
+
     sys.exit(0)
 
 
