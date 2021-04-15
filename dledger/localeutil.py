@@ -2,6 +2,8 @@ import locale
 
 from contextlib import contextmanager
 
+from typing import Iterator
+
 DECIMAL_POINT_PERIOD = {
     "decimal_point": ".",
     "thousands_sep": ","
@@ -14,8 +16,9 @@ DECIMAL_POINT_COMMA = {
 
 
 @contextmanager
-def tempconv(props: dict) -> None:
+def tempconv(props: dict) -> Iterator[None]:
     """Override specific properties in currently active locale."""
+    impl = locale.localeconv
     conv = locale.localeconv()
 
     def _localeconv():
@@ -25,4 +28,4 @@ def tempconv(props: dict) -> None:
 
     locale.localeconv = _localeconv
     yield
-    props = conv
+    locale.localeconv = impl

@@ -36,10 +36,9 @@ def removing_redundancies(
             continue
         # find all records with a cash component
         realized_records = list(r for r in recs if r not in position_records)
+        latest_transaction: Optional[Transaction] = None
         if len(realized_records) > 0:
             latest_transaction = realized_records[-1]
-        else:
-            latest_transaction = None
         # at this point we no longer need to keep some of the position entries around,
         # as we have already used them to infer and determine position for each realized entry
         for record in position_records:
@@ -119,6 +118,7 @@ def adjusting_for_splits(records: List[Transaction]) -> List[Transaction]:
             adjusted_position = record.position
             for split in later_splits:  # assuming ordered earlier to later
                 factor, directive = split.entry_attr.positioning
+                assert factor is not None
                 adjusted_position = adjusted_position * factor
                 if directive == POSITION_SPLIT_WHOLE:
                     adjusted_position = math.floor(adjusted_position)
