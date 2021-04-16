@@ -490,18 +490,18 @@ def estimated_transactions(
             future_dividend = next_linear_dividend(reference_records)
             future_dividend_value: Optional[float] = None
             if future_dividend is not None:
+                future_dividend_value = future_dividend.value
                 if future_dividend.symbol != latest_transaction.amount.symbol:
                     assert future_dividend.symbol is not None
                     assert latest_transaction.amount.symbol is not None
                     conversion_factor = rates[
                         (future_dividend.symbol, latest_transaction.amount.symbol)
                     ]
-                    future_dividend_value = future_dividend.value
                     future_amount = (
                         future_position * future_dividend_value
                     ) * conversion_factor
                 else:
-                    future_amount = future_position * future_dividend.value
+                    future_amount = future_position * future_dividend_value
             else:
                 divs = [
                     r.dividend.value
