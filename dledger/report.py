@@ -258,15 +258,14 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False) -
             position = f"({p})".rjust(18)
             line = f"{line} {position}"
 
-            assert transaction.dividend is not None
-
-            decimals = dividend_decimals[transaction.dividend.symbol]
-            if decimals is not None:
-                dividend = format_amount(transaction.dividend.value, places=decimals)
-            else:
-                dividend = format_amount(transaction.dividend.value)
-            dividend = transaction.dividend.fmt % dividend
-            line = f"{line} {dividend.rjust(16)}"
+            if transaction.dividend is not None:
+                decimals = dividend_decimals[transaction.dividend.symbol]
+                if decimals is not None:
+                    dividend = format_amount(transaction.dividend.value, places=decimals)
+                else:
+                    dividend = format_amount(transaction.dividend.value)
+                dividend = transaction.dividend.fmt % dividend
+                line = f"{line} {dividend.rjust(16)}"
 
         if should_colorize_expired_transaction:
             if transaction is underlined_record:
