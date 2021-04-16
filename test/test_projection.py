@@ -531,10 +531,12 @@ def test_future_transactions():
 
     futures = future_transactions(records)
 
-    # only transactions that match in currency will be projected
-    # because of that we only expect 1 in this case
     assert len(futures) == 1
     assert futures[0].entry_date == GeneratedDate(2020, 7, 15)
+    assert futures[0].amount == GeneratedAmount(100, symbol="kr")
+    # note that dividend is expected to be None here since the records
+    # have not gone through any inference steps
+    assert futures[0].dividend is None
 
 
 def test_estimated_transactions():
@@ -570,8 +572,8 @@ def test_estimated_transactions():
     assert estimations[1].entry_date == GeneratedDate(2021, 12, 31)
 
     records = [
-        Transaction(date(2019, 3, 1), "ABC", 1, Amount(100, symbol="$")),
-        Transaction(date(2019, 6, 1), "ABC", 1, Amount(100, symbol="$")),
+        Transaction(date(2019, 3, 1), "ABC", 1, Amount(80, symbol="$")),
+        Transaction(date(2019, 6, 1), "ABC", 1, Amount(90, symbol="$")),
         Transaction(date(2019, 9, 1), "ABC", 1, Amount(100, symbol="kr")),
     ]
 
@@ -583,9 +585,16 @@ def test_estimated_transactions():
     # the latest transaction (and all previous transactions of matching symbols)
     assert len(estimations) == 4
     assert estimations[0].entry_date == GeneratedDate(2019, 12, 15)
+    assert estimations[0].amount == GeneratedAmount(100, symbol="kr")
+    # note that dividend is expected to be None here since the records
+    # have not gone through any inference steps
+    assert estimations[0].dividend is None
     assert estimations[1].entry_date == GeneratedDate(2020, 3, 15)
+    assert estimations[1].amount == GeneratedAmount(100, symbol="kr")
     assert estimations[2].entry_date == GeneratedDate(2020, 6, 15)
+    assert estimations[2].amount == GeneratedAmount(100, symbol="kr")
     assert estimations[3].entry_date == GeneratedDate(2020, 9, 15)
+    assert estimations[3].amount == GeneratedAmount(100, symbol="kr")
 
     records = [
         Transaction(date(2019, 3, 1), "ABC", 1, Amount(100)),
@@ -800,6 +809,19 @@ def test_scheduled_transactions():
     assert scheduled[2].entry_date == GeneratedDate(2021, 6, 15)
     # note that this one is included though more than 365 days later; see earliest/cutoff in scheduled_transactions
     assert scheduled[3].entry_date == GeneratedDate(2021, 9, 15)
+
+    records = [
+        Transaction(date(2019, 3, 1), "ABC", 1, Amount(80, symbol="$")),
+        Transaction(date(2019, 5, 1), "ABC", 1, Amount(90, symbol="$")),
+        Transaction(date(2019, 7, 1), "ABC", 1, Amount(100, symbol="kr")),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2019, 9, 2))
+
+    # expecting 4 forecasted records here; 1 projected a year forward and 3 based on estimations from scheduling
+    assert len(scheduled) == 4
+    assert scheduled[0].entry_date == GeneratedDate(2019, 10, 15)
+    assert scheduled[0].amount == GeneratedAmount(100, symbol="kr")
 
 
 def test_scheduled_grace_period():
