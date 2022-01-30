@@ -209,19 +209,20 @@ def projected_date(d: date, *, timeframe: int) -> GeneratedDate:
     raise ValueError(f"invalid timeframe")
 
 
-def scheduled_transactions(
+def sample_ttm(
     records: List[Transaction],
     *,
-    since: date = todayd(),
-    rates: Optional[Dict[Tuple[str, str], float]] = None,
-) -> List[GeneratedTransaction]:
-    """ Return a list of forecasted transactions. """
+    since: date = todayd()
+) -> List[Transaction]:
+    """ Return a list of records dated in the latest trailing 12 months.
+    Only includes records from tickers with open positions and activity within
+    12 months of a given date.
+    """
     # take a sample set of latest 12 months on a per ticker basis
     sample_records: List[Transaction] = []
     for ticker in tickers(records):
-        # note that we sample all records, not just transactions
+        # note that we sample all records, not just transactions,
         # as future_transactions/estimated_transactions require more knowledge
-        # todo: we can look into improving that so we do all the filtering in this function instead
         recs = list(by_ticker(records, ticker))
         # find the latest record and base trailing period from its date
         latest_record = latest(recs)
@@ -250,14 +251,14 @@ def scheduled_transactions(
                 # todo: note that there might be some intricacies with ex-date here (i.e. in some cases ex-date
                 #       could be the date to compare against), but for now just base this logic on primary date
                 if (
-                    record.kind == Distribution.SPECIAL
-                    or other_record.kind == Distribution.SPECIAL
+                        record.kind == Distribution.SPECIAL
+                        or other_record.kind == Distribution.SPECIAL
                 ):
                     # allow identically dated records if one or the other is a special dividend
                     # but check for ambiguous position
                     # see journal.py:232 for tolerance
                     if not math.isclose(
-                        record.position, other_record.position, abs_tol=0.000001
+                            record.position, other_record.position, abs_tol=0.000001
                     ):
                         if other_record.entry_attr is not None:
                             raise ParseError(
@@ -282,6 +283,17 @@ def scheduled_transactions(
         sample_records.extend(
             r for r in recs_in_period if r.kind is not Distribution.SPECIAL
         )
+    return sample_records
+
+
+def scheduled_transactions(
+    records: List[Transaction],
+    *,
+    since: date = todayd(),
+    rates: Optional[Dict[Tuple[str, str], float]] = None,
+) -> List[GeneratedTransaction]:
+    """ Return a list of forecasted transactions. """
+    sample_records = sample_ttm(records, since=since)
     # project sample records 1 year into the future
     futures = future_transactions(sample_records, rates=rates)
     # project sample records by 12-month schedule and frequency
