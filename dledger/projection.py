@@ -388,9 +388,11 @@ def scheduled_transactions(
     return sorted(scheduled)
 
 
-def estimated_schedule(records: List[Transaction], record: Transaction) -> Schedule:
-    """ Return a forecasted dividend schedule. """
-    # todo: we should clean this up- don't filter out by period, caller can do that
+def estimated_schedule(
+    records: Iterable[Transaction],
+    record: Transaction
+) -> Schedule:
+    """ Return a forecasted dividend schedule based on a given record. """
     sample_records = trailing(
         by_ticker(records, record.ticker),
         since=last_of_month(record.entry_date),
@@ -410,7 +412,9 @@ def estimated_schedule(records: List[Transaction], record: Transaction) -> Sched
 
 
 def estimated_transactions(
-    records: List[Transaction], *, rates: Optional[Dict[Tuple[str, str], float]] = None
+    records: List[Transaction],
+    *,
+    rates: Optional[Dict[Tuple[str, str], float]] = None
 ) -> List[GeneratedTransaction]:
     """ Return a list of forecasted transactions based on a dividend schedule. """
 
