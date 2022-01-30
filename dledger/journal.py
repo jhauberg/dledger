@@ -791,8 +791,9 @@ def write(
             r.ticker == ticker and
             # don't include split directives (as the position property
             # holds a multiplier; not an absolute position)
-            (r.entry_attr.positioning[1] != POSITION_SPLIT and
-             r.entry_attr.positioning[1] != POSITION_SPLIT_WHOLE)
+            (r.entry_attr is None or
+             (r.entry_attr.positioning[1] != POSITION_SPLIT and
+              r.entry_attr.positioning[1] != POSITION_SPLIT_WHOLE))
         )
     for record in records:
         indicator = ""
@@ -801,6 +802,7 @@ def write(
         elif record.kind is Distribution.INTERIM:
             indicator = "^ "
         datestamp = record.entry_date.strftime("%Y/%m/%d")
+        assert record.entry_attr is not None
         transient_position, directive = record.entry_attr.positioning
         if (
             directive == POSITION_SPLIT or
