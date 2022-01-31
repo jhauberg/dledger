@@ -1161,6 +1161,25 @@ def test_include_journal_out_of_order():
     )
 
 
+def test_include_implicit_journal_dependency():
+    path = "subjects/include_dependency_third.journal"
+
+    # the three journals show the problem of implicit dependencies;
+    # i.e. the second journal can never be read on its own- it has an implicit
+    # dependency on the first journal (which reveals the position), and similarly, so does the third journal
+
+    # the problem can be fixed by correctly setting the include directives on a per-journal basis;
+    # however, one might think applying all dependencies in the third journal should also do the trick
+    # currently, it does not and is expected behavior for now
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError:
+        assert True
+    else:
+        assert False
+
+
 def test_implicit_currency():
     path = "subjects/implicitcurrency.journal"
 

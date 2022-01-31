@@ -1,0 +1,10 @@
+# this file serves as an example journal for dledger
+
+include include_dependency_first.journal
+include include_dependency_second.journal
+
+2019/08/15 AAPL
+  $ 77
+
+2019/11/14 AAPL
+  $ 77
