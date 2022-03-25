@@ -1242,16 +1242,20 @@ def test_write():
 
 
 def test_integrity():
+    verify_integrity("subjects/integrity-input.journal", "subjects/integrity-output.journal")
+    verify_integrity("subjects/integrity-input.journal", "subjects/integrity-output-condensed.journal", condense=True)
+
+
+def verify_integrity(input_path: str, verification_path: str, condense: bool = False):
     # test whether an input journal produces expected output;
     # effectively mimicking the print command
     # it is expected that the output is "lossy"; i.e. that
     # _all_ comments are omitted, and some records _may_ be if deemed redundant
     # similarly, it is expected that output conforms to a consistent style
     # that do not necessarily match that of the input journal
-    existing_path = "subjects/integrity-input.journal"
     existing_records = removing_redundancies(
-        read(existing_path, kind="journal"),
-        since=date(2019, 12, 1)
+        read(input_path, kind="journal"),
+        since=date(2019, 12, 10)
     )
 
     import os
@@ -1260,12 +1264,12 @@ def test_integrity():
     fd, output_path = tempfile.mkstemp()
     with os.fdopen(fd, "w", newline="") as tmp:
         with tempconv(DECIMAL_POINT_PERIOD):
-            write(existing_records, file=tmp)
+            write(existing_records, file=tmp, condensed=condense)
     records = read(output_path, kind="journal")
-    assert len(records) == 5
+    assert len(records) == 7
     with open(output_path, "r") as f:
         output = f.read()
-    with open("subjects/integrity-output.journal", "r") as f:
+    with open(verification_path, "r") as f:
         expected_output = f.read()
     assert output == expected_output
     os.remove(output_path)
