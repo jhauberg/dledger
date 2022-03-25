@@ -159,6 +159,21 @@ def symbols(
     return set(collected_symbols)
 
 
+def labels(
+    records: Iterable[Transaction]
+) -> Set[str]:
+    """ Return a set of tags in a set of records. """
+
+    tagged_records = (r for r in records if r.tags is not None)
+
+    tag_lists = [r.tags for r in tagged_records]
+    tags = [tag for tag_list
+            in tag_lists
+            for tag in tag_list]
+
+    return set(tags)
+
+
 def monthly_schedule(records: Iterable[Transaction]) -> List[int]:
     """ Return a list of unique month components in a set of records. """
 

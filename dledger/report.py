@@ -19,6 +19,7 @@ from dledger.record import (
     yearly,
     monthly,
     symbols,
+    labels,
     tickers,
     by_ticker,
     latest,
@@ -391,6 +392,9 @@ def print_stats(
             conversion_rate = rates[(from_symbol, to_symbol)]
             conversion_rate_amount = format_amount(conversion_rate)
             print_stat_row(f"{from_symbol}/{to_symbol}", f"{conversion_rate_amount}")
+    tags = sorted(labels(records))
+    if len(tags) > 0:
+        print_stat_row("Tags", f"{tags}")
 
 
 def print_simple_rolling_report(records: List[Transaction]) -> None:
