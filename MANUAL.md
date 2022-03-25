@@ -46,13 +46,13 @@ Similarly, you can also use the above command to run `dledger` without installin
 
 ### Usage
 
-The `dledger` program has many commands, flags and arguments. You can get an overview of all usage patterns through `--help`:
+The `dledger` program has many commands, flags and arguments. You can get an overview of all usage patterns through the help interface:
 
 ```shell
 $ dledger --help
 ```
 
-This might seem overwhelming, but the typical usage is `$ dledger <command> <journal> <flags>`, where `<flags>` are always an optional set of flags.
+This might seem overwhelming, but the typical usage is `$ dledger <command> <journal> <options>`, where `<options>` are always an optional set of flags.
 
 For example, the most common command-line to run a report is simply:
 
@@ -148,10 +148,10 @@ A `dledger` compatible transaction consist (at minimum) of the following element
 
 1) A date
 2) A ticker
-3) A position
+3) A [position](#positions)
 4) A cash amount\*
 
-<sup>\*only on dividend transactions</sup>
+<sup>\*only on dividend transactions.</sup>
 
 Here's an example of a genesis transaction (the first record for any given ticker), where $1 was received in dividends for a position of 10 shares in ABC (a fictional company in this context):
 
@@ -195,15 +195,30 @@ Here's an example of a transaction where the distributed dividend is in a differ
 
 This particular example establishes an [exchange rate](#exchange-rates) between DKK/$ that is applied in forecasted transactions involving these currencies.
 
+### Positions
+
+Each transaction can specify a position for the given event. There are four directives to specify position, and they are always surrounded by parentheses.
+
+These are:
+
+| Directive | Effect                          | Example            |
+| --------- | ------------------------------- | ------------------ |
+| =         | Set position (absolutely)       | `(= 10)` or `(10)` |
+| +         | Increase position               | `(+ 5)`            |
+| -         | Reduce position                 | `(- 5)`            |
+| x or X    | [Split position](#stock-splits) | `(x 4/1)`          |
+
+Note that only the `=` directive can be omitted to implicitly indicate an absolute position.
+
 ### Buy/sell
 
 A diligent investor will not only record their dividend transactions, but also their buy and sell transactions.
 
-This practice will improve [forecasts](#forecasts) inbetween periods of dividend transactions, as payout estimates are essentially based on the calculation `position * dividend` (e.g. if you change your position but don't record it, it won't be noticeable until the next time you receive a dividend). 
+This practice will improve [forecasts](#forecasts) in periods between dividend transactions, as payout estimates are essentially based on the calculation `position * dividend` (e.g. if you change your position but don't record it, it won't be reflected until the next time you receive a dividend). 
 
-A buy or sell transaction looks exactly like a dividend transaction, except it does not specify any cash amounts.
+A buy or sell transaction is almost exactly like a dividend transaction, except it does not specify any cash amounts.
 
-*Note that to `dledger`, a buy or sell transaction is only a matter of either increasing or decreasing a position. There's no concept of share price.*
+*Note that to `dledger`, a buy or sell transaction is only ever a matter of either increasing or decreasing a position. There's no concept of a share price.*
 
 Here's a transaction where an additional 10 shares of ABC are bought:
 
@@ -245,7 +260,7 @@ This lets `dledger` know that this transaction is a one-time thing and should no
 
 ### Interim dividends
 
-Recording an interim dividend transaction is similar to [recording a special dividend](#special-dividends), except you mark it with a carat (`^`) instead.
+Recording an interim dividend transaction is similar to [recording a special dividend](#special-dividends), except you mark it with a caret (`^`) instead.
 
 ```
 2019/05/20 ^ ABC
@@ -281,13 +296,13 @@ Here's an example when AAPL completed a 4-for-1 split during 2020:
 @ [2020/11/06] $ 0.205   # however, dividend has been adjusted from $0.82 previous, to $0.205 current
 ```
 
-However, there are two issues with this approach: **1)** past transactions are not adjusted accordingly, and **2)** recording buy/sell _post-split_ cause forecasted dividends to be out of propotion, as `dledger` has no way of knowing how to adjust the dividend automatically.
+However, there are two issues with this approach: **1)** past transactions are not adjusted accordingly, and **2)** recording buy/sell _post-split_ cause forecasted dividends to be out of proportion, as `dledger` has no way of knowing how to adjust the dividend automatically.
 
 To account for splits and solve both these issues, you must record the split using a split directive.
 
 #### Recording a stock split
 
-The split directive is similar to [buy/sell](#buy-sell) transactions. A split directive is used to adjust the position of a holding using a calculation rather than by an explicit amount. The benefit is that the calculation can also be applied to adjust past and forecasted transactions, proportionally.
+A split directive is similar to [buy/sell](#buysell) transactions. A split directive is used to adjust the position of a holding by a calculation rather than an explicit amount. The benefit is that the calculation can also adjust past and forecasted transactions.
 
 Here's how you would record the previous `AAPL` example:
 
@@ -313,15 +328,15 @@ The example can now be recorded like this:
 @ [2020/11/06] $ 0.205   # as number of shares went up, dividend went down proportionally
 ```
 
-Recording a split using the split directive also has the effect of adjusting _past_ transactions accordingly, making comparison of past and future transactions more effective.
+Recording a split using the split directive also has the effect of adjusting _past_ transactions accordingly, making comparison of projections more effective.
 
 You can still run reports without adjusting past transactions using the `--without-adjustment` flag.
 
 ##### Split results in fractional shares
 
-Sometimes, a split can not be applied without resulting in a fractional, non-whole amount of shares.
+Sometimes a split can not be applied without resulting in a fractional, non-whole amount of shares.
 
-What typically happens in these cases is that the fractional part is redeemed as cash. That's not _always_ the case, however. It depends on your broker and the issuing company.
+What typically happens in these cases is that the fractional part is redeemed to you as a cash distribution\*. That's not _always_ the case, however. It depends on your broker and the issuing company.
 
 The split directive can account for both options (not counting any redemption), using either an upper- or lowercase `x`.
 
@@ -342,7 +357,7 @@ or, keeping only whole shares (nearest whole number less than, or equal to, the 
 2020/08/28 AAPL (x 4/3)  # 4-to-3 => position up by 3 shares
 ```
 
-*Note that share redemption for cash should not be accounted for, as it is not considered a dividend.*
+<sup>\*A cash distribution as a result of share redemption should not be accounted for as a dividend transaction, as it is not considered a dividend distribution.</sup>
 
 ##### Reverse splits
 
@@ -396,13 +411,12 @@ Whenever you enter a record in your journal, you must associate a primary date w
 
 In general, there are typically two methods to track your dividend income:
 
-1. By payout date
-
-2. By ex-dividend date
+1) By payout date
+2) By ex-dividend date
 
 Both methods involve recording the cash you receive; the difference being *when* you record it, and which date you associate with each transaction. However, picking one method does not rule out benefits of the other; it's mostly a matter of preference.
 
-<sup>\*You can base forecasts by payout- or ex-dividend dates instead with the `--by-payout-date` and `--by-ex-date` flags</sup>
+<sup>\*You can base forecasts by payout- or ex-dividend dates instead with the `--by-payout-date` and `--by-ex-date` flags.</sup>
 
 ### By payout date
 
@@ -585,8 +599,6 @@ The report will include forecasted transactions unless `--without-forecast` is s
 
 The last row stands out, as it does not correspond to a trailing 12-month period, but instead represent the forecasted and future 12-month period, starting from today (inclusive), and is effectively the sum of all future\* transactions.
 
-<sup>\*Not including forecasted transactions dated prior to today.</sup>
-
 If you're only interested in the last row, the result is effectively identical to applying [`--sum`](#sum) on the future period report:
 
 ```shell
@@ -596,6 +608,8 @@ $ dledger report example/simply.journal --sum --period=today:
 ```console
 ~              $ 308
 ```
+
+<sup>\*Not including forecasted transactions dated prior to today.</sup>
 
 ### Weight
 
