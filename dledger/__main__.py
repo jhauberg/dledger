@@ -9,10 +9,12 @@ usage: dledger report  [<journal>]... [--period=<interval>] [-v]
                                       [--by-payout-date | --by-ex-date]
                                       [--in-currency=<symbol>]
                                       [--as-currency=<symbol> | --as-native-currency]
+                                      [--tagged=<tags>]
        dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
                                       [--by-payout-date | --by-ex-date]
                                       [--in-currency=<symbol>]
                                       [--as-currency=<symbol> | --as-native-currency]
+                                      [--tagged=<tags>]
        dledger stats   [<journal>]... [--period=<interval>] [-v]
        dledger print   [<journal>]... [--condensed]
                                       [--descending] [-v]
@@ -30,12 +32,13 @@ OPTIONS:
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
-     --in-currency=<symbol>   Show income exchanged from currency
+     --in-currency=<symbol>   Show income exchanged from currency (exclusively)
      --as-currency=<symbol>   Show income as if exchanged to currency
      --as-native-currency     Show income prior to any exchange
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
      --by-currency            Show drift from target currency exposure
+     --tagged=<tags>          Only include transactions tagged specifically
      --annual                 Show income by year
      --quarterly              Show income by quarter
      --monthly                Show income by month
@@ -245,6 +248,13 @@ def main() -> None:
     if interval is not None:
         # filter down to only transactions within period interval
         transactions = list(in_period(transactions, interval))
+
+    if args["--tagged"] is not None:
+        tags = args["--tagged"].strip().split(",")
+        if len(tags) > 0:
+            transactions = list(
+                filter(lambda txn: txn.tags is not None and any(x.strip() in txn.tags for x in tags), transactions)
+            )
 
     filter_symbol = args["--in-currency"]
     if filter_symbol is not None:
