@@ -246,6 +246,10 @@ def sample_ttm(
                     # don't compare to self
                     continue
                 if record.entry_date != other_record.entry_date:
+                    # not dated identically
+                    continue
+                if record.ispositional or other_record.ispositional:
+                    # either is positional
                     continue
                 # records dated identically (based on entry date)
                 # todo: note that there might be some intricacies with ex-date here (i.e. in some cases ex-date
@@ -384,7 +388,7 @@ def scheduled_transactions(
                     scheduled.remove(projected_recs.pop(n))
                     # start over if there's still more projections than expected
                     break
-    # finally sort them by default transaction sorting rules
+    # finally, sort them by default transaction sorting rules
     return sorted(scheduled)
 
 
