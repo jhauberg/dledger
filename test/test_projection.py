@@ -1830,6 +1830,17 @@ def test_ambiguous_position():
     else:
         assert False
 
+    # dividend distribution followed by a buy
+    records = [
+        Transaction(date(2019, 2, 14), "AAPL", 100, amount=Amount(73)),
+        Transaction(date(2019, 2, 14), "AAPL", 150),  # position could be inferred from e.g. (+ 50)
+    ]
+
+    projections = scheduled_transactions(records, since=date(2019, 2, 18))
+
+    assert len(projections) == 1
+    assert projections[0].position == 150
+
     records = [
         Transaction(date(2019, 2, 14), "AAPL", 100, amount=Amount(73)),
         Transaction(

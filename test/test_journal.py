@@ -685,6 +685,7 @@ def test_dividends_journal():
 
 
 def test_ambiguous_position_journal():
+    # note that these records are not ambiguous in terms of the journal; i.e. they can be read without issue
     path = "subjects/positionambiguity.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
@@ -708,6 +709,32 @@ def test_ambiguous_position_journal():
         amount=Amount(36.5, places=1, symbol="$", fmt="$ %s"),
         dividend=Amount(0.73, places=2, symbol="$", fmt="$ %s"),
         entry_attr=EntryAttributes(location=(path, 8), positioning=(50, POSITION_SET)),
+    )
+
+
+def test_distribution_followed_by_buy_journal():
+    path = "subjects/positionambiguity2.journal"
+
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = read(path, kind="journal")
+
+    assert len(records) == 2
+
+    assert records[0] == Transaction(
+        date(2019, 2, 14),
+        "AAPL",
+        100,
+        amount=Amount(73, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.73, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(location=(path, 7), positioning=(100, POSITION_SET)),
+    )
+
+    # note that while this record literally occurs _before_, chronologically it should occur _after_
+    assert records[1] == Transaction(
+        date(2019, 2, 14),
+        "AAPL",
+        150,
+        entry_attr=EntryAttributes(location=(path, 5), positioning=(50, POSITION_ADD)),
     )
 
 
