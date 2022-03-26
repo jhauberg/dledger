@@ -61,7 +61,7 @@ from docopt import docopt  # type: ignore
 from dledger import __version__
 from dledger.dateutil import parse_period
 from dledger.printutil import enable_color_escapes
-from dledger.record import in_period, tickers
+from dledger.record import in_period, tickers, by_ticker
 from dledger.report import (
     print_simple_report,
     print_simple_rolling_report,
@@ -84,6 +84,7 @@ from dledger.projection import (
 )
 from dledger.journal import (
     Transaction,
+    Distribution,
     write,
     read,
     SUPPORTED_TYPES,
@@ -301,6 +302,37 @@ def main() -> None:
 
     if is_verbose:  # print diagnostics on final set of transactions, if any
         assert journaled_transactions is not None
+        # find potential duplicate entries
+        for ticker in tickers(journaled_transactions):
+            entries = list(by_ticker(journaled_transactions, ticker))
+            dupes: List[Transaction] = []
+            for i, txn in enumerate(entries):
+                if txn in dupes:
+                    continue
+                for j, other_txn in enumerate(entries):
+                    if i == j:
+                        # don't compare to self
+                        continue
+                    if txn.entry_date != other_txn.entry_date:
+                        # not dated identically; move on
+                        continue
+                    if txn.ispositional or other_txn.ispositional:
+                        # either is positional; move on
+                        continue
+                    if (txn.kind == Distribution.SPECIAL or
+                            other_txn.kind == Distribution.SPECIAL):
+                        continue
+                    dupe = other_txn
+                    dupes.append(dupe)
+                    journal, linenumber = dupe.entry_attr.location
+                    existing_journal, existing_linenumber = txn.entry_attr.location
+                    existing_journal = "" if existing_journal == journal else existing_journal
+                    print(
+                        f"{journal}:{linenumber} potential transaction duplicate "
+                        f"(see \'{existing_journal}:{existing_linenumber}\')",
+                        file=sys.stderr,
+                    )
+
         # find missing date entries when specifically sorting by date
         if args["--by-payout-date"] or args["--by-ex-date"]:
             if interval is not None:
@@ -364,7 +396,10 @@ def main() -> None:
                     if txn.tags.count(tag) > 1:
                         assert txn.entry_attr is not None
                         journal, linenumber = txn.entry_attr.location
-                        print(f"{journal}:{linenumber} transaction has duplicate tag: {tag}", file=sys.stderr)
+                        print(
+                            f"{journal}:{linenumber} transaction has duplicate tag: {tag}",
+                            file=sys.stderr
+                        )
 
     sys.exit(0)
 

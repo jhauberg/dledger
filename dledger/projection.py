@@ -258,6 +258,11 @@ def sample_ttm(
                 if record.ispositional or other_record.ispositional:
                     # either is positional
                     continue
+                if record.position == other_record.position:
+                    # position is not ambiguous
+                    # the entries may still be incorrect, though, but
+                    # the journal parser should catch this
+                    continue
                 # records dated identically (based on entry date)
                 # todo: note that there might be some intricacies with ex-date here
                 #       (i.e. in some cases ex-date could be the date to compare against),
@@ -285,7 +290,7 @@ def sample_ttm(
                     # otherwise, don't allow records dated identically
                     if other_record.entry_attr is not None:
                         raise ParseError(
-                            "ambiguous record entry",
+                            f"ambiguous record entry (similar entry dated identically)",
                             location=other_record.entry_attr.location,
                         )
                     raise ValueError(
