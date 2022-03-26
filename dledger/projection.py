@@ -46,8 +46,15 @@ EARLY_LATE_THRESHOLD = 15  # early before or at this day of month, late after
 class GeneratedDate(date):
     """ Represents a date estimation. """
 
-    def __new__(cls, year: int, month: Optional[int] = None, day: Optional[int] = None):  # type: ignore
-        return super(GeneratedDate, cls).__new__(cls, year, month, day)  # type: ignore
+    def __new__(
+            cls,
+            year: int,
+            month: Optional[int] = None,
+            day: Optional[int] = None
+    ):  # type: ignore
+        return super(GeneratedDate, cls).__new__(
+            cls, year, month, day
+        )  # type: ignore
 
 
 @dataclass(frozen=True)
@@ -252,8 +259,9 @@ def sample_ttm(
                     # either is positional
                     continue
                 # records dated identically (based on entry date)
-                # todo: note that there might be some intricacies with ex-date here (i.e. in some cases ex-date
-                #       could be the date to compare against), but for now just base this logic on primary date
+                # todo: note that there might be some intricacies with ex-date here
+                #       (i.e. in some cases ex-date could be the date to compare against),
+                #       but for now just base this logic on primary date
                 if (
                         record.kind == Distribution.SPECIAL
                         or other_record.kind == Distribution.SPECIAL

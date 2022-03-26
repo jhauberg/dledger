@@ -187,9 +187,10 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                             "attempt to recursively include journal",
                             location=(path, line_number),
                         )
-                    # note that implicit dependencies could potentially be handled here by passing on
-                    # the current list of records to the read function or something similar- for now
-                    # this is just linearly drilling down through each journal and its explicit dependencies
+                    # note that implicit dependencies could potentially be handled here by passing
+                    # on the current list of records to the read function or something similar-
+                    # for now this is just linearly drilling down through each journal and its
+                    # explicit dependencies
                     journal_entries.extend(
                         # note that this assumes all included journals are of identical encoding
                         # if we instead went `read(.., kind="journal"), then this would not support
@@ -289,10 +290,10 @@ def infer(entries: Iterable[Transaction]) -> List[Transaction]:
                     # tolerance based on fractional precision from Robinhood/M1
                     # see https://robinhood.com/us/en/support/articles/66zKxGmw7zjdkFXEcGYksl/fractional-shares/
                     # or https://support.m1finance.com/hc/en-us/articles/221053227-Explanation-of-Fractional-Shares
-                    # todo: Robinhood rounds to nearest penny, so this ambiguity check might not work
+                    # todo: Robinhood rounds to nearest penny so this ambiguity check might not work
                     #       e.g. 1 penny = $ 0.01
-                    #       so if you your position would amount to 0.006, you would get 0.01
-                    #       but also hit this error, because your position is 0.006/div, not 0.01/div
+                    #       so if you your position would amount to 0.006, you would get 0.01 but
+                    #       also hit this error, because your position is 0.006/div, not 0.01/div
                     if not math.isclose(position, inferred_p, abs_tol=0.000001):
                         raise ParseError(
                             f"ambiguous position ({position} or {inferred_p}?)", attr.location
@@ -358,7 +359,6 @@ def strip_tags(text: str) -> Tuple[str, List[str]]:
 
     tags: List[str] = []
     text = re.sub(r";\S+", strip_tag, text)
-    #tags = list(set([tag[1:] for tag in tags]))
     tags = [tag[1:] for tag in tags]
     return text, tags
 
@@ -381,7 +381,8 @@ def read_journal_transaction(
     condensed_line, tags = strip_tags(condensed_line)
     try:
         # date must be followed by either of the following separators (one or more)
-        datestamp_end_index = anyindex(condensed_line, [" ", "\n", "\t"])  # todo: \n would never occur since we wrap to single line
+        # todo: \n would never occur since we wrap to single line
+        datestamp_end_index = anyindex(condensed_line, [" ", "\n", "\t"])
     except ValueError:
         raise ParseError(f"invalid transaction", location)
     datestamp = condensed_line[:datestamp_end_index]

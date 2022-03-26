@@ -685,7 +685,8 @@ def test_dividends_journal():
 
 
 def test_ambiguous_position_journal():
-    # note that these records are not ambiguous in terms of the journal; i.e. they can be read without issue
+    # note that these records are not ambiguous in terms of the journal;
+    # i.e. they can be read without issue
     path = "subjects/positionambiguity.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
