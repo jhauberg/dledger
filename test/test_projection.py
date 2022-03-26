@@ -785,9 +785,9 @@ def test_scheduled_transactions():
     ]
 
     scheduled = scheduled_transactions(records, since=date(2020, 8, 18))
-    # todo: issue here is that 2019/9 is projected to 2020/9, but we can clearly tell,
-    #       based on month interval not matching expected frequency (i.e. 3), that we don't
-    #       actually want/expect this projection - it should just be weeded out
+    # issue here is that 2019/9 is projected to 2020/9, but we can clearly tell,
+    # based on month interval not matching expected frequency (i.e. 3), that we
+    # don't actually want/expect this projection - it should just be weeded out
     assert len(scheduled) == 4
     assert scheduled[0].entry_date == GeneratedDate(2020, 11, 30)
     assert scheduled[1].entry_date == GeneratedDate(2021, 2, 28)

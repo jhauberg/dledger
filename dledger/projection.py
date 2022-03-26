@@ -370,8 +370,10 @@ def scheduled_transactions(
         projected_recs = list(by_ticker(scheduled, ticker))
         # determine approximate frequency (in sample period)
         freq = frequency(recs)
+        expected_projection_count = 12 / freq
+        excess_projections = len(projected_recs) - expected_projection_count
         # search for outliers if we have projected more records than expected
-        while len(projected_recs) > 12 / freq:
+        while excess_projections > 0:
             # base this search on the rule that interval between each projection
             # should match approximated frequency - discard records as needed
             # note that we include latest realized record to determine initial interval
@@ -382,12 +384,19 @@ def scheduled_transactions(
                 else projected_recs
             )
             for n, interval in enumerate(intervals(combined_recs)):
-                # todo: we have an infinite loop here if identically dated records reaches this point
                 if normalize_interval(interval) != freq:
                     # discard this projection
                     scheduled.remove(projected_recs.pop(n))
                     # start over if there's still more projections than expected
                     break
+            next_excess_projections = len(projected_recs) - expected_projection_count
+            if next_excess_projections < 0:
+                # we removed more than expected
+                raise AssertionError
+            if next_excess_projections == excess_projections:
+                # no change; this leads to an infinite recursion
+                raise RecursionError
+            excess_projections = next_excess_projections
     # finally, sort them by default transaction sorting rules
     return sorted(scheduled)
 
