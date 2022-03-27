@@ -287,14 +287,12 @@ def infer(entries: Iterable[Transaction]) -> List[Transaction]:
                 inferred_p = record.amount.value / record.dividend.value
                 if position is not None:
                     # determine whether position equates (close enough) to the inferred position
-                    # tolerance based on fractional precision from Robinhood/M1
-                    # see https://robinhood.com/us/en/support/articles/66zKxGmw7zjdkFXEcGYksl/fractional-shares/
-                    # or https://support.m1finance.com/hc/en-us/articles/221053227-Explanation-of-Fractional-Shares
-                    # todo: Robinhood rounds to nearest penny so this ambiguity check might not work
-                    #       e.g. 1 penny = $ 0.01
-                    #       so if you your position would amount to 0.006, you would get 0.01 but
-                    #       also hit this error, because your position is 0.006/div, not 0.01/div
-                    if not math.isclose(position, inferred_p, abs_tol=0.000001):
+                    # note that the precision here should match the precision of any inferred dividend
+                    precision = 0.000001
+                    if record.dividend.places is not None:
+                        denominator = "1" + ("0" * (record.dividend.places - 1))
+                        precision = 1 / int(denominator)
+                    if not math.isclose(position, inferred_p, abs_tol=precision):
                         raise ParseError(
                             f"ambiguous position ({position} or {inferred_p}?)", attr.location
                         )
