@@ -580,6 +580,68 @@ def test_position_inference_journal():
     )
 
 
+def test_position_inference_from_missing_dividends_journal():
+    path = "subjects/positioninference2.journal"
+    included_path = "subjects/positioninference3.journal"
+
+    with tempconv(DECIMAL_POINT_COMMA):
+        records = read(path, kind="journal")
+
+    assert len(records) == 4
+
+    assert records[0] == Transaction(
+        date(2019, 6, 19),
+        "BBB",
+        15,
+        amount=Amount(66.05, places=2, symbol="kr", fmt="%s kr"),
+        dividend=Amount(4.4033, places=4, symbol="kr", fmt="%s kr"),
+        payout_date=date(2019, 6, 18),
+        ex_date=date(2019, 6, 3),
+        entry_attr=EntryAttributes(
+            location=(included_path, 5), positioning=(15, POSITION_SET)
+        ),
+    )
+
+    assert records[1] == Transaction(
+        date(2019, 9, 18),
+        "BBB",
+        15,
+        amount=Amount(69.89, places=2, symbol="kr", fmt="%s kr"),
+        dividend=Amount(4.6593, places=4, symbol="kr", fmt="%s kr"),
+        payout_date=date(2019, 9, 17),
+        ex_date=date(2019, 8, 30),
+        entry_attr=EntryAttributes(
+            location=(included_path, 9), positioning=(15, POSITION_SET)
+        ),
+    )
+
+    assert records[2] == Transaction(
+        date(2019, 12, 18),
+        "BBB",
+        15,
+        amount=Amount(69.46, places=2, symbol="kr", fmt="%s kr"),
+        dividend=Amount(4.6307, places=4, symbol="kr", fmt="%s kr"),
+        payout_date=date(2019, 12, 17),
+        ex_date=date(2019, 11, 27),
+        entry_attr=EntryAttributes(
+            location=(included_path, 13), positioning=(15, POSITION_SET)
+        ),
+    )
+
+    assert records[3] == Transaction(
+        date(2020, 3, 18),
+        "BBB",
+        15,
+        amount=Amount(70.46, places=2, symbol="kr", fmt="%s kr"),
+        dividend=Amount(4.6973, places=4, symbol="kr", fmt="%s kr"),
+        payout_date=date(2020, 3, 17),
+        ex_date=date(2020, 3, 2),
+        entry_attr=EntryAttributes(
+            location=(path, 7), positioning=(15, POSITION_SET)
+        ),
+    )
+
+
 def test_fractional_positions_journal():
     path = "subjects/fractionalpositions.journal"
 

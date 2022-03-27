@@ -1,0 +1,9 @@
+# this file serves as a test journal for dledger
+
+# this journal assumes a system locale using comma as decimal separator
+
+include positioninference3.journal
+
+2020/03/18 BBB (15)
+  [2020/03/17] 70,46 kr
+@ [2020/03/02]

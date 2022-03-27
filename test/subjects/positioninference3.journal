@@ -1,0 +1,15 @@
+# this file serves as a test journal for dledger
+
+# this journal assumes a system locale using comma as decimal separator
+
+2019/06/19 BBB (15)
+  [2019/06/18] 66,05 kr
+@ [2019/06/03]
+
+2019/09/18 BBB (15)
+  [2019/09/17] 69,89 kr
+@ [2019/08/30]
+
+2019/12/18 BBB (15)
+  [2019/12/17] 69,46 kr
+@ [2019/11/27]
