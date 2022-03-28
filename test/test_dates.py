@@ -288,6 +288,13 @@ def test_parse_datestamp():
 
     assert parse_datestamp("0200/11/11") == date(200, 11, 11)
 
+    try:
+        parse_datestamp("2020//11/11")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
 
 def test_parse_period():
     assert parse_period("2019/11/11:2020/11/11") == (
@@ -361,6 +368,20 @@ def test_parse_period():
     assert parse_period("yesterday:tomorrow") == (yesterday, tomorrow)
     assert parse_period("y:tom") == (yesterday, tomorrow)
 
+    try:
+        parse_period("2019/mar")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        parse_period("2019/q2")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
 
 def test_parse_period_months():
     year = datetime.today().date().year
@@ -376,6 +397,13 @@ def test_parse_period_months():
     assert parse_period("nov") == (date(year, 11, 1), date(year, 12, 1))
     assert parse_period("no") == (date(year, 11, 1), date(year, 12, 1))
     assert parse_period("n") == (date(year, 11, 1), date(year, 12, 1))
+
+    try:
+        parse_period("ju")
+    except ValueError:
+        assert True
+    else:
+        assert False
 
     assert parse_period("nov:dec") == (date(year, 11, 1), date(year, 12, 1))
 

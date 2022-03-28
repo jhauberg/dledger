@@ -8,9 +8,13 @@ from dledger.record import (
     pruned,
     dividends,
     deltas,
+    income,
     in_period,
     symbols,
+    labels,
     dated,
+    amounts,
+    amount_conversion_factor
 )
 
 
@@ -49,7 +53,21 @@ def test_trailing():
     assert recs[0] == records[2]
 
 
+def test_income():
+    records = [
+        Transaction(date(2019, 3, 1), "ABC", 1, Amount(1)),
+        Transaction(date(2019, 6, 1), "ABC", 1, Amount(1)),
+        Transaction(date(2019, 9, 1), "ABC", 1),
+        Transaction(date(2019, 12, 1), "ABC", 1, Amount(1, symbol="$")),
+    ]
+
+    assert income(records) == 3
+
+
 def test_intervals():
+    assert intervals(()) == []
+    assert intervals([]) == []
+
     records = [
         Transaction(date(2019, 4, 1), "ABC", 1),
         Transaction(date(2019, 5, 1), "ABC", 1),
@@ -178,6 +196,21 @@ def test_intervals():
     # note that while the results for this case are correct, in the actual scenario where it could
     # occur, the same-date record would have been pruned beforehand, making intervals == [5, 7, 12]
     assert intervals(records) == [5, 12, 7, 12]
+
+
+def test_amounts():
+    records = [
+        Transaction(date(2019, 3, 1), "ABC", 1, Amount(1)),
+        Transaction(date(2019, 6, 1), "ABC", 1, Amount(1)),
+        Transaction(date(2019, 9, 1), "ABC", 1),
+        Transaction(date(2019, 12, 1), "ABC", 1, Amount(1, symbol="$")),
+    ]
+
+    assert len(amounts(records)) == 3
+
+    assert len(amounts(records, symbol="$")) == 1
+    assert len(amounts(records, symbol="dkk")) == 0
+    assert len(amounts(records, symbol=" ")) == 0
 
 
 def test_schedule():
@@ -340,3 +373,30 @@ def test_dated():
     hits = list(dated(records, date(2019, 3, 1), by_exdividend=True))
 
     assert len(hits) == 1
+
+
+def test_conversion_factors():
+    assert amount_conversion_factor(
+        Transaction(date(2019, 3, 1), "ABC", 1, Amount(1))
+    ) == 1
+
+    assert amount_conversion_factor(
+        Transaction(date(2019, 3, 1), "ABC", 1, Amount(1, symbol="$"), dividend=Amount(1, symbol="$"))
+    ) == 1
+
+    assert amount_conversion_factor(
+        Transaction(date(2019, 3, 1), "ABC", 1, Amount(10, symbol="DKK"), dividend=Amount(4, symbol="USD"))
+    ) == 2.5
+
+
+def test_tags():
+    records = [
+        Transaction(date(2019, 3, 1), "ABC", 1, tags=["aaa", "bbb"]),
+        Transaction(date(2019, 3, 1), "XYZ", 1, tags=["aaa"]),
+    ]
+
+    tags = labels(records)
+
+    assert len(tags) == 2
+    assert "aaa" in tags
+    assert "bbb" in tags

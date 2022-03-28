@@ -27,7 +27,16 @@ from dledger.localeutil import (
     DECIMAL_POINT_COMMA,
     DECIMAL_POINT_PERIOD,
 )
-from dledger.formatutil import decimalplaces
+from dledger.formatutil import decimalplaces, format_amount
+
+
+def test_format_amount():
+    assert format_amount(10) == "10.00"
+    assert format_amount(10, trailing_zero=False) == "10"
+    assert format_amount(10, trailing_zero=False, places=1) == "10"
+    assert format_amount(10, trailing_zero=False, places=0) == "10"
+    assert format_amount(10, trailing_zero=True, places=1) == "10.0"
+    assert format_amount(10, trailing_zero=True, places=0) == "10"
 
 
 def test_decimal_places():
