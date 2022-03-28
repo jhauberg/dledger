@@ -120,7 +120,11 @@ class ParseError(Exception):
 def read(path: str, kind: str) -> List[Transaction]:
     """ Return a list of records imported from a file. """
 
-    encoding = fileencoding(path)
+    try:
+        encoding = fileencoding(path)
+    except FileNotFoundError:
+        encoding = None
+
     if encoding is None or len(encoding) == 0:
         raise ValueError(f"Path could not be read: '{path}'")
 
@@ -128,7 +132,8 @@ def read(path: str, kind: str) -> List[Transaction]:
         return read_journal_transactions(path, encoding)
     elif kind == "nordnet":
         return read_nordnet_transactions(path, encoding)
-    return []
+    else:
+        raise ValueError(f"unsupported transaction type")
 
 
 def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transaction]:

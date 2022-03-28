@@ -137,6 +137,50 @@ def test_parse_amount():
         )
 
 
+def test_nonexistant_journal():
+    path = "subjects/does_not_exist.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+
+def test_invalid_journal_type():
+    path = "subjects/empty.journal"
+
+    try:
+        _ = read(path, kind="other")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+
+def test_recursive_include():
+    path = "subjects/include_recursive.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert f"{path}:3 attempt to recursively include journal" in str(e)
+    else:
+        assert False
+
+
+def test_ambiguous_symbol():
+    path = "subjects/ambiguous_symbol.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert f"{path}:3 ambiguous symbol definition" in str(e)
+    else:
+        assert False
+
+
 def test_empty_journal():
     path = "subjects/empty.journal"
 
@@ -1546,7 +1590,7 @@ def test_tags():
 
     records = read(path, kind="journal")
 
-    assert len(records) == 4
+    assert len(records) == 5
 
     assert records[0] == Transaction(
         date(2019, 2, 14),
@@ -1588,5 +1632,16 @@ def test_tags():
         entry_attr=EntryAttributes(
             location=(path, 12), positioning=(None, POSITION_SET)
         ),
-        tags=["winter", "winter"],  # duplicates expected to remain
+        tags=["winter", "winter",  # duplicates expected to remain
+              "hotsprings", "everywhere"],  # tags "in the open" still attached to this record
+    )
+    assert records[4] == Transaction(
+        date(2019, 12, 13),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 18), positioning=(None, POSITION_SET)
+        ),
     )
