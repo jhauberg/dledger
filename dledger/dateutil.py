@@ -115,7 +115,7 @@ def parse_month(name: str) -> Optional[int]:
         if n > 0 and m.lower().startswith(comparable_name)
     ]
     # ambiguous if more than one match; return None
-    return None if len(months) != 1 else months[0]
+    return months[0] if len(months) == 1 else None
 
 
 def parse_datestamp(datestamp: str, *, strict: bool = False) -> date:
@@ -252,9 +252,10 @@ def parse_period_component(component: str) -> Tuple[date, date]:
         starting = date(today.year, default_month_keys.index(component) + 1, 1)
         return starting, next_month(starting)
     # check against localized month names
-    # (both abbreviated and full e.g. 'march', 'jun', etc.)
+    # (both full and abbreviated e.g. 'march', 'jun', etc.)
     month = parse_month(component)
     if month is not None:
+        # todo: it's not easy to reach this point for a test; requires atypical language locale
         starting = date(today.year, month, 1)
         return starting, next_month(starting)
     # assume component is typical datestamp, as no textual keys match
@@ -270,9 +271,7 @@ def parse_period_component(component: str) -> Tuple[date, date]:
         component.count("-"),
         component.count(".")
     )
-    if num_separators > 2:  # too many components
-        # todo: i don't think there's any case where this can happen
-        raise ValueError(f"invalid date format ('{component}')")
+    assert num_separators < 3
     if num_separators == 0:  # year component
         return starting, starting.replace(year=starting.year + 1)
     if num_separators == 1:  # year and month components
