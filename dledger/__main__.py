@@ -83,6 +83,7 @@ from dledger.projection import (
     conversion_factors,
 )
 from dledger.journal import (
+    ParseError,
     Transaction,
     Distribution,
     write,
@@ -111,8 +112,6 @@ def main() -> None:
     args = docopt(__doc__, version="dledger " + __version__.__version__)
 
     enable_color_escapes()
-
-    # todo: should catch ParseError rather than showing stack trace; not useful for end-user
 
     try:
         # default to current system locale
@@ -146,7 +145,15 @@ def main() -> None:
 
     records: List[Transaction] = []
     for input_path in input_paths:
-        records.extend(read(input_path, input_type))
+        try:
+            records.extend(
+                read(input_path, input_type)
+            )
+        except ParseError as pe:
+            sys.exit(f"{pe}")
+        except ValueError as ve:
+            sys.exit(f"{ve}")
+
     if len(records) == 0:
         sys.exit(0)
 
