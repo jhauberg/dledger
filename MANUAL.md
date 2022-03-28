@@ -379,6 +379,55 @@ For example, a hypothetical reverse split using previous scenario:
 @ [2020/11/06] $ 1.64    # as number of shares went down, dividend went up proportionally
 ```
 
+## Tags
+
+You can attach tags, or _labels_, to each transaction in a journal. A tag is simply a piece of text that you can use to categorize and filter transactions by.
+
+A tag is a flexible component that can exist anywhere in a transaction. It is always indicated by a starting `;` (semi-colon) and ended by any whitespace. Thus, a tag can also include any character _except_ whitespace.
+
+```
+2019/02/14 AAPL (100) ;my-first-tag
+  $ 73 ;my-second-tag
+```
+
+You can filter by tags in both the `report` and `balance` commands. For example:
+
+```shell
+$ dledger report --tagged=my-first-tag,my-second-tag
+```
+
+Every transaction that has, _at least_, one or more of the tags listed will be included in the report (or balance).
+
+Tags are highly useful for custom filtering. For example, dividends you receive may be taxed as different kinds, or categories of income. To indicate this, you could tag each transaction specifically with the kind of income tax that applies per distribution. Then come tax day, run a report summing each tag to know exactly how much you are expected to be taxed per income category.
+
+Here's a practical example where an investor might be taxed at different levels depending on whether the distributing company is foreign or domestic:
+
+```
+2019/02/14 AAPL (100) ;foreign
+  $ 73
+
+2019/05/16 AAPL       ;foreign
+  $ 77
+
+2019/06/14 BBB (42)   ;domestic
+  € 252
+
+2019/08/15 AAPL       ;foreign
+  $ 77
+```
+
+Given these tags, the investor could then run:
+
+```shell
+$ dledger report --sum --tagged=foreign
+```
+
+This provides a summation of all the dividends that will be taxed under a certain category, which the investor can then use in their own calculations:
+
+```console
+               $ 227               AAPL
+```
+
 ## Locale
 
 For the best results, `dledger` requires a reasonably well-configured environment. This includes an expectation of a configured system locale.
