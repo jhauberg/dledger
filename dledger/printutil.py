@@ -26,7 +26,10 @@ def supports_color(stream) -> bool:  # type: ignore
 
 
 def colored(text: str, color: str) -> str:
-    if not supports_color(sys.stdout):
+    # see https://no-color.org
+    prefer_no_color = "NO_COLOR" in os.environ
+
+    if prefer_no_color or not supports_color(sys.stdout):
         return text
 
     return f"{color}{text}{COLOR_RESET}"
