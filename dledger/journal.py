@@ -830,6 +830,9 @@ def write(
             else:
                 p = format_amount(record.position, trailing_zero=False, rounded=False)
         line = f"{datestamp} {indicator}{record.ticker} ({p})"
+        if record.tags is not None and len(record.tags) > 0:
+            for tag in record.tags:
+                line += f" ;{tag}"
         if not condensed:
             print(line, file=file)
         amount_display = ""
