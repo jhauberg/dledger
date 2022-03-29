@@ -189,7 +189,7 @@ def main() -> None:
         if interval is not None:
             # filter down all records by --period, not just transactions
             records = list(in_period(records, interval))
-        print_stats(records, journal_paths=input_paths, rates=exchange_rates)
+        print_stats(records, input_paths=input_paths, rates=exchange_rates)
         sys.exit(0)
 
     ticker = args["--by-ticker"]

@@ -361,14 +361,29 @@ def print_stat_row(name: str, text: str) -> None:
     print(f"{name}: {text}")
 
 
+def print_journal_stats(
+        records: List[Transaction],
+        input_paths: List[str]
+) -> None:
+    journal_paths = set(record.entry_attr.location[0] for record in records)
+    journal_paths = sorted(list(os.path.abspath(path) for path in journal_paths))
+    input_paths = (os.path.abspath(path) for path in input_paths)
+    for n, journal_path in enumerate(journal_paths):
+        print_stat_row(
+            f"Journal {n + 1}",
+            journal_path + (
+                " (included)" if journal_path not in input_paths else ""
+            )
+        )
+
+
 def print_stats(
     records: List[Transaction],
-    journal_paths: List[str],
+    input_paths: List[str],
     *,
     rates: Optional[Dict[Tuple[str, str], float]] = None,
 ) -> None:
-    for n, journal_path in enumerate(journal_paths):
-        print_stat_row(f"Journal {n + 1}", os.path.abspath(journal_path))
+    print_journal_stats(records, input_paths)
     try:
         lc = locale.getlocale(locale.LC_NUMERIC)
         print_stat_row("Locale", f"{lc}")
