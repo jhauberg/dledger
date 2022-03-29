@@ -8,8 +8,6 @@ Documentation is based on [dledger 0.8.0](https://github.com/jhauberg/dledger/re
 
 `dledger` is a local-first, command-line tool and file-format for tracking and forecasting dividend income; hence the name "dividend" or "dollar ledger", both "dledger" for short.
 
-In tradition of [ledger-likes](https://plaintextaccounting.org/#plain-text-accounting-apps) and [plain-text accounting](https://plaintextaccounting.org), `dledger` is small, portable and reliable, and operates on plain-text journals that are both easy to read and quick to edit- and most importantly, all yours.
-
 ## Getting Started
 
 **Requires Python 3.8+**
