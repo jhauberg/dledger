@@ -377,11 +377,30 @@ def print_journal_stats(
         )
 
 
+def print_conversion_stats(
+        records: List[Transaction],
+        rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None
+) -> None:
+    currencies = sorted(symbols(records))
+    if len(currencies) > 0:
+        print_stat_row("Currencies", f"{currencies}")
+    if rates is not None:
+        conversion_keys = sorted(rates, key=lambda c: c[0])
+        for from_symbol, to_symbol in conversion_keys:
+            conversion_rate = rates[(from_symbol, to_symbol)]
+            conversion_rate_amount = format_amount(conversion_rate[1])
+            conversion_rate_datestamp = conversion_rate[0].strftime("%Y/%m/%d")
+            print_stat_row(
+                f"{from_symbol}/{to_symbol}",
+                f"{conversion_rate_amount} (as of {conversion_rate_datestamp})"
+            )
+
+
 def print_stats(
     records: List[Transaction],
     input_paths: List[str],
     *,
-    rates: Optional[Dict[Tuple[str, str], float]] = None,
+    rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> None:
     print_journal_stats(records, input_paths)
     try:
@@ -398,15 +417,7 @@ def print_stats(
     print_stat_row("Earliest", earliest_datestamp)
     print_stat_row("Latest", latest_datestamp)
     print_stat_row("Tickers", f"{len(tickers(records))}")
-    currencies = sorted(symbols(records))
-    if len(currencies) > 0:
-        print_stat_row("Symbols", f"{currencies}")
-    if rates is not None:
-        conversion_keys = sorted(rates, key=lambda c: c[0])
-        for from_symbol, to_symbol in conversion_keys:
-            conversion_rate = rates[(from_symbol, to_symbol)]
-            conversion_rate_amount = format_amount(conversion_rate)
-            print_stat_row(f"{from_symbol}/{to_symbol}", f"{conversion_rate_amount}")
+    print_conversion_stats(records, rates)
     tags = sorted(labels(records))
     if len(tags) > 0:
         print_stat_row("Tags", f"{tags}")
