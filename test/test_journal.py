@@ -1599,7 +1599,7 @@ def test_tags():
 
     records = read(path, kind="journal")
 
-    assert len(records) == 5
+    assert len(records) == 6
 
     assert records[0] == Transaction(
         date(2019, 2, 14),
@@ -1645,12 +1645,23 @@ def test_tags():
               "hotsprings", "everywhere"],  # tags "in the open" still attached to this record
     )
     assert records[4] == Transaction(
+        date(2019, 12, 12),
+        "BBB",
+        1,
+        amount=Amount(10, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(10, places=0, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 18), positioning=(1, POSITION_SET)
+        ),
+        tags=["d", "e", "b", "a", "c"],  # order expected to remain as-is; no sort
+    )
+    assert records[5] == Transaction(
         date(2019, 12, 13),
         "AAPL",
         100,
         amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
         dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
         entry_attr=EntryAttributes(
-            location=(path, 18), positioning=(None, POSITION_SET)
+            location=(path, 21), positioning=(None, POSITION_SET)
         ),
     )

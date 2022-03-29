@@ -15,5 +15,8 @@
 
  ;hotsprings ;everywhere  # these still attach to previous record
 
+2019/12/12 BBB (1)
+  $ 10 ;d ;e ;b ;a ;c # tags are not sorted; order may be intentional
+
 2019/12/13 AAPL
   $ 77

@@ -1,3 +1,5 @@
+# this comment will be omitted because writing is not lossless
+
 2019/02/14 ABC (10)
   $ 1 [2019/02/13]
 
@@ -6,10 +8,10 @@
 2019/05/16 ABC
   $ 2 @ [2019/04/08] $ 0.1
 
-2019/06/16 ABC (- 10)
+2019/06/16 ABC (- 10) ;lost-in-translation # this tag will be omitted because it is attached to a redundant record
 
-2019/08/15 ABC
-  $ 1
+2019/08/15 ABC        ;dollars ;cash       # these tags will not be omitted; they're attached to a relevant record
+  $ 1                                      # note that they also keep the literal order; i.e. they're not sorted
 
 2019/09/04 ABC (x 4/1)
 
