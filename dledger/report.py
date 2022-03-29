@@ -365,14 +365,22 @@ def print_journal_stats(
         records: List[Transaction],
         input_paths: List[str]
 ) -> None:
-    journal_paths = set(record.entry_attr.location[0] for record in records)
-    journal_paths = sorted(list(os.path.abspath(path) for path in journal_paths))
-    input_paths = (os.path.abspath(path) for path in input_paths)
-    for n, journal_path in enumerate(journal_paths):
+    # find all source paths and weed out duplicates
+    source_paths = set(record.entry_attr.location[0] for record in records)
+    # resolve absolute path for each source path
+    source_paths = list(os.path.abspath(path) for path in source_paths)
+    # resolve absolute path for each input source path
+    input_source_paths = list(os.path.abspath(path) for path in input_paths)
+    # find all journals that must have been included from another journal
+    included_paths = sorted(path for path in source_paths if path not in input_source_paths)
+    # find all journals that must have been specified as an input
+    journal_paths = sorted(path for path in source_paths if path in input_source_paths)
+    # todo: consider only counting input sources and having included journals in separate section
+    for n, path in enumerate(journal_paths + included_paths):
         print_stat_row(
             f"Journal {n + 1}",
-            journal_path + (
-                " (included)" if journal_path not in input_paths else ""
+            path + (
+                " (included)" if path in included_paths else ""
             )
         )
 
