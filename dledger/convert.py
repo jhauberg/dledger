@@ -150,7 +150,7 @@ def adjusting_for_splits(records: List[Transaction]) -> List[Transaction]:
 
 
 def with_estimates(
-    records: List[Transaction], rates: Optional[Dict[Tuple[str, str], float]] = None
+    records: List[Transaction], rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None
 ) -> List[Transaction]:
     """ Return a list of transactions, replacing missing amounts with estimates. """
     rates = rates if rates is not None else latest_exchange_rates(records)
@@ -166,7 +166,10 @@ def with_estimates(
             estimate_format = rec.entry_attr.preliminary_amount.fmt
             assert rec.dividend.symbol is not None
             assert estimate_symbol is not None
-            conversion_factor = rates[(rec.dividend.symbol, estimate_symbol)]
+            rate = rates[
+                (rec.dividend.symbol, estimate_symbol)
+            ]
+            conversion_factor = rate[1]
         else:
             estimate_symbol = rec.dividend.symbol
             estimate_format = rec.dividend.fmt
@@ -178,9 +181,10 @@ def with_estimates(
                 if rec.dividend.symbol != latest_transaction.amount.symbol:
                     assert rec.dividend.symbol is not None
                     assert latest_transaction.amount.symbol is not None
-                    conversion_factor = rates[
+                    rate = rates[
                         (rec.dividend.symbol, latest_transaction.amount.symbol)
                     ]
+                    conversion_factor = rate[1]
         estimate_amount = GeneratedAmount(
             value=(rec.position * rec.dividend.value) * conversion_factor,
             symbol=estimate_symbol,
@@ -222,7 +226,7 @@ def in_currency(
     records: List[Transaction],
     *,
     symbol: str,
-    rates: Optional[Dict[Tuple[str, str], float]] = None,
+    rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> List[Transaction]:
     """ Return a list of transactions, replacing amounts with estimates in given currency. """
     rates = rates if rates is not None else latest_exchange_rates(records)
@@ -237,7 +241,10 @@ def in_currency(
             conversion_factor = rates[(rec.amount.symbol, symbol)]
         except KeyError:
             try:
-                conversion_factor = rates[(symbol, rec.amount.symbol)]
+                rate = rates[
+                    (symbol, rec.amount.symbol)
+                ]
+                conversion_factor = rate[1]
                 conversion_factor = 1.0 / conversion_factor
             except KeyError:
                 raise ValueError(f"can't exchange between {rec.amount.symbol}/{symbol}")

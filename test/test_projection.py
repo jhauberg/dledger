@@ -1269,8 +1269,8 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [1]
-    assert rates[("$", "kr")] == 1
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 1)]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 1)
 
     records = [
         Transaction(
@@ -1286,8 +1286,8 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [6.75]
-    assert rates[("$", "kr")] == 6.75
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 6.75)]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 6.75)
 
     records = [
         Transaction(
@@ -1303,8 +1303,8 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [0.1]
-    assert rates[("$", "kr")] == 0.1
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 0.1)]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 0.1)
 
     records = [
         Transaction(
@@ -1320,8 +1320,8 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [0.001]
-    assert rates[("$", "kr")] == 0.001
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 0.001)]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 0.001)
 
     records = [
         Transaction(
@@ -1351,8 +1351,8 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [1.05]
-    assert rates[("$", "kr")] == 1.05
+    assert factors[("$", "kr")] == [(date(2019, 9, 1), 1.05)]
+    assert rates[("$", "kr")] == (date(2019, 9, 1), 1.05)
 
     records = [
         Transaction(
@@ -1375,8 +1375,8 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [1]
-    assert rates[("$", "kr")] == 1
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 1)]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 1)
 
     records = [
         Transaction(
@@ -1399,8 +1399,11 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [1, 1.1]
-    assert rates[("$", "kr")] == 1.1
+    assert factors[("$", "kr")] == [
+        (date(2019, 3, 1), 1),
+        (date(2019, 3, 1), 1.1)
+    ]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 1.1)
 
     records = [
         Transaction(
@@ -1430,8 +1433,11 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [1, 1.1]
-    assert rates[("$", "kr")] == 1.1
+    assert factors[("$", "kr")] == [
+        (date(2019, 3, 1), 1),
+        (date(2019, 3, 1), 1.1)
+    ]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 1.1)
 
     records = [
         Transaction(
@@ -1455,8 +1461,11 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [1, 1.1]
-    assert rates[("$", "kr")] == 1.1
+    assert factors[("$", "kr")] == [
+        (date(2019, 3, 1), 1),
+        (date(2019, 3, 1), 1.1)
+    ]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 1.1)
 
     records = [
         Transaction(
@@ -1480,8 +1489,8 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [1.1]
-    assert rates[("$", "kr")] == 1.1
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 1.1)]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 1.1)
 
     records = [
         Transaction(
@@ -1505,8 +1514,11 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [1, 1.1]
-    assert rates[("$", "kr")] == 1.1
+    assert factors[("$", "kr")] == [
+        (date(2019, 3, 1), 1),
+        (date(2019, 3, 1), 1.1)
+    ]
+    assert rates[("$", "kr")] == (date(2019, 3, 1), 1.1)
 
 
 def test_secondary_date_monthly():

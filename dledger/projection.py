@@ -307,7 +307,7 @@ def scheduled_transactions(
     records: List[Transaction],
     *,
     since: date = todayd(),
-    rates: Optional[Dict[Tuple[str, str], float]] = None,
+    rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> List[GeneratedTransaction]:
     """ Return a list of forecasted transactions. """
     sample_records = sample_ttm(records, since=since)
@@ -440,7 +440,7 @@ def estimated_schedule(
 def estimated_transactions(
     records: List[Transaction],
     *,
-    rates: Optional[Dict[Tuple[str, str], float]] = None
+    rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None
 ) -> List[GeneratedTransaction]:
     """ Return a list of forecasted transactions based on a dividend schedule. """
 
@@ -536,9 +536,10 @@ def estimated_transactions(
                 if future_dividend.symbol != latest_transaction.amount.symbol:
                     assert future_dividend.symbol is not None
                     assert latest_transaction.amount.symbol is not None
-                    conversion_factor = rates[
+                    rate = rates[
                         (future_dividend.symbol, latest_transaction.amount.symbol)
                     ]
+                    conversion_factor = rate[1]
                     future_amount = (
                         future_position * future_dividend_value
                     ) * conversion_factor
@@ -560,12 +561,13 @@ def estimated_transactions(
                 if len(divs) > 0:
                     assert latest_transaction.amount.symbol is not None
                     assert latest_transaction.dividend.symbol is not None
-                    conversion_factor = rates[
+                    rate = rates[
                         (
                             latest_transaction.dividend.symbol,
                             latest_transaction.amount.symbol,
                         )
                     ]
+                    conversion_factor = rate[1]
                     future_dividend_value = fmean(divs)
                     future_amount = future_dividend_value * future_position
                     future_amount = future_amount * conversion_factor
@@ -663,7 +665,8 @@ def next_position(
 
 
 def future_transactions(
-    records: List[Transaction], *, rates: Optional[Dict[Tuple[str, str], float]] = None
+        records: List[Transaction], *,
+        rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None
 ) -> List[GeneratedTransaction]:
     """ Return a list of forecasted transactions projected 12 months into the future. """
 
@@ -726,9 +729,10 @@ def future_transactions(
             if future_dividend.symbol != transaction.amount.symbol:
                 assert future_dividend.symbol is not None
                 assert transaction.amount.symbol is not None
-                conversion_factor = rates[
+                rate = rates[
                     (future_dividend.symbol, transaction.amount.symbol)
                 ]
+                conversion_factor = rate[1]
                 future_dividend_value = future_position * future_dividend.value
                 future_amount = future_dividend_value * conversion_factor
             else:
@@ -754,10 +758,10 @@ def future_transactions(
 
 def conversion_factors(
     records: List[Transaction],
-) -> Dict[Tuple[str, str], List[float]]:
+) -> Dict[Tuple[str, str], List[Tuple[date, float]]]:
     """ Return a set of currency exchange rates. """
 
-    factors: Dict[Tuple[str, str], List[float]] = dict()
+    factors: Dict[Tuple[str, str], List[Tuple[date, float]]] = dict()
 
     transactions = list(r for r in records if r.amount is not None)
 
@@ -795,7 +799,11 @@ def conversion_factors(
             assert latest_transaction.dividend is not None
             assert latest_transaction.dividend.symbol is not None
 
-            conversion_factor = amount_conversion_factor(latest_transaction)
+            conversion_factor = (
+                latest_transaction_date, amount_conversion_factor(
+                    latest_transaction
+                )
+            )
             conversion_key = (
                 latest_transaction.dividend.symbol,
                 latest_transaction.amount.symbol,
@@ -809,12 +817,14 @@ def conversion_factors(
             )
 
             for similar_transaction in similar_transactions:
-                similar_conversion_factor = amount_conversion_factor(
-                    similar_transaction
+                similar_conversion_factor = (
+                    latest_transaction_date, amount_conversion_factor(
+                        similar_transaction
+                    )
                 )
 
-                def is_ambiguous_rate(a: float, b: float) -> bool:
-                    return not math.isclose(a, b, abs_tol=0.0001)
+                def is_ambiguous_rate(a: Tuple[date, float], b: Tuple[date, float]) -> bool:
+                    return a[0] == b[0] and not math.isclose(a[1], b[1], abs_tol=0.0001)
 
                 if is_ambiguous_rate(similar_conversion_factor, conversion_factor):
                     is_probably_duplicate = False
@@ -830,11 +840,11 @@ def conversion_factors(
             # note that we set the applicable rate as last factor, as this seems more intuitive
             # (i.e. the last/latest is the rate being applied to conversions)
             factors[conversion_key].append(conversion_factor)
-
+    # todo: consider including all rates and then sort by date
     return factors
 
 
-def latest_exchange_rates(records: List[Transaction]) -> Dict[Tuple[str, str], float]:
+def latest_exchange_rates(records: List[Transaction]) -> Dict[Tuple[str, str], Tuple[date, float]]:
     """ Return a set of currency exchange rates. """
 
     # note that this assumes that, given a bunch of ambiguous rates,
