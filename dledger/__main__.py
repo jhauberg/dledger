@@ -2,7 +2,7 @@
 
 """
 USAGE:
-  dledger report  [<journal>]... [--period=<interval>] [-v]
+  dledger report  [<journal>]... [--period=<interval>] [-d]
                                  [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
                                  [--no-forecast]
                                  [--no-adjustment]
@@ -11,17 +11,17 @@ USAGE:
                                  [--in-currency=<symbol>]
                                  [--as-currency=<symbol> | --as-native-currency]
                                  [--tagged=<tags>]
-  dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
+  dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-d]
                                  [--by-payout-date | --by-ex-date]
                                  [--in-currency=<symbol>]
                                  [--as-currency=<symbol> | --as-native-currency]
-  dledger convert <file>...      [--type=<name>] [-v]
+  dledger convert <file>...      [--type=<name>] [-d]
                                  [--condensed]
                                  [--descending]
                                  [--output=<journal>]
-  dledger print   [<journal>]... [--condensed] [-v]
+  dledger print   [<journal>]... [--condensed] [-d]
                                  [--descending]
-  dledger stats   [<journal>]... [--period=<interval>] [-v]
+  dledger stats   [<journal>]... [--period=<interval>] [-d]
 
 
 OPTIONS:
@@ -48,7 +48,7 @@ OPTIONS:
      --sum                    Show income by totals
   -d --debug                  Show diagnostic messages
   -h --help                   Show program help
-  -V --version                Show program version
+  -v --version                Show program version
 
 See https://github.com/jhauberg/dledger for additional details.
 """
