@@ -752,15 +752,20 @@ def read_nordnet_transaction(
 
 
 def max_decimal_places(amounts: Iterable[Optional[Amount]]) -> Optional[int]:
-    places: Optional[int] = None
-    values = [
-        amount.places
-        for amount in amounts
-        if amount is not None and amount.places is not None
-    ]
-    if len(values) > 0:
-        return max(values)
-    return places
+    all_amounts = [amount for amount in amounts if amount is not None]
+    places_by_preference = [amount.places for amount in all_amounts if amount.places is not None]
+    max_decimals: Optional[int] = None
+    if len(places_by_preference) > 0:
+        max_decimals = max(places_by_preference)
+    places_by_inference = [decimalplaces(amount.value) for amount in all_amounts if amount.places is None]
+    if len(places_by_inference) > 0:
+        for places in places_by_inference:
+            if max_decimals is None or (max_decimals < 2 and places > max_decimals):
+                # determine whether this amount actually has more decimals than the preference
+                # (i.e. potentially hiding some value [see #21])
+                # but clamp to no more than 2 decimal places; typically this would be a generated amount
+                max_decimals = min(places, 2)
+    return max_decimals
 
 
 def write(
