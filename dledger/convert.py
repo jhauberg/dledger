@@ -125,22 +125,14 @@ def adjusting_for_splits(records: List[Transaction]) -> List[Transaction]:
 
             adjusted_dividend = record.dividend
             if record.dividend is not None:
-                # note that we're editing the user-defined preference for number of decimal places here;
-                # this is necessary to avoid issues where an adjusted dividend is rounded off
-                # for example, a journal input of "$ 0.205" is clearly 3 decimal places, but
-                # the adjusted value might be 0.1925; this would then display as "$ 0.193" due to rounding
-                # to the preference of 3 decimals - this is typically not what we want to see, though,
-                # so we try figuring out the right number of decimals
-                # however, this can go bad in the other direction too; i.e. if the calculation is
-                # off by a fraction, the value could end up being displayed as "$ 0.192523999999"
-                # so for now, this is a compromise- i'm not sure which is worse; rounding or floating point issues
                 adjusted_dividend_value = truncate_floating_point(
                     record.dividend.value / product, places=4
                 )
+                adjusted_dividend_places = decimalplaces(adjusted_dividend_value)
                 adjusted_dividend = replace(
                     record.dividend,
                     value=adjusted_dividend_value,
-                    places=decimalplaces(adjusted_dividend_value),
+                    places=max(adjusted_dividend_places, record.dividend.places),
                 )
             record = replace(
                 record, position=adjusted_position, dividend=adjusted_dividend
