@@ -268,6 +268,10 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False) -
                 dividend = transaction.dividend.fmt % dividend
                 line = f"{line} {dividend.rjust(16)}"
 
+        if transaction is underlined_record:
+            # pad to full width to make underline consistent across reports
+            line = f"{line: <79}"
+
         if should_colorize_expired_transaction:
             if transaction is underlined_record:
                 line = colored(line, COLOR_NEGATIVE_UNDERLINED)
