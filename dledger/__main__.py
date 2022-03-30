@@ -1,33 +1,35 @@
 #!/usr/bin/env python3
 
 """
-usage: dledger report  [<journal>]... [--period=<interval>] [-v]
-                                      [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
-                                      [--without-forecast]
-                                      [--without-adjustment]
-                                      [--by-ticker=<ticker>]
-                                      [--by-payout-date | --by-ex-date]
-                                      [--in-currency=<symbol>]
-                                      [--as-currency=<symbol> | --as-native-currency]
-                                      [--tagged=<tags>]
-       dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
-                                      [--by-payout-date | --by-ex-date]
-                                      [--in-currency=<symbol>]
-                                      [--as-currency=<symbol> | --as-native-currency]
-       dledger stats   [<journal>]... [--period=<interval>] [-v]
-       dledger print   [<journal>]... [--condensed]
-                                      [--descending] [-v]
-       dledger convert <file>...      [--type=<name>] [-v]
-                                      [--condensed]
-                                      [--descending]
-                                      [--output=<journal>]
+USAGE:
+  dledger report  [<journal>]... [--period=<interval>] [-v]
+                                 [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
+                                 [--no-forecast]
+                                 [--no-adjustment]
+                                 [--by-ticker=<ticker>]
+                                 [--by-payout-date | --by-ex-date]
+                                 [--in-currency=<symbol>]
+                                 [--as-currency=<symbol> | --as-native-currency]
+                                 [--tagged=<tags>]
+  dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-v]
+                                 [--by-payout-date | --by-ex-date]
+                                 [--in-currency=<symbol>]
+                                 [--as-currency=<symbol> | --as-native-currency]
+  dledger convert <file>...      [--type=<name>] [-v]
+                                 [--condensed]
+                                 [--descending]
+                                 [--output=<journal>]
+  dledger print   [<journal>]... [--condensed] [-v]
+                                 [--descending]
+  dledger stats   [<journal>]... [--period=<interval>] [-v]
+
 
 OPTIONS:
      --type=<name>            Specify type of transaction data [default: journal]
-     --output=<journal>       Specify journal filename [default: ledger.journal]
+     --output=<journal>       Specify journal filename [default: dividends.journal]
      --period=<interval>      Specify reporting date interval
-     --without-forecast       Don't include forecasted transactions
-     --without-adjustment     Don't adjust past transactions for splits
+     --no-forecast            Don't include forecasted transactions
+     --no-adjustment          Don't adjust past transactions for splits
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
      --by-ticker=<ticker>     Show income by ticker (exclusively)
@@ -44,7 +46,7 @@ OPTIONS:
      --trailing               Show income by trailing 12-months (per month)
      --weight                 Show income by weight (per ticker)
      --sum                    Show income by totals
-  -v --verbose                Show diagnostic messages
+  -d --debug                  Show diagnostic messages
   -h --help                   Show program help
   -V --version                Show program version
 
@@ -135,7 +137,7 @@ def main() -> None:
             sys.exit(f"{path}: journal not found")
 
     input_type = args["--type"]
-    is_verbose = args["--verbose"]
+    is_verbose = args["--debug"] or "DEBUG" in os.environ
 
     # note that --type defaults to 'journal' for all commands
     # (only convert supports setting type explicitly)
@@ -158,9 +160,9 @@ def main() -> None:
 
     if args["print"]:
         # disable adjusting for splits for print command
-        args["--without-adjustment"] = True
+        args["--no-adjustment"] = True
 
-    if not args["--without-adjustment"]:
+    if not args["--no-adjustment"]:
         records = adjusting_for_splits(records)
     records = sorted(removing_redundancies(records))
 
@@ -245,7 +247,7 @@ def main() -> None:
     if args["--as-native-currency"]:
         records = in_dividend_currency(records)
 
-    if not args["--without-forecast"]:
+    if not args["--no-forecast"]:
         # produce forecasted transactions dated into the future
         records.extend(scheduled_transactions(records, rates=exchange_rates))
 
