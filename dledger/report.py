@@ -570,9 +570,16 @@ def print_balance_report(
                 )
             )
         weights.sort(key=lambda w: w[1], reverse=True)
-        for weight in weights:
+        should_underline_mid_at_index: Optional[int] = None
+        if len(weights) > 1:
+            has_positive = any(True for w in weights if w[5][deviance] > 0)
+            has_negative = any(True for w in weights if w[5][deviance] < 0)
+            if has_positive and has_negative:
+                first_positive_index = next(i for i, w in enumerate(weights) if w[5][deviance] > 0)
+                last_negative_index = first_positive_index - 1
+                should_underline_mid_at_index = last_negative_index
+        for i, weight in enumerate(weights):
             ticker, amount, fmt, pct, p, drift, n, has_estimate = weight
-            wdrift, adrift, pdrift = drift
             pct = f"{format_amount(pct, places=2)}%"
             freq = f"{n}"
             decimals = amount_decimals[commodity]
@@ -588,27 +595,28 @@ def print_balance_report(
             p_decimals = decimalplaces(p)
             p = format_amount(p, places=p_decimals)
             position = f"({p})".rjust(18)
+            drift_by = drift[deviance]
             if deviance == DRIFT_BY_WEIGHT:
-                if wdrift >= 0:
-                    drift = f"+ {format_amount(wdrift, places=2)}%".rjust(16)
+                if drift_by >= 0:
+                    drift = f"+ {format_amount(drift_by, places=2)}%".rjust(16)
                 else:
-                    drift = f"- {format_amount(abs(wdrift), places=2)}%".rjust(16)
+                    drift = f"- {format_amount(abs(drift_by), places=2)}%".rjust(16)
             elif deviance == DRIFT_BY_AMOUNT:
-                amount_drift = fmt % format_amount(abs(adrift))
-                if adrift >= 0:
+                amount_drift = fmt % format_amount(abs(drift_by))
+                if drift_by >= 0:
                     drift = f"+ {amount_drift}".rjust(16)
                 else:
                     drift = f"- {amount_drift}".rjust(16)
             elif deviance == DRIFT_BY_POSITION:
-                if pdrift >= 0:
+                if drift_by >= 0:
                     # increase position (buy)
-                    drift = f"+ {format_amount(pdrift, places=p_decimals)}".rjust(16)
+                    drift = f"+ {format_amount(drift_by, places=p_decimals)}".rjust(16)
                 else:
                     # decrease position (sell)
-                    drift = f"- {format_amount(abs(pdrift), places=p_decimals)}".rjust(
-                        16
-                    )
+                    drift = f"- {format_amount(abs(drift_by), places=p_decimals)}".rjust(16)
             line = f"{line} {position} {drift}"
+            if i == should_underline_mid_at_index:
+                line = colored(line, COLOR_UNDERLINED)
             print(line)
         if commodity != commodities[-1]:
             print()
@@ -655,7 +663,15 @@ def print_currency_balance_report(records: List[Transaction]) -> None:
                 )
             )
         weights.sort(key=lambda w: w[1], reverse=True)
-        for weight in weights:
+        should_underline_mid_at_index: Optional[int] = None
+        if len(weights) > 1:
+            has_positive = any(True for w in weights if w[4] > 0)
+            has_negative = any(True for w in weights if w[4] < 0)
+            if has_positive and has_negative:
+                first_positive_index = next(i for i, w in enumerate(weights) if w[4] > 0)
+                last_negative_index = first_positive_index - 1
+                should_underline_mid_at_index = last_negative_index
+        for i, weight in enumerate(weights):
             symbol, amount, fmt, pct, wdrift, p, has_estimate = weight
             pct = f"{format_amount(pct, places=2)}%"
             decimals = amount_decimals[commodity]
@@ -674,6 +690,8 @@ def print_currency_balance_report(records: List[Transaction]) -> None:
             else:
                 line = f"{amount.rjust(20)}"
             line = f"{line}       {pct.rjust(7)} {symbol.ljust(8)} {positions} {drift}"
+            if i == should_underline_mid_at_index:
+                line = colored(line, COLOR_UNDERLINED)
             print(line)
         if commodity != commodities[-1]:
             print()
