@@ -68,6 +68,12 @@ $ dledger report ~/2018.journal ~/2019.journal
 
 This produces a report that includes transactions from both journals, ordered chronologically.
 
+#### Finding problems
+
+`dledger` will make sure to inform you if your journal has issues that prevents it from running. However, though some issues are not severe enough to be considered errors, they can still cause unexpected results.
+
+You can discover such issues by actively enabling a more verbose output by setting the `--debug` flag. This flag is automatically set if you have declared an environment variable named `DEBUG`.
+
 # Journals
 
 In the ledger-like universe, a journal is a simple [plain-text](https://en.wikipedia.org/wiki/Plain_text) file that you edit and format manually- by hand.
@@ -328,7 +334,7 @@ The example can now be recorded like this:
 
 Recording a split using the split directive also has the effect of adjusting _past_ transactions accordingly, making comparison of projections more effective.
 
-You can still run reports without adjusting past transactions using the `--without-adjustment` flag.
+You can still run reports without adjusting past transactions using the `--no-adjustment` flag.
 
 ##### Split results in fractional shares
 
@@ -644,7 +650,7 @@ Here, each row corresponds to the total income over the trailing 12-month period
 
 For example, in the above report, the first row represents the total income of the period ranging from `2018/03/01` (inclusive) through `2019/03/01` (exclusive). Similarly, the second row ranges from `2018/04/01` (inclusive) through `2019/04/01` (exclusive).
 
-The report will include forecasted transactions unless `--without-forecast` is set.
+The report will include forecasted transactions unless `--no-forecast` is set.
 
 The last row stands out, as it does not correspond to a trailing 12-month period, but instead represent the forecasted and future 12-month period, starting from today (inclusive), and is effectively the sum of all future\* transactions.
 
@@ -702,10 +708,10 @@ Since reports by default include forecasted transactions, the sum also counts th
 ~              $ 608
 ```
 
-You can apply `--without-forecast` to sum without forecasted transactions:
+You can apply `--no-forecast` to sum without forecasted transactions:
 
 ```shell
-$ dledger report example/simple.journal --sum --without-forecast
+$ dledger report example/simple.journal --sum --no-forecast
 ```
 
 ```console
@@ -755,7 +761,7 @@ In addition to listing all past or pending transactions, reports also include fo
 
 These forecasts can provide you with an overview of future cashflow, based on past cashflow, and are always projected conservatively, aiming at keeping future dividends in line with recent distributions.
 
-You can set `--without-forecast` to exclude forecasted transactions from a report entirely.
+You can set `--no-forecast` to exclude forecasted transactions from a report entirely.
 
 ## Exchange rates
 
@@ -840,10 +846,10 @@ $ dledger report ~/.journal --period=tomorrow: | head -n 5
 Similarly, the tool `tail` can be used for the same purpose, but instead of reading from the top, it reads from the bottom. This can be used to list the 5 most recent payouts:
 
 ```shell
-dledger report ~/.journal --without-forecast | tail -n 5
+dledger report ~/.journal --no-forecast | tail -n 5
 ```
 
-*Note the use of `--without-forecast` to exclude any forecasted transactions.*
+*Note the use of `--no-forecast` to exclude any forecasted transactions.*
 
 ### Archiving/condensing old journals
 
