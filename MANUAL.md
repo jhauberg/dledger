@@ -394,7 +394,9 @@ You can filter by tags in both the `report` and `balance` commands. For example:
 $ dledger report --tagged=my-first-tag,my-second-tag
 ```
 
-Every transaction that has, _at least_, one or more of the tags listed will be included in the report (or balance).
+Every transaction that has, _at least_, one or more of the tags listed will be included in the report.
+
+*Note that filtering by tag will not include forecasted transactions as these have no tags associated with them.*
 
 Tags are highly useful for custom filtering. For example, dividends you receive may be taxed as different kinds, or categories of income. To indicate this, you could tag each transaction specifically with the kind of income tax that applies per distribution. Then come tax day, run a report summing each tag to know exactly how much you are expected to be taxed per income category.
 
