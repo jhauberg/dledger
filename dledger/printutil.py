@@ -15,6 +15,8 @@ ENABLE_PROCESSED_OUTPUT = 0x0001
 ENABLE_WRAP_AT_EOL_OUTPUT = 0x0002
 ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
 
+NO_COLOR = False
+
 
 def supports_color(stream) -> bool:  # type: ignore
     """Determine whether an output stream (e.g. stdout/stderr) supports displaying colored text.
@@ -26,10 +28,7 @@ def supports_color(stream) -> bool:  # type: ignore
 
 
 def colored(text: str, color: str) -> str:
-    # see https://no-color.org
-    prefer_no_color = "NO_COLOR" in os.environ
-
-    if prefer_no_color or not supports_color(sys.stdout):
+    if NO_COLOR or not supports_color(sys.stdout):
         return text
 
     return f"{color}{text}{COLOR_RESET}"
@@ -39,6 +38,14 @@ def is_windows_environment() -> bool:
     """ Return True if on a Windows platform, False otherwise. """
 
     return os.name == "nt"
+
+
+def suppress_color(suppress: bool) -> None:
+    """ Set whether or not to suppress colored text. """
+
+    global NO_COLOR
+
+    NO_COLOR = suppress
 
 
 def enable_color_escapes() -> None:

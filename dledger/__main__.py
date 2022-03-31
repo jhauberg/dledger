@@ -2,6 +2,7 @@
 
 """
 USAGE:
+  dledger report  [<journal>]... [--period=<interval>] [-d] [--no-color]
                                  [--monthly | --quarterly | --yearly | --trailing | --weight | --sum]
                                  [--no-forecast]
                                  [--no-adjustment]
@@ -10,7 +11,7 @@ USAGE:
                                  [--in-currency=<symbol>]
                                  [--as-currency=<symbol> | --as-native-currency]
                                  [--tagged=<tags>]
-  dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-d]
+  dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-d] [--no-color]
                                  [--by-payout-date | --by-ex-date]
                                  [--in-currency=<symbol>]
                                  [--as-currency=<symbol> | --as-native-currency]
@@ -45,6 +46,7 @@ OPTIONS:
      --trailing               Show income by trailing 12-months (per month)
      --weight                 Show income by weight (per ticker)
      --sum                    Show income by totals
+     --no-color               Don't apply ANSI colors.
   -d --debug                  Show diagnostic messages
   -h --help                   Show program help
   -v --version                Show program version
@@ -60,7 +62,7 @@ from docopt import docopt  # type: ignore
 
 from dledger import __version__
 from dledger.dateutil import parse_period
-from dledger.printutil import enable_color_escapes
+from dledger.printutil import enable_color_escapes, suppress_color
 from dledger.record import in_period, tickers, by_ticker
 from dledger.report import (
     print_simple_report,
@@ -137,6 +139,9 @@ def main() -> None:
 
     input_type = args["--type"]
     is_verbose = args["--debug"] or "DEBUG" in os.environ
+    # see https://no-color.org
+    if args["--no-color"] or "NO_COLOR" in os.environ:
+        suppress_color(True)
 
     # note that --type defaults to 'journal' for all commands
     # (only convert supports setting type explicitly)
