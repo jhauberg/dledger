@@ -417,7 +417,10 @@ def print_stats(
     print_journal_stats(records, input_paths)
     try:
         lc = locale.getlocale(locale.LC_NUMERIC)
-        print_stat_row("Locale", f"{lc}")
+        decimal_point = locale.localeconv()["decimal_point"]
+        thousands_separator = locale.localeconv()["thousands_sep"]
+        expected_number_format = f"1{thousands_separator}000{decimal_point}00"
+        print_stat_row("Locale", f"{lc}, Numbers: \"{expected_number_format}\"")
     except locale.Error:
         print_stat_row("Locale", "Not configured")
     if len(records) == 0:
@@ -748,4 +751,4 @@ def decimals_per_component(
         position_decimal_places[ticker] = max(
             decimalplaces(r.position) for r in records if r.ticker == ticker
         )
-    return (amount_decimal_places, dividend_decimal_places, position_decimal_places)
+    return amount_decimal_places, dividend_decimal_places, position_decimal_places
