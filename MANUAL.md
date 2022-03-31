@@ -565,10 +565,10 @@ There are several flags that can be used to control the appearance and grouping 
 
 ### Annually
 
-The `--annual` flag can be used to show you total income over the course of every year passed since the first recorded transaction.
+The `--yearly` (`-y` for short) flag can be used to show you total income over the course of every year passed since the first recorded transaction.
 
 ```shell
-$ dledger report example/simple.journal --annual
+$ dledger report example/simple.journal --yearly
 ```
 
 ```console
@@ -584,7 +584,7 @@ If a journal contains income of multiple currencies, the report is split in a se
 
 ### Monthly
 
-Similar to [`--annual`](#annually), the `--monthly` flag groups income received by month.
+Similar to [annual reporting](#annually), the `--monthly` (`-m`) flag groups income received by month.
 
 ```shell
 $ dledger report example/simple.journal --monthly
@@ -603,7 +603,7 @@ $ dledger report example/simple.journal --monthly
 
 ### Quarterly
 
-Similar to [`--annual`](#annually), the `--quarterly` flag groups income received by quarter.
+Similar to [annual reporting](#annually), the `--quarterly` (`-q`) flag groups income received by quarter.
 
 ```shell
 $ dledger report example/simple.journal --quarterly

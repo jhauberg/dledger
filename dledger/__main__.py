@@ -2,8 +2,7 @@
 
 """
 USAGE:
-  dledger report  [<journal>]... [--period=<interval>] [-d]
-                                 [--monthly | --quarterly | --annual | --trailing | --weight | --sum]
+                                 [--monthly | --quarterly | --yearly | --trailing | --weight | --sum]
                                  [--no-forecast]
                                  [--no-adjustment]
                                  [--by-ticker=<ticker>]
@@ -40,9 +39,9 @@ OPTIONS:
      --by-amount              Show drift from target income
      --by-currency            Show drift from target currency exposure
      --tagged=<tags>          Only include transactions tagged specifically
-     --annual                 Show income by year
-     --quarterly              Show income by quarter
-     --monthly                Show income by month
+  -y --yearly                 Show income by year
+  -q --quarterly              Show income by quarter
+  -m --monthly                Show income by month
      --trailing               Show income by trailing 12-months (per month)
      --weight                 Show income by weight (per ticker)
      --sum                    Show income by totals
@@ -299,7 +298,7 @@ def main() -> None:
             print_simple_sum_report(transactions)
         elif args["--trailing"]:
             print_simple_rolling_report(transactions)
-        elif args["--annual"]:
+        elif args["--yearly"]:
             print_simple_annual_report(transactions)
         elif args["--monthly"]:
             print_simple_monthly_report(transactions)
