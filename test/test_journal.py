@@ -1415,7 +1415,7 @@ def test_nordnet_import():
         ex_date=date(2021, 1, 29),
         ticker="O",
         position=10,
-        amount=Amount(14.45, places=2, symbol="DKK", fmt="%s DKK"),
+        amount=Amount(123.45, places=2, symbol="DKK", fmt="%s DKK"),
         dividend=Amount(0.2345, places=4, symbol="USD", fmt="%s USD"),
         entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
     )
@@ -1425,7 +1425,7 @@ def test_nordnet_import():
         ex_date=date(2021, 2, 5),
         ticker="AAPL",
         position=10,
-        amount=Amount(12.66, places=2, symbol="DKK", fmt="%s DKK"),
+        amount=Amount(123.45, places=2, symbol="DKK", fmt="%s DKK"),
         dividend=Amount(0.205, places=3, symbol="USD", fmt="%s USD"),
         entry_attr=EntryAttributes(location=(path, 4), positioning=(10, POSITION_SET)),
     )
@@ -1436,6 +1436,19 @@ def test_nordnet_import_ambiguity():
 
     try:
         # record has both "0,234" and "0.2345" dividend component
+        with tempconv(DECIMAL_POINT_COMMA):
+            _ = read(path, kind="nordnet")
+    except ParseError:
+        assert True
+    else:
+        assert False
+
+
+def test_nordnet_import_dupes():
+    path = "subjects/nordnet_transactions_expect_duplicates.csv"
+
+    try:
+        # contains reverted transaction
         with tempconv(DECIMAL_POINT_COMMA):
             _ = read(path, kind="nordnet")
     except ParseError:
