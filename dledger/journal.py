@@ -628,21 +628,57 @@ def parse_amount(amount: str, *, location: Tuple[str, int]) -> Amount:
 def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transaction]:
     records = []
 
+    required_headers = {
+        1: "Bogføringsdag",
+        2: "Handelsdag",
+        3: "Valørdag",
+        6: "Værdipapirer",
+        9: "Antal",
+        10: "Kurs",
+        14: "Beløb",
+        15: "Valuta",
+        21: "Transaktionstekst"
+    }
+
     with open(path, newline="", encoding=encoding) as file:
         reader = csv.reader(file, delimiter="\t")
 
-        next(reader)  # skip headers
+        headers = next(reader)
 
         line_number = 1
+        location = (path, line_number)
+
+        required_min_header_count = sorted(required_headers.keys())[-1] + 1
+        if len(headers) < required_min_header_count:
+            raise ParseError(
+                f"unexpected number of columns ({len(headers)} < {required_min_header_count})", location
+            )
+
+        for column, expected_header in required_headers.items():
+            header = str(headers[column]).strip()
+            if header != expected_header:
+                raise ParseError(
+                    f"unexpected header at column {column} (\"{header}\" != \"{expected_header}\")", location
+                )
 
         for row in reader:
             line_number += 1
+            location = (path, line_number)
 
             if len(row) == 0:
                 # skip empty rows
                 continue
 
-            transactional_type = str(row[4]).strip()
+            transactional_type = str(row[5]).strip()
+
+            if transactional_type == "MAK. UDB.":
+                # note that we can't reasonably know which transaction is actually being reverted; even if we sort
+                # chronologically later and know the ticker, it is still not guaranteed to be "in order"
+                # so better bail out and have user fix the issue- similarly, with ambiguous values, we
+                # don't make any guesses as we simply cannot be certain which option is correct
+                raise ParseError(
+                    f"earlier transaction reverted; proceeding would cause duplicates", location
+                )
 
             required_transactional_types = [
                 "UDB."  # danish
@@ -652,26 +688,28 @@ def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             if not any(t == transactional_type for t in required_transactional_types):
                 continue
 
-            records.append(read_nordnet_transaction(row, location=(path, line_number)))
+            records.append(read_nordnet_transaction(row, required_headers, location=location))
 
     return records
 
 
 def read_nordnet_transaction(
-    record: List[str], *, location: Tuple[str, int]
+    columns: List[str], headers: Dict[int, str], *, location: Tuple[str, int]
 ) -> Transaction:
-    if len(record) < 12:
-        raise ParseError(f"unexpected number of columns ({len(record)} > 12)", location)
+    if len(columns) < 22:
+        raise ParseError(f"unexpected number of columns ({len(columns)} < 22)", location)
 
-    entry_date_value = str(record[1]).strip()
-    ex_date_value = str(record[2]).strip()
-    payout_date_value = str(record[3]).strip()
-    ticker = str(record[5]).strip()
-    position_str = str(record[8]).strip()
-    dividend_str = str(record[9]).strip()
-    amount_str = str(record[12]).strip()
-    amount_symbol = str(record[13]).strip()
-    transaction_text = str(record[19]).strip()
+    values = [str(columns[column]).strip() for column in headers.keys()]
+    # assuming order remains identical
+    (entry_date_value,
+     ex_date_value,
+     payout_date_value,
+     ticker,
+     position_str,
+     dividend_str,
+     amount_str,
+     amount_symbol,
+     transaction_text) = values
 
     # hack: some numbers may show as e.g. '1.500' which atof will parse as 1.5,
     #       when in fact it should be parsed as 1.500,00 as per danish locale
