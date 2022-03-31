@@ -17,12 +17,14 @@ This should generate a `benchmark.journal` in this directory. This journal can b
 To run a benchmark, move to the root of the project, then run `time` on a `report` command, using the newly generated benchmark records:
 
 ```shell
-$ /usr/bin/time python3 -m dledger report contrib/benchmark/benchmark.journal --per=today:
+$ /usr/bin/time python3 -m dledger report contrib/benchmark/benchmark.journal > /dev/null
 ```
 
-*Could use the `time` command provided by your shell instead; here we use the system built-in executable.*
+*We could use the `time` command provided by your shell instead; here we use the system built-in executable.*
 
-This clocks in how long it took to execute the given command; in this case, a `report` command involving parsing, projecting and spitting out a forecast:
+This clocks in how long it took to execute the given command; in this case, a `report` command involving parsing, projecting and spitting out a forecast.
+
+*Note that we pipe all `dledger` generated output to `/dev/null` because in this case we're not actually interested in seeing any of that.*
 
 ```console
         0.82 real         0.79 user         0.01 sys

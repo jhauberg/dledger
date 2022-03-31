@@ -4,7 +4,7 @@ from datetime import datetime, date
 
 sys.path.append("../../")
 
-from dledger.journal import Transaction, Amount, write
+from dledger.journal import Transaction, Amount, EntryAttributes, write
 from dledger.dateutil import previous_month
 
 today = datetime.today().date()
@@ -23,10 +23,18 @@ while len(records) < MAX_RECORDS:
             entry_date=d,
             ticker="ABC",
             position=10,
-            amount=Amount(1, fmt="$ %s")
+            amount=Amount(1, fmt="%s kr"),
+            dividend=Amount(0.1, fmt="$ %s"),
+            tags=["a", "b", "c"],
+            entry_attr=EntryAttributes(
+                location=("fantasy", -1),  # not important in this case
+                positioning=(None, 0)  # not important in this case
+            )
         )
     )
     d = previous_month(d)
+
+assert len(records) > 0
 
 records.sort()
 
