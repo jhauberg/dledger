@@ -1346,15 +1346,17 @@ def test_write():
         write(existing_records, file=tmp)
     records = read(output_path, kind="journal")
     os.remove(output_path)
-    # todo: this simple check won't fly due to entry attributes
-    # assert records == existing_records
     assert len(records) == len(existing_records)
-    assert records[0].ticker == existing_records[0].ticker
-    assert records[0].amount == existing_records[0].amount
-    assert records[0].position == existing_records[0].position
-    assert records[0].dividend == existing_records[0].dividend
-    assert records[0].kind == existing_records[0].kind
-    assert records[0].entry_date == existing_records[0].entry_date
+    for n, record in enumerate(records):
+        assert record.ticker == existing_records[n].ticker
+        assert record.amount == existing_records[n].amount
+        assert record.position == existing_records[n].position
+        assert record.dividend == existing_records[n].dividend
+        assert record.kind == existing_records[n].kind
+        assert record.tags == existing_records[n].tags
+        assert record.entry_date == existing_records[n].entry_date
+        assert record.ex_date == existing_records[n].ex_date
+        assert record.payout_date == existing_records[n].payout_date
 
 
 def test_integrity():
