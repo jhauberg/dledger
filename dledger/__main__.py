@@ -9,13 +9,13 @@ USAGE:
                                  [--by-ticker=<ticker>]
                                  [--by-payout-date | --by-ex-date]
                                  [--in-currency=<symbol>]
-                                 [--as-currency=<symbol> | --as-native-currency]
+                                 [--as-currency=<symbol> | --no-exchange]
                                  [--tagged=<tags>]
                                  [--reverse]
   dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-d] [--no-color]
                                  [--by-payout-date | --by-ex-date]
                                  [--in-currency=<symbol>]
-                                 [--as-currency=<symbol> | --as-native-currency]
+                                 [--as-currency=<symbol> | --no-exchange]
   dledger convert <file>...      [--type=<name>] [-d]
                                  [--condense]
                                  [--reverse]
@@ -36,7 +36,7 @@ OPTIONS:
      --by-ticker=<ticker>     Show income by ticker (exclusively)
      --in-currency=<symbol>   Show income exchanged from currency (exclusively)
      --as-currency=<symbol>   Show income as if exchanged to currency
-     --as-native-currency     Show income prior to any exchange
+     --no-exchange            Show income prior to any exchange (both realized and forecasted)
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
      --by-currency            Show drift from target currency exposure
@@ -264,7 +264,7 @@ def main() -> None:
             for r in records
         ]
 
-    if args["--as-native-currency"]:
+    if args["--no-exchange"]:
         records = in_dividend_currency(records)
 
     if not args["--no-forecast"]:
