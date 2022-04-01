@@ -738,15 +738,20 @@ def read_nordnet_transaction(
         amount = locale.atof(amount_str)
         dividend = locale.atof(dividend_str)
 
-    transaction_text_components = transaction_text.split(" ")
+    if "/" not in transaction_text:
+        raise ParseError(f"unexpected transaction text: \"{transaction_text}\"", location)
 
-    if transaction_text_components[-1].startswith("/"):
-        # hack: the transaction text is sometimes split like "USD /SH"
-        dividend_symbol = transaction_text_components[-2]
-        dividend_rate_str = transaction_text_components[-3]
-    else:
-        dividend_symbol = transaction_text_components[-1].split("/")[0]
-        dividend_rate_str = transaction_text_components[-2]
+    transaction_text_components = transaction_text.split("/")
+    if len(transaction_text_components) > 2:
+        raise ParseError(f"unexpected transaction text: \"{transaction_text}\"", location)
+
+    # we only care about the left-hand side result
+    transaction_text_components = transaction_text_components[0].strip().split(" ")
+    if len(transaction_text_components) < 2:
+        raise ParseError(f"unexpected transaction text: \"{transaction_text}\"", location)
+
+    dividend_symbol = transaction_text_components[-1]
+    dividend_rate_str = transaction_text_components[-2]
 
     # hack: for this number, it is typically represented using period for decimals
     #       but occasionally a comma sneaks in- we assume that is an error and correct it
@@ -758,7 +763,7 @@ def read_nordnet_transaction(
         with tempconv(DECIMAL_POINT_PERIOD):
             dividend_rate = locale.atof(dividend_rate_str)
     except ValueError:
-        raise ParseError(f"unexpected transaction text", location)
+        raise ParseError(f"unexpected transaction text: \"{transaction_text}\"", location)
 
     assert dividend_rate is not None
 
