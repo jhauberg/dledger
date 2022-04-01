@@ -30,14 +30,18 @@ from dledger.record import (
     amounts,
 )
 
-from typing import List, Dict, Optional, Tuple, Iterable, Callable
+from typing import List, Dict, Optional, Tuple
 
 
-def print_simple_annual_report(records: List[Transaction]) -> None:
+def print_simple_annual_report(records: List[Transaction], *, descending: bool = False) -> None:
     today = todayd()
+    final_year = latest(records).entry_date.year
     years = range(
-        earliest(records).entry_date.year, latest(records).entry_date.year + 1
+        earliest(records).entry_date.year, final_year + 1
     )
+
+    if descending:
+        years = reversed(years)
 
     commodities = sorted(symbols(records, excluding_dividends=True))
     amount_decimals, _, _ = decimals_per_component(records)
@@ -63,7 +67,7 @@ def print_simple_annual_report(records: List[Transaction]) -> None:
             amount = latest_transaction.amount.fmt % amount
             d = f"{year}"
             if any(isinstance(r.amount, GeneratedAmount) for r in yearly_transactions):
-                if year == years[-1]:
+                if year == final_year:
                     d = latest_transaction.entry_date.strftime("%Y/%m")
                     line = f"~ {amount.rjust(18)}  < {d.ljust(11)}"
                 else:
@@ -80,11 +84,14 @@ def print_simple_annual_report(records: List[Transaction]) -> None:
             print()
 
 
-def print_simple_monthly_report(records: List[Transaction]) -> None:
+def print_simple_monthly_report(records: List[Transaction], *, descending: bool = False) -> None:
     today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
+
+    if descending:
+        years = reversed(years)
 
     commodities = sorted(symbols(records, excluding_dividends=True))
     amount_decimals, _, _ = decimals_per_component(records)
@@ -97,7 +104,10 @@ def print_simple_monthly_report(records: List[Transaction]) -> None:
             continue
         latest_transaction = latest(matching_transactions)
         for year in years:
-            for month in range(1, 12 + 1):
+            months = range(1, 12 + 1)
+            if descending:
+                months = reversed(months)
+            for month in months:
                 monthly_transactions = list(
                     monthly(matching_transactions, year=year, month=month)
                 )
@@ -130,11 +140,14 @@ def print_simple_monthly_report(records: List[Transaction]) -> None:
             print()
 
 
-def print_simple_quarterly_report(records: List[Transaction]) -> None:
+def print_simple_quarterly_report(records: List[Transaction], *, descending: bool = False) -> None:
     today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
+
+    if descending:
+        years = reversed(years)
 
     commodities = sorted(symbols(records, excluding_dividends=True))
     amount_decimals, _, _ = decimals_per_component(records)
@@ -147,7 +160,10 @@ def print_simple_quarterly_report(records: List[Transaction]) -> None:
             continue
         latest_transaction = latest(matching_transactions)
         for year in years:
-            for quarter in range(1, 4 + 1):
+            quarters = range(1, 4 + 1)
+            if descending:
+                quarters = reversed(quarters)
+            for quarter in quarters:
                 months = months_in_quarter(quarter)
                 starting_month = months[0]
                 ending_month = months[-1]
@@ -186,19 +202,27 @@ def print_simple_quarterly_report(records: List[Transaction]) -> None:
             print()
 
 
-def print_simple_report(records: List[Transaction], *, detailed: bool = False) -> None:
+def print_simple_report(records: List[Transaction], *, detailed: bool = False, descending: bool = False) -> None:
     today = todayd()
 
     amount_decimals, dividend_decimals, position_decimals = decimals_per_component(
         records
     )
 
-    underlined_record = next(
-        (x for x in reversed(records) if x.entry_date < today), None
-    )
-    if len(records) > 0 and underlined_record is records[-1]:
-        # don't underline the final transaction; there's no transactions below
+    if descending:
+        records.reverse()
+        underlined_record = next(
+            (x for x in reversed(records) if x.entry_date > today), None
+        )
+    else:
+        underlined_record = next(
+            (x for x in reversed(records) if x.entry_date < today), None
+        )
+
+    if len(records) > 0 and (underlined_record is records[-1] or underlined_record is records[0]):
+        # don't underline the final transaction; there's no transactions below or above
         underlined_record = None
+
     for transaction in records:
         should_colorize_expired_transaction = False
         payout = transaction.amount.value
@@ -425,10 +449,11 @@ def print_stats(
         print_stat_row("Locale", "Not configured")
     if len(records) == 0:
         return
-    print_stat_row("Records", f"{len(records)}")
+    print_stat_row("Records", f"{len(records)}")  # todo: X per day?
     # todo: records last 30/7 days
-    earliest_datestamp = records[0].entry_date.strftime("%Y/%m/%d")
-    latest_datestamp = records[-1].entry_date.strftime("%Y/%m/%d")
+    # todo: X days span from earliest/latest
+    earliest_datestamp = records[0].entry_date.strftime("%Y/%m/%d")  # todo: X days ago
+    latest_datestamp = records[-1].entry_date.strftime("%Y/%m/%d")  # todo: X days ago
     print_stat_row("Earliest", earliest_datestamp)
     print_stat_row("Latest", latest_datestamp)
     print_stat_row("Tickers", f"{len(tickers(records))}")
@@ -438,7 +463,7 @@ def print_stats(
         print_stat_row("Tags", f"{tags}")
 
 
-def print_simple_rolling_report(records: List[Transaction]) -> None:
+def print_simple_rolling_report(records: List[Transaction], *, descending: bool = False) -> None:
     # note that this report can be confusing; the "next 12m" row
     # indicates the sum of all forecasted/preliminary records, however
     # having preliminary records that just pass their entry date can
@@ -449,6 +474,9 @@ def print_simple_rolling_report(records: List[Transaction]) -> None:
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
+
+    if descending:
+        years = reversed(years)
 
     commodities = sorted(symbols(records, excluding_dividends=True))
 
@@ -461,9 +489,23 @@ def print_simple_rolling_report(records: List[Transaction]) -> None:
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
-        should_breakline = False
+        future_transactions = [r for r in matching_transactions if r.entry_date > today]
+        total = income(future_transactions)
+        decimals = amount_decimals[commodity]
+        if decimals is not None:
+            amount = format_amount(total, places=decimals)
+        else:
+            amount = format_amount(total)
+        amount = latest_transaction.amount.fmt % amount
+        payers = formatted_prominent_payers(future_transactions)
+        projected_line = f"~ {amount.rjust(18)}    next 12m   {payers}"
+        if descending:
+            print(projected_line)
         for year in years:
-            for month in range(1, 12 + 1):
+            months = range(1, 12 + 1)
+            if descending:
+                months = reversed(months)
+            for month in months:
                 ending_date = date(year, month, 1)
                 if ending_date > today:
                     continue
@@ -497,22 +539,10 @@ def print_simple_rolling_report(records: List[Transaction]) -> None:
                     print(colored(line, COLOR_MARKED))
                 else:
                     print(line)
-                should_breakline = True
+        if not descending:
+            print(projected_line)
 
-        future_transactions = [r for r in matching_transactions if r.entry_date > today]
-        if len(future_transactions) > 0:
-            total = income(future_transactions)
-            decimals = amount_decimals[commodity]
-            if decimals is not None:
-                amount = format_amount(total, places=decimals)
-            else:
-                amount = format_amount(total)
-            amount = latest_transaction.amount.fmt % amount
-            payers = formatted_prominent_payers(future_transactions)
-            print(f"~ {amount.rjust(18)}    next 12m   {payers}")
-            should_breakline = True
-
-        if commodity != commodities[-1] and should_breakline:
+        if commodity != commodities[-1]:
             print()
 
 

@@ -11,16 +11,17 @@ USAGE:
                                  [--in-currency=<symbol>]
                                  [--as-currency=<symbol> | --as-native-currency]
                                  [--tagged=<tags>]
+                                 [--reverse]
   dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-d] [--no-color]
                                  [--by-payout-date | --by-ex-date]
                                  [--in-currency=<symbol>]
                                  [--as-currency=<symbol> | --as-native-currency]
   dledger convert <file>...      [--type=<name>] [-d]
                                  [--condensed]
-                                 [--descending]
+                                 [--reverse]
                                  [--output=<journal>]
   dledger print   [<journal>]... [--condensed] [-d]
-                                 [--descending]
+                                 [--reverse]
   dledger stats   [<journal>]... [--period=<interval>] [-d]
 
 
@@ -47,6 +48,7 @@ OPTIONS:
      --weight                 Show income by weight (per ticker)
      --sum                    Show income by totals
      --no-color               Don't apply ANSI colors.
+  -r --reverse                List chronologically in descending order (latest first)
   -d --debug                  Show diagnostic messages
   -h --help                   Show program help
   -v --version                Show program version
@@ -180,9 +182,12 @@ def main() -> None:
         records = adjusting_for_splits(records)
     records = sorted(removing_redundancies(records))
 
-    if args["--descending"]:
-        # assuming argument is not passed for any reporting command;
-        # internal function expects ascending (sorted) order
+    descending_order = args["--reverse"]
+
+    if args["print"] or args["convert"] and descending_order:
+        # note that other program functions except records in ascending order, so we only
+        # apply reversal for this specific case - additionally, reporting commands
+        # typically have specific query mechanisms making record order insignificant
         records.reverse()
     if args["print"]:
         write(records, file=sys.stdout, condensed=args["--condensed"])
@@ -312,15 +317,15 @@ def main() -> None:
         elif args["--sum"]:
             print_simple_sum_report(transactions)
         elif args["--trailing"]:
-            print_simple_rolling_report(transactions)
+            print_simple_rolling_report(transactions, descending=descending_order)
         elif args["--yearly"]:
-            print_simple_annual_report(transactions)
+            print_simple_annual_report(transactions, descending=descending_order)
         elif args["--monthly"]:
-            print_simple_monthly_report(transactions)
+            print_simple_monthly_report(transactions, descending=descending_order)
         elif args["--quarterly"]:
-            print_simple_quarterly_report(transactions)
+            print_simple_quarterly_report(transactions, descending=descending_order)
         else:
-            print_simple_report(transactions, detailed=ticker is not None)
+            print_simple_report(transactions, detailed=ticker is not None, descending=descending_order)
 
     if is_verbose:  # print diagnostics on final set of transactions, if any
         assert journaled_transactions is not None
