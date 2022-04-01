@@ -151,9 +151,19 @@ def main() -> None:
     records: List[Transaction] = []
     for input_path in input_paths:
         try:
-            records.extend(
-                read(input_path, input_type)
-            )
+            additional_records = read(input_path, input_type)
+            if len(additional_records) == 0:
+                # if this resulted in no records, it's likely that something didn't go as expected
+                # however, since no exception was raised, it is probably related to a type mismatch
+                if is_verbose and (input_type == "journal" and input_path.endswith(".csv")):
+                    # note that it is not unacceptable to use `csv` extension for a journal,
+                    # so this can not be considered an error
+                    print(
+                        f"{input_path}: path does not look like a journal; did you mean to add --type=nordnet ?",
+                        file=sys.stderr,
+                    )
+                continue
+            records.extend(additional_records)
         except ParseError as pe:
             sys.exit(f"{pe}")
         except ValueError as ve:
