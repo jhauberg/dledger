@@ -17,10 +17,10 @@ USAGE:
                                  [--in-currency=<symbol>]
                                  [--as-currency=<symbol> | --as-native-currency]
   dledger convert <file>...      [--type=<name>] [-d]
-                                 [--condensed]
+                                 [--condense]
                                  [--reverse]
                                  [--output=<journal>]
-  dledger print   [<journal>]... [--condensed] [-d]
+  dledger print   [<journal>]... [--condense] [-d]
                                  [--reverse]
   dledger stats   [<journal>]... [--period=<interval>] [-d]
 
@@ -48,7 +48,8 @@ OPTIONS:
      --weight                 Show income by weight (per ticker)
      --sum                    Show income by totals
      --no-color               Don't apply ANSI colors.
-  -r --reverse                List chronologically in descending order (latest first)
+     --condense               Write transactions in the shortest form possible
+  -r --reverse                List in reverse chronological order (descending; latest first)
   -d --debug                  Show diagnostic messages
   -h --help                   Show program help
   -v --version                Show program version
@@ -190,11 +191,11 @@ def main() -> None:
         # typically have specific query mechanisms making record order insignificant
         records.reverse()
     if args["print"]:
-        write(records, file=sys.stdout, condensed=args["--condensed"])
+        write(records, file=sys.stdout, condensed=args["--condense"])
         sys.exit(0)
     if args["convert"]:
         with open(args["--output"], "w", newline="") as file:
-            write(records, file=file)
+            write(records, file=file, condensed=args["--condense"])
         sys.exit(0)
 
     interval = args["--period"] if not args["balance"] else "tomorrow:"
