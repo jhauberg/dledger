@@ -6,7 +6,7 @@ USAGE:
                                  [--monthly | --quarterly | --yearly | --trailing | --weight | --sum]
                                  [--no-forecast]
                                  [--no-adjustment]
-                                 [--by-ticker=<ticker>]
+                                 [--ticker=<ticker>]
                                  [--by-payout-date | --by-ex-date]
                                  [--in-currency=<symbol>]
                                  [--as-currency=<symbol> | --no-exchange]
@@ -33,7 +33,7 @@ OPTIONS:
      --no-adjustment          Don't adjust past transactions for splits
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
-     --by-ticker=<ticker>     Show income by ticker (exclusively)
+     --ticker=<ticker>        Show income by ticker
      --in-currency=<symbol>   Show income exchanged from currency (exclusively)
      --as-currency=<symbol>   Show income as if exchanged to currency
      --no-exchange            Show income prior to any exchange (both realized and forecasted)
@@ -216,7 +216,7 @@ def main() -> None:
         print_stats(records, input_paths=input_paths, rates=exchange_rates)
         sys.exit(0)
 
-    ticker = args["--by-ticker"]
+    ticker = args["--ticker"]
     if ticker is not None:
         unique_tickers = tickers(records)
         # first look for exact match
