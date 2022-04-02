@@ -1399,10 +1399,7 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [
-        (date(2019, 3, 1), 1),
-        (date(2019, 3, 1), 1.1)
-    ]
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 1), (date(2019, 3, 1), 1.1)]
     assert rates[("$", "kr")] == (date(2019, 3, 1), 1.1)
 
     records = [
@@ -1433,10 +1430,7 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [
-        (date(2019, 3, 1), 1),
-        (date(2019, 3, 1), 1.1)
-    ]
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 1), (date(2019, 3, 1), 1.1)]
     assert rates[("$", "kr")] == (date(2019, 3, 1), 1.1)
 
     records = [
@@ -1461,10 +1455,7 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [
-        (date(2019, 3, 1), 1),
-        (date(2019, 3, 1), 1.1)
-    ]
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 1), (date(2019, 3, 1), 1.1)]
     assert rates[("$", "kr")] == (date(2019, 3, 1), 1.1)
 
     records = [
@@ -1514,10 +1505,7 @@ def test_conversion_factors():
     rates = latest_exchange_rates(records)
 
     assert len(factors) == 1
-    assert factors[("$", "kr")] == [
-        (date(2019, 3, 1), 1),
-        (date(2019, 3, 1), 1.1)
-    ]
+    assert factors[("$", "kr")] == [(date(2019, 3, 1), 1), (date(2019, 3, 1), 1.1)]
     assert rates[("$", "kr")] == (date(2019, 3, 1), 1.1)
 
 
@@ -1845,7 +1833,9 @@ def test_ambiguous_position():
     # dividend distribution followed by a buy
     records = [
         Transaction(date(2019, 2, 14), "AAPL", 100, amount=Amount(73)),
-        Transaction(date(2019, 2, 14), "AAPL", 150),  # position could be inferred from e.g. (+ 50)
+        Transaction(
+            date(2019, 2, 14), "AAPL", 150
+        ),  # position could be inferred from e.g. (+ 50)
     ]
 
     projections = scheduled_transactions(records, since=date(2019, 2, 18))

@@ -7,7 +7,7 @@ from typing import Iterable, Optional, List, Set, Union, Tuple
 
 
 def amount_per_share(record: Transaction) -> float:
-    """ Return the amount per share. """
+    """Return the amount per share."""
 
     assert record.amount is not None
 
@@ -159,23 +159,19 @@ def symbols(
     return set(collected_symbols)
 
 
-def labels(
-    records: Iterable[Transaction]
-) -> Set[str]:
-    """ Return a set of tags in a set of records. """
+def labels(records: Iterable[Transaction]) -> Set[str]:
+    """Return a set of tags in a set of records."""
 
     tagged_records = (r for r in records if r.tags is not None)
 
     tag_lists = [r.tags for r in tagged_records]
-    tags = [tag for tag_list
-            in tag_lists
-            for tag in tag_list]
+    tags = [tag for tag_list in tag_lists for tag in tag_list]
 
     return set(tags)
 
 
 def monthly_schedule(records: Iterable[Transaction]) -> List[int]:
-    """ Return a list of unique month components in a set of records. """
+    """Return a list of unique month components in a set of records."""
 
     return sorted(set([record.entry_date.month for record in records]))
 
@@ -197,7 +193,7 @@ def trailing(
 def monthly(
     records: Iterable[Transaction], *, year: int, month: int
 ) -> Iterable[Transaction]:
-    """ Return an iterator for records dated on a given month and year. """
+    """Return an iterator for records dated on a given month and year."""
 
     return (
         r
@@ -224,25 +220,25 @@ def yearly(
 
 
 def by_ticker(records: Iterable[Transaction], symbol: str) -> Iterable[Transaction]:
-    """ Return an iterator for records with a given ticker. """
+    """Return an iterator for records with a given ticker."""
 
     return (r for r in records if r.ticker == symbol)
 
 
 def income(records: Iterable[Transaction]) -> float:
-    """ Return the sum of amount components in a set of records. """
+    """Return the sum of amount components in a set of records."""
 
     return sum([amount.value for amount in amounts(records)])
 
 
 def after(records: Iterable[Transaction], d: date) -> Iterable[Transaction]:
-    """ Return an iterator for records dated later than a date. """
+    """Return an iterator for records dated later than a date."""
 
     return (r for r in records if r.entry_date > d)
 
 
 def before(records: Iterable[Transaction], d: date) -> Iterable[Transaction]:
-    """ Return an iterator for records dated prior to a date. """
+    """Return an iterator for records dated prior to a date."""
 
     return (r for r in records if r.entry_date < d)
 
@@ -271,7 +267,7 @@ def in_period(
 
 
 def earliest(records: Iterable[Transaction]) -> Optional[Transaction]:
-    """ Return the earliest dated record in a set of records. """
+    """Return the earliest dated record in a set of records."""
 
     records = sorted(records)
 
@@ -284,7 +280,7 @@ def latest(
     by_payout: bool = False,
     by_exdividend: bool = False
 ) -> Optional[Transaction]:
-    """ Return the latest dated record in a set of records. """
+    """Return the latest dated record in a set of records."""
 
     assert not (by_payout and by_exdividend)
 
@@ -313,7 +309,7 @@ def dated(
     by_payout: bool = False,
     by_exdividend: bool = False
 ) -> Iterable[Transaction]:
-    """ Return an iterator for records dated to a specific date. """
+    """Return an iterator for records dated to a specific date."""
 
     assert not (by_payout and by_exdividend)
 
@@ -334,7 +330,7 @@ def dated(
 
 # todo: not a great name for this function
 def pruned(records: Iterable[Transaction]) -> List[Transaction]:
-    """ Return a list of transactions with only the first occurence of a transaction per date. """
+    """Return a list of transactions with only the first occurence of a transaction per date."""
 
     collected_records: List[Transaction] = []
     for record in records:

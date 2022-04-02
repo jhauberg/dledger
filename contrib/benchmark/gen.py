@@ -28,8 +28,8 @@ while len(records) < MAX_RECORDS:
             tags=["a", "b", "c"],
             entry_attr=EntryAttributes(
                 location=("fantasy", -1),  # not important in this case
-                positioning=(None, 0)  # not important in this case
-            )
+                positioning=(None, 0),  # not important in this case
+            ),
         )
     )
     d = previous_month(d)

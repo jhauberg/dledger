@@ -35,13 +35,13 @@ def colored(text: str, color: str) -> str:
 
 
 def is_windows_environment() -> bool:
-    """ Return True if on a Windows platform, False otherwise. """
+    """Return True if on a Windows platform, False otherwise."""
 
     return os.name == "nt"
 
 
 def suppress_color(suppress: bool) -> None:
-    """ Set whether or not to suppress colored text. """
+    """Set whether or not to suppress colored text."""
 
     global NO_COLOR
 
@@ -49,7 +49,7 @@ def suppress_color(suppress: bool) -> None:
 
 
 def enable_color_escapes() -> None:
-    """ Enable terminal color support. """
+    """Enable terminal color support."""
 
     if not is_windows_environment():
         return

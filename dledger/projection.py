@@ -44,7 +44,7 @@ EARLY_LATE_THRESHOLD = 15  # early before or at this day of month, late after
 
 
 class GeneratedDate(date):
-    """ Represents a date estimation. """
+    """Represents a date estimation."""
 
     def __new__(
             cls,
@@ -59,21 +59,21 @@ class GeneratedDate(date):
 
 @dataclass(frozen=True)
 class GeneratedAmount(Amount):
-    """ Represents an amount estimation. """
+    """Represents an amount estimation."""
 
     pass
 
 
 @dataclass(frozen=True)
 class GeneratedTransaction(Transaction):
-    """ Represents a projected transaction. """
+    """Represents a projected transaction."""
 
     pass
 
 
 @dataclass(frozen=True)
 class Schedule:
-    """ Represents a dividend payout schedule. """
+    """Represents a dividend payout schedule."""
 
     frequency: int  # interval between payouts (in months)
     months: List[int]
@@ -108,7 +108,7 @@ def normalize_interval(interval: int) -> int:
 
 
 def frequency(records: Iterable[Transaction]) -> int:
-    """ Return the approximated frequency of occurrence (in months) for a set of records. """
+    """Return the approximated frequency of occurrence (in months) for a set of records."""
 
     records = list(records)
 
@@ -199,13 +199,13 @@ def next_scheduled_date(d: date, months: List[int]) -> GeneratedDate:
 
 
 def projected_timeframe(d: date) -> int:
-    """ Return the timeframe of a given date. """
+    """Return the timeframe of a given date."""
 
     return EARLY if d.day <= EARLY_LATE_THRESHOLD else LATE
 
 
 def projected_date(d: date, *, timeframe: int) -> GeneratedDate:
-    """ Return a date where day of month is set according to given timeframe. """
+    """Return a date where day of month is set according to given timeframe."""
 
     if timeframe == EARLY:
         return GeneratedDate(d.year, d.month, day=EARLY_LATE_THRESHOLD)
@@ -217,11 +217,9 @@ def projected_date(d: date, *, timeframe: int) -> GeneratedDate:
 
 
 def sample_ttm(
-    records: List[Transaction],
-    *,
-    since: date = todayd()
+    records: List[Transaction], *, since: date = todayd()
 ) -> List[Transaction]:
-    """ Return a list of records dated in the latest trailing 12 months.
+    """Return a list of records dated in the latest trailing 12 months.
     Only includes records from tickers with open positions and activity within
     12 months of a given date.
     """
@@ -268,14 +266,14 @@ def sample_ttm(
                 #       (i.e. in some cases ex-date could be the date to compare against),
                 #       but for now just base this logic on primary date
                 if (
-                        record.kind == Distribution.SPECIAL
-                        or other_record.kind == Distribution.SPECIAL
+                    record.kind == Distribution.SPECIAL
+                    or other_record.kind == Distribution.SPECIAL
                 ):
                     # allow identically dated records if one or the other is a special dividend
                     # but check for ambiguous position
                     # see journal.py:232 for tolerance
                     if not math.isclose(
-                            record.position, other_record.position, abs_tol=0.000001
+                        record.position, other_record.position, abs_tol=0.000001
                     ):
                         if other_record.entry_attr is not None:
                             raise ParseError(
@@ -309,7 +307,7 @@ def scheduled_transactions(
     since: date = todayd(),
     rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> List[GeneratedTransaction]:
-    """ Return a list of forecasted transactions. """
+    """Return a list of forecasted transactions."""
     sample_records = sample_ttm(records, since=since)
     # project sample records 1 year into the future
     futures = future_transactions(sample_records, rates=rates)
@@ -335,7 +333,7 @@ def scheduled_transactions(
         scheduled.append(future_record)
 
     def is_within_period(record: Transaction, starting: date, ending: date) -> bool:
-        """ Determine whether a record is dated within a period. """
+        """Determine whether a record is dated within a period."""
         return ending > record.entry_date >= starting
 
     # weed out projections in the past or later than 12 months into the future
@@ -414,11 +412,8 @@ def scheduled_transactions(
     return sorted(scheduled)
 
 
-def estimated_schedule(
-    records: Iterable[Transaction],
-    record: Transaction
-) -> Schedule:
-    """ Return a forecasted dividend schedule based on a given record. """
+def estimated_schedule(records: Iterable[Transaction], record: Transaction) -> Schedule:
+    """Return a forecasted dividend schedule based on a given record."""
     sample_records = trailing(
         by_ticker(records, record.ticker),
         since=last_of_month(record.entry_date),
@@ -440,9 +435,9 @@ def estimated_schedule(
 def estimated_transactions(
     records: List[Transaction],
     *,
-    rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None
+    rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> List[GeneratedTransaction]:
-    """ Return a list of forecasted transactions based on a dividend schedule. """
+    """Return a list of forecasted transactions based on a dividend schedule."""
 
     approximate_records = []
 
@@ -605,7 +600,7 @@ def estimated_transactions(
 def next_linear_dividend(
     records: List[Transaction], *, kind: Distribution = Distribution.FINAL
 ) -> Optional[GeneratedAmount]:
-    """ Return the next linearly projected dividend if any, None otherwise. """
+    """Return the next linearly projected dividend if any, None otherwise."""
 
     transactions = list(r for r in records if r.amount is not None)
     latest_transaction = latest(transactions)
@@ -665,10 +660,11 @@ def next_position(
 
 
 def future_transactions(
-        records: List[Transaction], *,
-        rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None
+    records: List[Transaction],
+    *,
+    rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> List[GeneratedTransaction]:
-    """ Return a list of forecasted transactions projected 12 months into the future. """
+    """Return a list of forecasted transactions projected 12 months into the future."""
 
     future_records = []
 
@@ -729,9 +725,7 @@ def future_transactions(
             if future_dividend.symbol != transaction.amount.symbol:
                 assert future_dividend.symbol is not None
                 assert transaction.amount.symbol is not None
-                rate = rates[
-                    (future_dividend.symbol, transaction.amount.symbol)
-                ]
+                rate = rates[(future_dividend.symbol, transaction.amount.symbol)]
                 conversion_factor = rate[1]
                 future_dividend_value = future_position * future_dividend.value
                 future_amount = future_dividend_value * conversion_factor
@@ -759,7 +753,7 @@ def future_transactions(
 def conversion_factors(
     records: List[Transaction],
 ) -> Dict[Tuple[str, str], List[Tuple[date, float]]]:
-    """ Return a set of currency exchange rates. """
+    """Return a set of currency exchange rates."""
 
     factors: Dict[Tuple[str, str], List[Tuple[date, float]]] = dict()
 
@@ -800,9 +794,8 @@ def conversion_factors(
             assert latest_transaction.dividend.symbol is not None
 
             conversion_factor = (
-                latest_transaction_date, amount_conversion_factor(
-                    latest_transaction
-                )
+                latest_transaction_date,
+                amount_conversion_factor(latest_transaction),
             )
             conversion_key = (
                 latest_transaction.dividend.symbol,
@@ -818,12 +811,13 @@ def conversion_factors(
 
             for similar_transaction in similar_transactions:
                 similar_conversion_factor = (
-                    latest_transaction_date, amount_conversion_factor(
-                        similar_transaction
-                    )
+                    latest_transaction_date,
+                    amount_conversion_factor(similar_transaction),
                 )
 
-                def is_ambiguous_rate(a: Tuple[date, float], b: Tuple[date, float]) -> bool:
+                def is_ambiguous_rate(
+                    a: Tuple[date, float], b: Tuple[date, float]
+                ) -> bool:
                     return a[0] == b[0] and not math.isclose(a[1], b[1], abs_tol=0.0001)
 
                 if is_ambiguous_rate(similar_conversion_factor, conversion_factor):
@@ -844,8 +838,10 @@ def conversion_factors(
     return factors
 
 
-def latest_exchange_rates(records: List[Transaction]) -> Dict[Tuple[str, str], Tuple[date, float]]:
-    """ Return a set of currency exchange rates. """
+def latest_exchange_rates(
+    records: List[Transaction],
+) -> Dict[Tuple[str, str], Tuple[date, float]]:
+    """Return a set of currency exchange rates."""
 
     # note that this assumes that, given a bunch of ambiguous rates,
     # the factor to be applied is the last of the bunch

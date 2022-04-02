@@ -52,7 +52,7 @@ def months_in_quarter(quarter: int) -> List[int]:
 
 
 def in_months(d: date, months: int) -> date:
-    """ Return the date in a number of months. """
+    """Return the date in a number of months."""
 
     month = d.month - 1 + months
     year = d.year + month // 12
@@ -63,19 +63,19 @@ def in_months(d: date, months: int) -> date:
 
 
 def last_of_month(d: date) -> date:
-    """ Return the date at the last day of the month. """
+    """Return the date at the last day of the month."""
 
     return previous_month(next_month(d))
 
 
 def first_of_month(d: date) -> date:
-    """ Return the date at the first day of the month. """
+    """Return the date at the first day of the month."""
 
     return d.replace(day=1)
 
 
 def previous_month(d: date) -> date:
-    """ Return the date at the last day of the previous month. """
+    """Return the date at the last day of the previous month."""
 
     d = first_of_month(d)
     # then backtrack by 1 day to find previous month
@@ -85,7 +85,7 @@ def previous_month(d: date) -> date:
 
 
 def next_month(d: date) -> date:
-    """ Return the date at the first day of the following month. """
+    """Return the date at the first day of the following month."""
 
     d = first_of_month(d)
 

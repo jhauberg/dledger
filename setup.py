@@ -16,7 +16,7 @@ from dledger import VERSION_PATTERN
 
 
 def determine_version_or_exit() -> str:
-    """ Determine version identifier or exit with non-zero status. """
+    """Determine version identifier or exit with non-zero status."""
 
     with open("dledger/__version__.py") as file:
         version_contents = file.read()

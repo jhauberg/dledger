@@ -109,7 +109,7 @@ from typing import List
 
 
 def main() -> None:
-    """ Entry point for invoking the command-line interface. """
+    """Entry point for invoking the command-line interface."""
 
     if sys.version_info < (3, 8):
         sys.exit("Python 3.8+ required")
@@ -158,11 +158,14 @@ def main() -> None:
             if len(additional_records) == 0:
                 # if this resulted in no records, it's likely that something didn't go as expected
                 # however, since no exception was raised, it is probably related to a type mismatch
-                if is_verbose and (input_type == "journal" and input_path.endswith(".csv")):
+                if is_verbose and (
+                    input_type == "journal" and input_path.endswith(".csv")
+                ):
                     # note that it is not unacceptable to use `csv` extension for a journal,
                     # so this can not be considered an error
                     print(
-                        f"{input_path}: path does not look like a journal; did you mean to add --type=nordnet ?",
+                        f"{input_path}: path does not look like a journal; "
+                        f"did you mean to add --type=nordnet ?",
                         file=sys.stderr,
                     )
                 continue
@@ -282,7 +285,11 @@ def main() -> None:
         tags = args["--tagged"].strip().split(",")
         if len(tags) > 0:
             transactions = list(
-                filter(lambda txn: txn.tags is not None and any(x.strip() in txn.tags for x in tags), transactions)
+                filter(
+                    lambda txn: txn.tags is not None
+                    and any(x.strip() in txn.tags for x in tags),
+                    transactions,
+                )
             )
 
     filter_symbol = args["--in-currency"]
@@ -326,7 +333,9 @@ def main() -> None:
         elif args["--quarterly"]:
             print_simple_quarterly_report(transactions, descending=descending_order)
         else:
-            print_simple_report(transactions, detailed=ticker is not None, descending=descending_order)
+            print_simple_report(
+                transactions, detailed=ticker is not None, descending=descending_order
+            )
 
     if is_verbose:  # print diagnostics on final set of transactions, if any
         assert journaled_transactions is not None
@@ -347,17 +356,21 @@ def main() -> None:
                     if txn.ispositional or other_txn.ispositional:
                         # either is positional; move on
                         continue
-                    if (txn.kind == Distribution.SPECIAL or
-                            other_txn.kind == Distribution.SPECIAL):
+                    if (
+                        txn.kind == Distribution.SPECIAL
+                        or other_txn.kind == Distribution.SPECIAL
+                    ):
                         continue
                     dupe = other_txn
                     dupes.append(dupe)
                     journal, linenumber = dupe.entry_attr.location
                     existing_journal, existing_linenumber = txn.entry_attr.location
-                    existing_journal = "" if existing_journal == journal else existing_journal
+                    existing_journal = (
+                        "" if existing_journal == journal else existing_journal
+                    )
                     print(
                         f"{journal}:{linenumber} potential transaction duplicate "
-                        f"(see \'{existing_journal}:{existing_linenumber}\')",
+                        f"(see '{existing_journal}:{existing_linenumber}')",
                         file=sys.stderr,
                     )
 
@@ -426,7 +439,7 @@ def main() -> None:
                         journal, linenumber = txn.entry_attr.location
                         print(
                             f"{journal}:{linenumber} transaction has duplicate tag: {tag}",
-                            file=sys.stderr
+                            file=sys.stderr,
                         )
 
     sys.exit(0)

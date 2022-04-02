@@ -153,9 +153,7 @@ def test_adjusting_for_splits_ordering():
     records[0] = records[-2]
     records[-2] = tmp
 
-    records = sorted(
-        adjusting_for_splits(records)
-    )
+    records = sorted(adjusting_for_splits(records))
 
     assert len(records) == 4
 

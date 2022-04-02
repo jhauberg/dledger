@@ -33,12 +33,12 @@ from dledger.record import (
 from typing import List, Dict, Optional, Tuple
 
 
-def print_simple_annual_report(records: List[Transaction], *, descending: bool = False) -> None:
+def print_simple_annual_report(
+    records: List[Transaction], *, descending: bool = False
+) -> None:
     today = todayd()
     final_year = latest(records).entry_date.year
-    years = range(
-        earliest(records).entry_date.year, final_year + 1
-    )
+    years = range(earliest(records).entry_date.year, final_year + 1)
 
     if descending:
         years = reversed(years)
@@ -84,7 +84,9 @@ def print_simple_annual_report(records: List[Transaction], *, descending: bool =
             print()
 
 
-def print_simple_monthly_report(records: List[Transaction], *, descending: bool = False) -> None:
+def print_simple_monthly_report(
+    records: List[Transaction], *, descending: bool = False
+) -> None:
     today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
@@ -140,7 +142,9 @@ def print_simple_monthly_report(records: List[Transaction], *, descending: bool 
             print()
 
 
-def print_simple_quarterly_report(records: List[Transaction], *, descending: bool = False) -> None:
+def print_simple_quarterly_report(
+    records: List[Transaction], *, descending: bool = False
+) -> None:
     today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
@@ -202,7 +206,9 @@ def print_simple_quarterly_report(records: List[Transaction], *, descending: boo
             print()
 
 
-def print_simple_report(records: List[Transaction], *, detailed: bool = False, descending: bool = False) -> None:
+def print_simple_report(
+    records: List[Transaction], *, detailed: bool = False, descending: bool = False
+) -> None:
     today = todayd()
 
     amount_decimals, dividend_decimals, position_decimals = decimals_per_component(
@@ -219,7 +225,9 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False, d
             (x for x in reversed(records) if x.entry_date < today), None
         )
 
-    if len(records) > 0 and (underlined_record is records[-1] or underlined_record is records[0]):
+    if len(records) > 0 and (
+        underlined_record is records[-1] or underlined_record is records[0]
+    ):
         # don't underline the final transaction; there's no transactions below or above
         underlined_record = None
 
@@ -286,7 +294,9 @@ def print_simple_report(records: List[Transaction], *, detailed: bool = False, d
             if transaction.dividend is not None:
                 decimals = dividend_decimals[transaction.dividend.symbol]
                 if decimals is not None:
-                    dividend = format_amount(transaction.dividend.value, places=decimals)
+                    dividend = format_amount(
+                        transaction.dividend.value, places=decimals
+                    )
                 else:
                     dividend = format_amount(transaction.dividend.value)
                 dividend = transaction.dividend.fmt % dividend
@@ -389,10 +399,7 @@ def print_stat_row(name: str, text: str) -> None:
     print(f"{name}: {text}")
 
 
-def print_journal_stats(
-        records: List[Transaction],
-        input_paths: List[str]
-) -> None:
+def print_journal_stats(records: List[Transaction], input_paths: List[str]) -> None:
     # find all source paths and weed out duplicates
     source_paths = set(record.entry_attr.location[0] for record in records)
     # resolve absolute path for each source path
@@ -400,22 +407,21 @@ def print_journal_stats(
     # resolve absolute path for each input source path
     input_source_paths = list(os.path.abspath(path) for path in input_paths)
     # find all journals that must have been included from another journal
-    included_paths = sorted(path for path in source_paths if path not in input_source_paths)
+    included_paths = sorted(
+        path for path in source_paths if path not in input_source_paths
+    )
     # find all journals that must have been specified as an input
     journal_paths = sorted(path for path in source_paths if path in input_source_paths)
     # todo: consider only counting input sources and having included journals in separate section
     for n, path in enumerate(journal_paths + included_paths):
         print_stat_row(
-            f"Journal {n + 1}",
-            path + (
-                " (included)" if path in included_paths else ""
-            )
+            f"Journal {n + 1}", path + (" (included)" if path in included_paths else "")
         )
 
 
 def print_conversion_stats(
-        records: List[Transaction],
-        rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None
+    records: List[Transaction],
+    rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> None:
     currencies = sorted(symbols(records))
     if len(currencies) > 0:
@@ -428,7 +434,7 @@ def print_conversion_stats(
             conversion_rate_datestamp = conversion_rate[0].strftime("%Y/%m/%d")
             print_stat_row(
                 f"{from_symbol}/{to_symbol}",
-                f"{conversion_rate_amount} (as of {conversion_rate_datestamp})"
+                f"{conversion_rate_amount} (as of {conversion_rate_datestamp})",
             )
 
 
@@ -463,7 +469,9 @@ def print_stats(
         print_stat_row("Tags", f"{tags}")
 
 
-def print_simple_rolling_report(records: List[Transaction], *, descending: bool = False) -> None:
+def print_simple_rolling_report(
+    records: List[Transaction], *, descending: bool = False
+) -> None:
     # note that this report can be confusing; the "next 12m" row
     # indicates the sum of all forecasted/preliminary records, however
     # having preliminary records that just pass their entry date can
@@ -608,7 +616,9 @@ def print_balance_report(
             has_positive = any(True for w in weights if w[5][deviance] > 0)
             has_negative = any(True for w in weights if w[5][deviance] < 0)
             if has_positive and has_negative:
-                first_positive_index = next(i for i, w in enumerate(weights) if w[5][deviance] > 0)
+                first_positive_index = next(
+                    i for i, w in enumerate(weights) if w[5][deviance] > 0
+                )
                 last_negative_index = first_positive_index - 1
                 should_underline_mid_at_index = last_negative_index
         for i, weight in enumerate(weights):
@@ -646,7 +656,9 @@ def print_balance_report(
                     drift = f"+ {format_amount(drift_by, places=p_decimals)}".rjust(16)
                 else:
                     # decrease position (sell)
-                    drift = f"- {format_amount(abs(drift_by), places=p_decimals)}".rjust(16)
+                    drift = (
+                        f"- {format_amount(abs(drift_by), places=p_decimals)}".rjust(16)
+                    )
             line = f"{line} {position} {drift}"
             if i == should_underline_mid_at_index:
                 line = colored(line, COLOR_UNDERLINED)
@@ -701,7 +713,9 @@ def print_currency_balance_report(records: List[Transaction]) -> None:
             has_positive = any(True for w in weights if w[4] > 0)
             has_negative = any(True for w in weights if w[4] < 0)
             if has_positive and has_negative:
-                first_positive_index = next(i for i, w in enumerate(weights) if w[4] > 0)
+                first_positive_index = next(
+                    i for i, w in enumerate(weights) if w[4] > 0
+                )
                 last_negative_index = first_positive_index - 1
                 should_underline_mid_at_index = last_negative_index
         for i, weight in enumerate(weights):

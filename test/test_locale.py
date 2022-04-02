@@ -10,8 +10,7 @@ from dledger.localeutil import (
 def test_localeconv_override():
     previous_decimal_point = locale.localeconv()["decimal_point"]
 
-    assert (previous_decimal_point == "." or
-            previous_decimal_point == ",")
+    assert previous_decimal_point == "." or previous_decimal_point == ","
 
     with tempconv(DECIMAL_POINT_PERIOD):
         assert locale.localeconv()["decimal_point"] == "."

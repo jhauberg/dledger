@@ -44,10 +44,7 @@ def removing_redundancies(
         for record in position_records:
             if record.entry_attr is not None:
                 _, directive = record.entry_attr.positioning
-                if (
-                    directive == POSITION_SPLIT or
-                    directive == POSITION_SPLIT_WHOLE
-                ):
+                if directive == POSITION_SPLIT or directive == POSITION_SPLIT_WHOLE:
                     # special case: record has a split directive;
                     # must be retained for journal integrity
                     continue
@@ -56,15 +53,11 @@ def removing_redundancies(
                 # this record is not used for inference nor forecasts,
                 # because no dividend transactions exist
                 is_redundant = True
-            elif (
-                record.entry_date < in_months(since, months=-12)
-            ):
+            elif record.entry_date < in_months(since, months=-12):
                 # more than a year has passed;
                 # forecasts will expire naturally, so record is redundant
                 is_redundant = True
-            elif (
-                record.entry_date < latest_transaction.entry_date
-            ):
+            elif record.entry_date < latest_transaction.entry_date:
                 # dated earlier than latest transaction; i.e. this positional
                 # record will not be used for inference nor forecasts
                 if latest_transaction.ex_date is not None:
@@ -72,12 +65,8 @@ def removing_redundancies(
                         is_redundant = True
                 else:
                     is_redundant = True
-            elif (
-                record.entry_date == latest_transaction.entry_date and
-                math.isclose(
-                    record.position,
-                    latest_transaction.position,
-                    abs_tol=0.000001)
+            elif record.entry_date == latest_transaction.entry_date and math.isclose(
+                record.position, latest_transaction.position, abs_tol=0.000001
             ):
                 # dated same as a dividend transaction; discard this record
                 # if position on both is approximately identical
@@ -142,9 +131,10 @@ def adjusting_for_splits(records: List[Transaction]) -> List[Transaction]:
 
 
 def with_estimates(
-    records: List[Transaction], rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None
+    records: List[Transaction],
+    rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> List[Transaction]:
-    """ Return a list of transactions, replacing missing amounts with estimates. """
+    """Return a list of transactions, replacing missing amounts with estimates."""
     rates = rates if rates is not None else latest_exchange_rates(records)
     transactions = list(r for r in records if r.amount is not None)
     estimate_records = (
@@ -158,9 +148,7 @@ def with_estimates(
             estimate_format = rec.entry_attr.preliminary_amount.fmt
             assert rec.dividend.symbol is not None
             assert estimate_symbol is not None
-            rate = rates[
-                (rec.dividend.symbol, estimate_symbol)
-            ]
+            rate = rates[(rec.dividend.symbol, estimate_symbol)]
             conversion_factor = rate[1]
         else:
             estimate_symbol = rec.dividend.symbol
@@ -191,7 +179,7 @@ def with_estimates(
 
 
 def in_dividend_currency(records: List[Transaction]) -> List[Transaction]:
-    """ Return a list of transactions, replacing amounts with the sum of dividend times position. """
+    """Return a list of transactions, replacing amounts with the sum of dividend times position."""
     for r in records:
         if r.dividend is None:
             continue
@@ -220,7 +208,7 @@ def in_currency(
     symbol: str,
     rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> List[Transaction]:
-    """ Return a list of transactions, replacing amounts with estimates in given currency. """
+    """Return a list of transactions, replacing amounts with estimates in given currency."""
     rates = rates if rates is not None else latest_exchange_rates(records)
     transactions = list(r for r in records if r.amount is not None)
     convertible_records = (
@@ -233,9 +221,7 @@ def in_currency(
             conversion_factor = rates[(rec.amount.symbol, symbol)]
         except KeyError:
             try:
-                rate = rates[
-                    (symbol, rec.amount.symbol)
-                ]
+                rate = rates[(symbol, rec.amount.symbol)]
                 conversion_factor = rate[1]
                 conversion_factor = 1.0 / conversion_factor
             except KeyError:

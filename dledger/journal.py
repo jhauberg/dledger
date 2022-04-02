@@ -25,7 +25,7 @@ POSITION_SPLIT_WHOLE = -3  # (x 2/1) directive to split keeping whole position
 
 
 class Distribution(Enum):
-    """ Represents the type of a dividend distribution. """
+    """Represents the type of a dividend distribution."""
 
     FINAL = 0
     INTERIM = 1
@@ -34,7 +34,7 @@ class Distribution(Enum):
 
 @dataclass(frozen=True, unsafe_hash=True)
 class Amount:
-    """ Represents a cash amount. """
+    """Represents a cash amount."""
 
     value: Union[float, int]
     places: Optional[int] = None
@@ -59,14 +59,16 @@ class EntryAttributes:
     #       as it will generally always equal (position, POSITION_SET)
     #       this is the case since because positional records are typically redundant and will
     #       be pruned anyway. consider whether we can do something to make this more useful?
-    positioning: Tuple[Optional[float], int]  # position/change:directive (i.e. POSITION_*)
+    positioning: Tuple[
+        Optional[float], int
+    ]  # position/change:directive (i.e. POSITION_*)
     is_preliminary: bool = False  # True if amount component left blank intentionally
     preliminary_amount: Optional[Amount] = None
 
 
 @dataclass(frozen=True, unsafe_hash=True)
 class Transaction:
-    """ Represents a transactional record. """
+    """Represents a transactional record."""
 
     entry_date: date  # no assumption whether this is payout, ex-date or other
     ticker: str
@@ -118,7 +120,7 @@ class ParseError(Exception):
 
 
 def read(path: str, kind: str) -> List[Transaction]:
-    """ Return a list of records imported from a file. """
+    """Return a list of records imported from a file."""
 
     try:
         encoding = fileencoding(path)
@@ -272,7 +274,9 @@ def infer(entries: Iterable[Transaction]) -> List[Transaction]:
                     if position is None:
                         position = 0
                     if position_directive == POSITION_SPLIT:
-                        position = truncate_floating_point(previous_record.position * position)
+                        position = truncate_floating_point(
+                            previous_record.position * position
+                        )
                     elif position_directive == POSITION_SPLIT_WHOLE:
                         position = truncate_floating_point(
                             math.floor(previous_record.position * position)
@@ -283,7 +287,8 @@ def infer(entries: Iterable[Transaction]) -> List[Transaction]:
                         )
                     if position < 0:
                         raise ParseError(
-                            f"position change to negative position ({position})", attr.location
+                            f"position change to negative position ({position})",
+                            attr.location,
                         )
                     break
 
@@ -299,7 +304,8 @@ def infer(entries: Iterable[Transaction]) -> List[Transaction]:
                         precision = 1 / int(denominator)
                     if not math.isclose(position, inferred_p, abs_tol=precision):
                         raise ParseError(
-                            f"ambiguous position ({position} or {inferred_p}?)", attr.location
+                            f"ambiguous position ({position} or {inferred_p}?)",
+                            attr.location,
                         )
                 else:
                     position = truncate_floating_point(inferred_p)
@@ -327,7 +333,9 @@ def infer(entries: Iterable[Transaction]) -> List[Transaction]:
 
         if record.payout_date is not None and record.ex_date is not None:
             if record.payout_date < record.ex_date:
-                raise ParseError(f"payout date dated earlier than ex-date", attr.location)
+                raise ParseError(
+                    f"payout date dated earlier than ex-date", attr.location
+                )
 
         is_incomplete = False
         prelim_amount = None
@@ -373,7 +381,7 @@ def read_journal_transaction(
         raise ParseError("invalid transaction", location)
 
     def anyindex(string: str, sub: List[str]) -> int:
-        """ Return the first index of any matching string in a list of substrings. """
+        """Return the first index of any matching string in a list of substrings."""
         return min([string.index(s) for s in sub if s in string])
 
     # combine all lines into single string, adding double-space to replace linebreak
@@ -433,6 +441,7 @@ def read_journal_transaction(
                 return locale.atof(text)
             except ValueError:
                 raise ParseError(f"invalid position ('{text}')", location)
+
         if position_str.startswith("="):
             # for example: "(= 10)"
             position_change_directive = POSITION_SET
@@ -637,7 +646,7 @@ def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transa
         10: "Kurs",
         14: "Beløb",
         15: "Valuta",
-        21: "Transaktionstekst"
+        21: "Transaktionstekst",
     }
 
     with open(path, newline="", encoding=encoding) as file:
@@ -651,14 +660,16 @@ def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transa
         required_min_header_count = sorted(required_headers.keys())[-1] + 1
         if len(headers) < required_min_header_count:
             raise ParseError(
-                f"unexpected number of columns ({len(headers)} < {required_min_header_count})", location
+                f"unexpected number of columns ({len(headers)} < {required_min_header_count})",
+                location,
             )
 
         for column, expected_header in required_headers.items():
             header = str(headers[column]).strip()
             if header != expected_header:
                 raise ParseError(
-                    f"unexpected header at column {column} (\"{header}\" != \"{expected_header}\")", location
+                    f'unexpected header at column {column} ("{header}" != "{expected_header}")',
+                    location,
                 )
 
         for row in reader:
@@ -677,7 +688,8 @@ def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                 # so better bail out and have user fix the issue- similarly, with ambiguous values, we
                 # don't make any guesses as we simply cannot be certain which option is correct
                 raise ParseError(
-                    f"earlier transaction reverted; proceeding would cause duplicates", location
+                    f"earlier transaction reverted; proceeding would cause duplicates",
+                    location,
                 )
 
             required_transactional_types = [
@@ -688,7 +700,9 @@ def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             if not any(t == transactional_type for t in required_transactional_types):
                 continue
 
-            records.append(read_nordnet_transaction(row, required_headers, location=location))
+            records.append(
+                read_nordnet_transaction(row, required_headers, location=location)
+            )
 
     return records
 
@@ -697,19 +711,23 @@ def read_nordnet_transaction(
     columns: List[str], headers: Dict[int, str], *, location: Tuple[str, int]
 ) -> Transaction:
     if len(columns) < 22:
-        raise ParseError(f"unexpected number of columns ({len(columns)} < 22)", location)
+        raise ParseError(
+            f"unexpected number of columns ({len(columns)} < 22)", location
+        )
 
     values = [str(columns[column]).strip() for column in headers.keys()]
     # assuming order remains identical
-    (entry_date_value,
-     ex_date_value,
-     payout_date_value,
-     ticker,
-     position_str,
-     dividend_str,
-     amount_str,
-     amount_symbol,
-     transaction_text) = values
+    (
+        entry_date_value,
+        ex_date_value,
+        payout_date_value,
+        ticker,
+        position_str,
+        dividend_str,
+        amount_str,
+        amount_symbol,
+        transaction_text,
+    ) = values
 
     # hack: some numbers may show as e.g. '1.500' which atof will parse as 1.5,
     #       when in fact it should be parsed as 1.500,00 as per danish locale
@@ -739,16 +757,16 @@ def read_nordnet_transaction(
         dividend = locale.atof(dividend_str)
 
     if "/" not in transaction_text:
-        raise ParseError(f"unexpected transaction text: \"{transaction_text}\"", location)
+        raise ParseError(f'unexpected transaction text: "{transaction_text}"', location)
 
     transaction_text_components = transaction_text.split("/")
     if len(transaction_text_components) > 2:
-        raise ParseError(f"unexpected transaction text: \"{transaction_text}\"", location)
+        raise ParseError(f'unexpected transaction text: "{transaction_text}"', location)
 
     # we only care about the left-hand side result
     transaction_text_components = transaction_text_components[0].strip().split(" ")
     if len(transaction_text_components) < 2:
-        raise ParseError(f"unexpected transaction text: \"{transaction_text}\"", location)
+        raise ParseError(f'unexpected transaction text: "{transaction_text}"', location)
 
     dividend_symbol = transaction_text_components[-1]
     dividend_rate_str = transaction_text_components[-2]
@@ -763,7 +781,7 @@ def read_nordnet_transaction(
         with tempconv(DECIMAL_POINT_PERIOD):
             dividend_rate = locale.atof(dividend_rate_str)
     except ValueError:
-        raise ParseError(f"unexpected transaction text: \"{transaction_text}\"", location)
+        raise ParseError(f'unexpected transaction text: "{transaction_text}"', location)
 
     assert dividend_rate is not None
 
@@ -796,11 +814,15 @@ def read_nordnet_transaction(
 
 def max_decimal_places(amounts: Iterable[Optional[Amount]]) -> Optional[int]:
     all_amounts = [amount for amount in amounts if amount is not None]
-    places_by_preference = [amount.places for amount in all_amounts if amount.places is not None]
+    places_by_preference = [
+        amount.places for amount in all_amounts if amount.places is not None
+    ]
     max_decimals: Optional[int] = None
     if len(places_by_preference) > 0:
         max_decimals = max(places_by_preference)
-    places_by_inference = [decimalplaces(amount.value) for amount in all_amounts if amount.places is None]
+    places_by_inference = [
+        decimalplaces(amount.value) for amount in all_amounts if amount.places is None
+    ]
     if len(places_by_inference) > 0:
         for places in places_by_inference:
             if max_decimals is None or (max_decimals < 2 and places > max_decimals):
@@ -811,12 +833,7 @@ def max_decimal_places(amounts: Iterable[Optional[Amount]]) -> Optional[int]:
     return max_decimals
 
 
-def write(
-    records: List[Transaction],
-    file: Any,
-    *,
-    condensed: bool = False
-) -> None:
+def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> None:
     # the guiding principle of writing/printing is that given an input,
     # the output must produce identical reports to the input, but written in the
     # most legible/explicit way possible; to comply with that, there are some
@@ -842,13 +859,18 @@ def write(
             (r.dividend for r in records if r.ticker == ticker)
         )
         position_decimal_places[ticker] = max(
-            decimalplaces(r.position) for r in records if
-            r.ticker == ticker and
+            decimalplaces(r.position)
+            for r in records
+            if r.ticker == ticker and
             # don't include split directives (as the position property
             # holds a multiplier; not an absolute position)
-            (r.entry_attr is None or
-             (r.entry_attr.positioning[1] != POSITION_SPLIT and
-              r.entry_attr.positioning[1] != POSITION_SPLIT_WHOLE))
+            (
+                r.entry_attr is None
+                or (
+                    r.entry_attr.positioning[1] != POSITION_SPLIT
+                    and r.entry_attr.positioning[1] != POSITION_SPLIT_WHOLE
+                )
+            )
         )
     for record in records:
         indicator = ""
@@ -859,12 +881,10 @@ def write(
         datestamp = record.entry_date.strftime("%Y/%m/%d")
         assert record.entry_attr is not None
         transient_position, directive = record.entry_attr.positioning
-        if (
-            directive == POSITION_SPLIT or
-            directive == POSITION_SPLIT_WHOLE
-        ):
+        if directive == POSITION_SPLIT or directive == POSITION_SPLIT_WHOLE:
             assert transient_position is not None
             from fractions import Fraction
+
             fraction = Fraction(transient_position).limit_denominator()
             split = f"{fraction.numerator}/{fraction.denominator}"
             if record.entry_attr.positioning[1] == POSITION_SPLIT_WHOLE:

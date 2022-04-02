@@ -635,7 +635,6 @@ def test_position_inference_journal():
 
 def test_position_inference_from_missing_dividends_journal():
     path = "subjects/positioninference2.journal"
-    
 
     if os.name == "nt":
         included_path = "subjects\\positioninference3.journal"
@@ -694,9 +693,7 @@ def test_position_inference_from_missing_dividends_journal():
         dividend=Amount(4.6973, places=4, symbol="kr", fmt="%s kr"),
         payout_date=date(2020, 3, 17),
         ex_date=date(2020, 3, 2),
-        entry_attr=EntryAttributes(
-            location=(path, 7), positioning=(15, POSITION_SET)
-        ),
+        entry_attr=EntryAttributes(location=(path, 7), positioning=(15, POSITION_SET)),
     )
 
 
@@ -1365,8 +1362,14 @@ def test_write():
 
 
 def test_integrity():
-    verify_integrity("subjects/integrity-input.journal", "subjects/integrity-output.journal")
-    verify_integrity("subjects/integrity-input.journal", "subjects/integrity-output-condensed.journal", condense=True)
+    verify_integrity(
+        "subjects/integrity-input.journal", "subjects/integrity-output.journal"
+    )
+    verify_integrity(
+        "subjects/integrity-input.journal",
+        "subjects/integrity-output-condensed.journal",
+        condense=True,
+    )
 
 
 def verify_integrity(input_path: str, verification_path: str, condense: bool = False):
@@ -1377,8 +1380,7 @@ def verify_integrity(input_path: str, verification_path: str, condense: bool = F
     # similarly, it is expected that output conforms to a consistent style
     # that do not necessarily match that of the input journal
     existing_records = removing_redundancies(
-        read(input_path, kind="journal"),
-        since=date(2019, 12, 10)
+        read(input_path, kind="journal"), since=date(2019, 12, 10)
     )
 
     import os
@@ -1661,8 +1663,12 @@ def test_tags():
         entry_attr=EntryAttributes(
             location=(path, 12), positioning=(None, POSITION_SET)
         ),
-        tags=["winter", "winter",  # duplicates expected to remain
-              "hotsprings", "everywhere"],  # tags "in the open" still attached to this record
+        tags=[
+            "winter",
+            "winter",  # duplicates expected to remain
+            "hotsprings",
+            "everywhere",
+        ],  # tags "in the open" still attached to this record
     )
     assert records[4] == Transaction(
         date(2019, 12, 12),
@@ -1670,9 +1676,7 @@ def test_tags():
         1,
         amount=Amount(10, places=0, symbol="$", fmt="$ %s"),
         dividend=Amount(10, places=0, symbol="$", fmt="$ %s"),
-        entry_attr=EntryAttributes(
-            location=(path, 18), positioning=(1, POSITION_SET)
-        ),
+        entry_attr=EntryAttributes(location=(path, 18), positioning=(1, POSITION_SET)),
         tags=["d", "e", "b", "a", "c"],  # order expected to remain as-is; no sort
     )
     assert records[5] == Transaction(

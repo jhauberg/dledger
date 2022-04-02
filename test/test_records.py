@@ -14,7 +14,7 @@ from dledger.record import (
     labels,
     dated,
     amounts,
-    amount_conversion_factor
+    amount_conversion_factor,
 )
 
 
@@ -376,17 +376,36 @@ def test_dated():
 
 
 def test_conversion_factors():
-    assert amount_conversion_factor(
-        Transaction(date(2019, 3, 1), "ABC", 1, Amount(1))
-    ) == 1
+    assert (
+        amount_conversion_factor(Transaction(date(2019, 3, 1), "ABC", 1, Amount(1)))
+        == 1
+    )
 
-    assert amount_conversion_factor(
-        Transaction(date(2019, 3, 1), "ABC", 1, Amount(1, symbol="$"), dividend=Amount(1, symbol="$"))
-    ) == 1
+    assert (
+        amount_conversion_factor(
+            Transaction(
+                date(2019, 3, 1),
+                "ABC",
+                1,
+                Amount(1, symbol="$"),
+                dividend=Amount(1, symbol="$"),
+            )
+        )
+        == 1
+    )
 
-    assert amount_conversion_factor(
-        Transaction(date(2019, 3, 1), "ABC", 1, Amount(10, symbol="DKK"), dividend=Amount(4, symbol="USD"))
-    ) == 2.5
+    assert (
+        amount_conversion_factor(
+            Transaction(
+                date(2019, 3, 1),
+                "ABC",
+                1,
+                Amount(10, symbol="DKK"),
+                dividend=Amount(4, symbol="USD"),
+            )
+        )
+        == 2.5
+    )
 
 
 def test_tags():
