@@ -203,7 +203,10 @@ def main() -> None:
 
     interval = args["--period"] if not args["balance"] else "tomorrow:"
     if interval is not None:
-        interval = parse_period(interval)
+        try:
+            interval = parse_period(interval)
+        except ValueError as e:
+            sys.exit(f"{e}")
 
     # determine exchange rates before filtering out any transactions, as we expect the
     # latest rate to be applied in all cases, no matter the period, ticker or other criteria
