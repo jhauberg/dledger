@@ -174,7 +174,7 @@ def test_recursive_include():
     try:
         _ = read(path, kind="journal")
     except ParseError as e:
-        assert f"{path}:3 attempt to recursively include journal" in str(e)
+        assert f":3 attempt to recursively include journal" in str(e)
     else:
         assert False
 
@@ -185,7 +185,7 @@ def test_ambiguous_symbol():
     try:
         _ = read(path, kind="journal")
     except ParseError as e:
-        assert f"{path}:3 ambiguous symbol definition" in str(e)
+        assert f":3 ambiguous symbol definition" in str(e)
     else:
         assert False
 
@@ -635,7 +635,12 @@ def test_position_inference_journal():
 
 def test_position_inference_from_missing_dividends_journal():
     path = "subjects/positioninference2.journal"
-    included_path = "subjects/positioninference3.journal"
+    
+
+    if os.name == "nt":
+        included_path = "subjects\\positioninference3.journal"
+    else:
+        included_path = "subjects/positioninference3.journal"
 
     with tempconv(DECIMAL_POINT_COMMA):
         records = read(path, kind="journal")
