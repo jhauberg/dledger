@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 USAGE:
   dledger report  [<journal>]... [--period=<interval>] [-d] [--no-color]
