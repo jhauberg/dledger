@@ -110,6 +110,8 @@ def main() -> None:
     """Entry point for invoking the command-line interface."""
 
     if sys.version_info < (3, 8):
+        # 3.8 required for the following peps/features:
+        #  PEP 572 (walrus operator)
         sys.exit("Python 3.8+ required")
 
     args = docopt(__doc__, version="dledger " + __version__.__version__)
@@ -152,7 +154,7 @@ def main() -> None:
     records: List[Transaction] = []
     for input_path in input_paths:
         try:
-            additional_records = read(input_path, input_type)
+            additional_records = read(input_path, kind=input_type)
             if len(additional_records) == 0:
                 # if this resulted in no records, it's likely that something didn't go as expected
                 # however, since no exception was raised, it is probably related to a type mismatch

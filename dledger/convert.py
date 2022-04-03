@@ -39,8 +39,9 @@ def removing_redundancies(
         latest_transaction: Optional[Transaction] = None
         if len(realized_records) > 0:
             latest_transaction = realized_records[-1]
-        # at this point we no longer need to keep some of the position entries around,
-        # as we have already used them to infer and determine position for each realized entry
+        # at this point we no longer need to keep some of the position entries
+        # around as we have already used them to infer and determine position
+        # for each realized entry
         for record in position_records:
             if record.entry_attr is not None:
                 _, directive = record.entry_attr.positioning
@@ -99,8 +100,9 @@ def adjusting_for_splits(records: List[Transaction]) -> List[Transaction]:
             # note that each split can be handled in one of two ways:
             #  1) fractional remainders paid out as cash, keep whole (default)
             #  2) fractional remainders kept as a fractional share
-            # if we always assumed either, we could adjust by the product of all factors,
-            # but since we support both kinds, we need to apply each split individually
+            # if we always assumed either one, we could adjust by the product
+            # of all factors, but since we support both kinds, we need to
+            # apply each split individually
             product = math.prod(
                 split.entry_attr.positioning[0] for split in later_splits
             )
@@ -179,7 +181,8 @@ def with_estimates(
 
 
 def in_dividend_currency(records: List[Transaction]) -> List[Transaction]:
-    """Return a list of transactions, replacing amounts with the sum of dividend times position."""
+    """Return a list of transactions, replacing amounts with the sum of dividend
+    times position."""
     for r in records:
         if r.dividend is None:
             continue
@@ -208,7 +211,8 @@ def in_currency(
     symbol: str,
     rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> List[Transaction]:
-    """Return a list of transactions, replacing amounts with estimates in given currency."""
+    """Return a list of transactions, replacing amounts with estimates in given
+    currency."""
     rates = rates if rates is not None else latest_exchange_rates(records)
     transactions = list(r for r in records if r.amount is not None)
     convertible_records = (

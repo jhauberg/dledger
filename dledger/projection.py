@@ -47,14 +47,9 @@ class GeneratedDate(date):
     """Represents a date estimation."""
 
     def __new__(
-            cls,
-            year: int,
-            month: Optional[int] = None,
-            day: Optional[int] = None
+        cls, year: int, month: Optional[int] = None, day: Optional[int] = None
     ):  # type: ignore
-        return super(GeneratedDate, cls).__new__(
-            cls, year, month, day
-        )  # type: ignore
+        return super(GeneratedDate, cls).__new__(cls, year, month, day)  # type: ignore
 
 
 @dataclass(frozen=True)
@@ -108,7 +103,8 @@ def normalize_interval(interval: int) -> int:
 
 
 def frequency(records: Iterable[Transaction]) -> int:
-    """Return the approximated frequency of occurrence (in months) for a set of records."""
+    """Return the approximated frequency of occurrence (in months) for a set of
+    records."""
 
     records = list(records)
 
@@ -123,7 +119,8 @@ def frequency(records: Iterable[Transaction]) -> int:
         # unambiguous; a clear pattern of common frequency (take a guess)
         return normalize_interval(m[0])
     else:
-        # ambiguous; no clear pattern of frequency, fallback to latest 12-month range (don't guess)
+        # ambiguous; no clear pattern of frequency,
+        # fallback to latest 12-month range (don't guess)
         latest_record = latest(records)
         assert latest_record is not None
         sample_records = trailing(
@@ -139,8 +136,8 @@ def estimated_monthly_schedule(
 ) -> List[int]:
     """Return an estimated monthly schedule for a list of records.
 
-    For example, provided with records dated for months (3, 6) at an interval of 3 months,
-    the returned schedule would be (3, 6, 9, 12).
+    For example, provided with records dated for months (3, 6) at an interval
+    of 3 months, the returned schedule would be (3, 6, 9, 12).
     """
 
     if interval <= 0:
@@ -149,10 +146,11 @@ def estimated_monthly_schedule(
     # first determine months that we know for sure is to be scheduled
     # e.g. those months where that actually has a recorded payout
     approx_schedule = monthly_schedule(records)
-    # determine approximate number of payouts per year, given approximate interval between payouts
+    # determine approximate number of payouts per year,
+    # given approximate interval between payouts
     payouts_per_year = int(12 / interval)
-    # then, going by the last recorded month, increment by interval until scheduled months
-    # and number of payouts match- looping back as needed
+    # then, going by the last recorded month, increment by interval until
+    # scheduled months and number of payouts match- looping back as needed
     if len(approx_schedule) < payouts_per_year:
         starting_month = approx_schedule[-1]
 
@@ -173,7 +171,8 @@ def estimated_monthly_schedule(
 
 
 def next_scheduled_date(d: date, months: List[int]) -> GeneratedDate:
-    """Return the date that would follow a given date, going by a monthly schedule.
+    """Return the date that would follow a given date, going by a monthly
+    schedule.
 
     For example, given a date (2019, 6, 18) and a schedule of (3, 6, 9, 12),
     the next scheduled month would be 9, resulting in date (2019, 9, 1).
@@ -220,6 +219,7 @@ def sample_ttm(
     records: List[Transaction], *, since: date = todayd()
 ) -> List[Transaction]:
     """Return a list of records dated in the latest trailing 12 months.
+
     Only includes records from tickers with open positions and activity within
     12 months of a given date.
     """
@@ -240,8 +240,9 @@ def sample_ttm(
             # skip projections for this ticker entirely,
             # as latest transaction is dated more than 12 months ago
             continue
-        # note using latest_record dating as that potentially adds to the amount of information
-        # we'll have available (frequency etc.), and then rely on filtering out older ones later
+        # note using latest_record dating as that potentially adds to the amount
+        # of information we'll have available (frequency etc.),
+        # and then rely on filtering out older ones later
         recs_in_period = list(trailing(recs, since=latest_record.entry_date, months=12))
         # assert that we don't have identically dated records
         # this is a core requirement for unambiguously projecting transactions
@@ -269,15 +270,16 @@ def sample_ttm(
                     record.kind == Distribution.SPECIAL
                     or other_record.kind == Distribution.SPECIAL
                 ):
-                    # allow identically dated records if one or the other is a special dividend
-                    # but check for ambiguous position
+                    # allow identically dated records if one or the other is a
+                    # special dividend, but check for ambiguous position
                     # see journal.py:232 for tolerance
                     if not math.isclose(
                         record.position, other_record.position, abs_tol=0.000001
                     ):
                         if other_record.entry_attr is not None:
                             raise ParseError(
-                                f"ambiguous position ({record.position} or {other_record.position}?)",
+                                f"ambiguous position "
+                                f"({record.position} or {other_record.position}?)",
                                 location=other_record.entry_attr.location,
                             )
                         raise ValueError(
@@ -340,7 +342,8 @@ def scheduled_transactions(
     # note that we potentially include more than 365 days here;
     #   e.g. remainder of current month + 12 full months
     cutoff_date = next_month(in_months(since, months=12))
-    # and with a grace period going back in time, keeping unrealized projections around for a while
+    # and with a grace period going back in time,
+    # keeping unrealized projections around for a while
     earliest_date = since + timedelta(days=-EARLY_LATE_THRESHOLD)
     # example timespan: since=2020/04/08
     #   [2020/03/23] inclusive, up to
@@ -350,7 +353,8 @@ def scheduled_transactions(
     ]
     for sample_record in sample_records:
         if sample_record.amount is None:
-            # skip buy/sell transactions; they should not have any effect on this bit of filtering
+            # skip buy/sell transactions;
+            # they should not have any effect on this bit of filtering
             continue
         # look for potential false-positive forecasts
         # todo: why not just filter instead of individual removal?
@@ -369,7 +373,8 @@ def scheduled_transactions(
                     # look back far enough to cover earlier-than-expected
                     # transactions, but not so far to hit _other_ forecasts
                     # if there's a hit, consider this forecast a false-positive
-                    abs((r.entry_date - sample_record.entry_date).days) <= 28
+                    abs((r.entry_date - sample_record.entry_date).days)
+                    <= 28
                 )
             )
         ]
@@ -494,7 +499,8 @@ def estimated_transactions(
         while len(scheduled_records) < len(scheduled_months):
             next_date = next_scheduled_date(future_date, scheduled_months)
             future_date = projected_date(next_date, timeframe=future_timeframe)
-            # double-check that position is not closed in timeframe leading up to future_date
+            # double-check that position is not closed in the timeframe
+            # leading up to future date
             if future_ex_date is not None:
                 next_ex_date = next_scheduled_date(future_ex_date, scheduled_months_ex)
                 assert future_ex_timeframe is not None
@@ -664,7 +670,8 @@ def future_transactions(
     *,
     rates: Optional[Dict[Tuple[str, str], Tuple[date, float]]] = None,
 ) -> List[GeneratedTransaction]:
-    """Return a list of forecasted transactions projected 12 months into the future."""
+    """Return a list of forecasted transactions projected 12 months into the
+    future."""
 
     future_records = []
 
@@ -803,7 +810,7 @@ def conversion_factors(
             )
             factors[conversion_key] = []
 
-            # bias similar transactions by payout date even if latest is based on entry date
+            # bias similar transactions by payout even if latest is based on entry date
             # note that this list will always include latest_transaction as well
             similar_transactions = list(
                 dated(matching_transactions, latest_transaction_date, by_payout=True)
@@ -831,7 +838,8 @@ def conversion_factors(
                             break
                     if not is_probably_duplicate:
                         factors[conversion_key].append(similar_conversion_factor)
-            # note that we set the applicable rate as last factor, as this seems more intuitive
+            # note that we set the applicable rate as last factor,
+            # as this seems more intuitive
             # (i.e. the last/latest is the rate being applied to conversions)
             factors[conversion_key].append(conversion_factor)
     # todo: consider including all rates and then sort by date

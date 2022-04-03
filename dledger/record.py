@@ -21,7 +21,8 @@ def amount_per_share(record: Transaction) -> float:
 def amount_conversion_factor(record: Transaction) -> float:
     """Return the conversion factor of dividend to amount.
 
-    Return 1 if no dividend is specified, or dividend is of same symbol as amount.
+    Return `1` if no dividend is specified, or dividend is of same symbol as
+    amount.
     """
 
     assert record.amount is not None
@@ -76,6 +77,7 @@ def amounts(
     records: Iterable[Transaction], symbol: Optional[str] = None
 ) -> List[Amount]:
     """Return a list of cash components in a set of records.
+
     Optionally only including those matching a given symbol.
     """
 
@@ -91,6 +93,7 @@ def dividends(
     records: Iterable[Transaction], symbol: Optional[str] = None
 ) -> List[Amount]:
     """Return a list of dividend components in a set of records.
+
     Optionally only including those matching a given symbol.
     """
 
@@ -107,8 +110,8 @@ def deltas(
 ) -> List[Union[int, float]]:
     """Return a list of deltas between amounts.
 
-    If normalized is True, returns deltas in integral numbers (-1, 0, 1) indicating
-    direction (down, no difference, up).
+    If `normalized` is `True`, returns deltas in integral numbers (-1, 0, 1)
+    indicating direction (down, no difference, up).
     """
     if len(amounts) < 2:
         return []
@@ -179,7 +182,8 @@ def monthly_schedule(records: Iterable[Transaction]) -> List[int]:
 def trailing(
     records: Iterable[Transaction], since: date, *, months: int
 ) -> Iterable[Transaction]:
-    """Return an iterator for records dated within months prior to a given date (inclusive).
+    """Return an iterator for records dated within months prior to a given
+    date (inclusive).
 
     Does take days into account.
     """
@@ -208,7 +212,7 @@ def yearly(
     """Return an iterator for records dated within a given year.
 
     Optionally only include records up to (and including) a given month.
-    For example, if months=5, only include records daten between January
+    For example, if `months` is `5`, only include records daten between January
     and May (inclusive).
     """
 
@@ -330,7 +334,8 @@ def dated(
 
 # todo: not a great name for this function
 def pruned(records: Iterable[Transaction]) -> List[Transaction]:
-    """Return a list of transactions with only the first occurence of a transaction per date."""
+    """Return a list of transactions with only the first occurence of a
+    transaction per date."""
 
     collected_records: List[Transaction] = []
     for record in records:

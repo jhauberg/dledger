@@ -41,7 +41,8 @@ def format_amount(
 def decimalplaces(value: Union[str, float, int]) -> int:
     """Return the number of places after a decimal separator.
 
-    Use 'decimal_point' from current system locale to determine decimal separator.
+    Use 'decimal_point' from current system locale to determine decimal
+    separator.
     """
     if isinstance(value, int):
         return 0

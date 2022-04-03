@@ -8,7 +8,7 @@ from typing import Tuple, Optional, List
 def todayd() -> date:
     """Return today's date.
     This function should always be used to determine today's date.
-    For debugging purposes, the function may be altered to return any other date.
+    For debugging purposes, the function may return any other date.
     """
     return datetime.today().date()
 
@@ -18,14 +18,13 @@ def months_between(a: date, b: date, *, ignore_years: bool = False) -> int:
 
     Does not take days into account.
 
-    For example,
-      2019-05-20 - 2019-06-20 is exactly 1 month apart, but so is
-      2019-05-20 - 2019-06-29 or 2019-06-01
+    For example, 2019-05-20 - 2019-06-20 is exactly 1 month apart, but so is
+    2019-05-20 - 2019-06-29 or 2019-06-01.
 
-    If ignore_years is True, do not take years into account.
+    If `ignore_years` is `True`, do not take years into account.
 
-    For example,
-      2019-05-20 - 2020-07-20 is exactly 14 months apart, but only 2 if ignore_years is True.
+    For example, 2019-05-20 - 2020-07-20 is exactly 14 months apart,
+    but only 2 months apart if `ignore_years` is `True`.
     """
 
     future = max([a, b])
@@ -103,7 +102,7 @@ def next_month(d: date) -> date:
 def parse_month(name: str) -> Optional[int]:
     """Return the month that unambiguously matches name partially or fully.
 
-    Return None if more than one month matches.
+    Return `None` if more than one month matches.
 
     Month names that are matched against are localized according to the
     currently active system locale.
@@ -121,7 +120,7 @@ def parse_month(name: str) -> Optional[int]:
 def parse_datestamp(datestamp: str, *, strict: bool = False) -> date:
     """Return the date that maps to datestamp.
 
-    If strict is True, a full datestamp is expected (year/month/day):
+    If `strict` is `True`, a full datestamp is expected (year/month/day):
 
         "2019/11/11" => 2019/11/11
 
@@ -190,14 +189,16 @@ def parse_interval(interval: str) -> Tuple[Optional[date], Optional[date]]:
 
 
 def parse_period_component(component: str) -> Tuple[date, date]:
-    """Return the date interval that exactly includes the period corresponding to a component.
+    """Return the date interval that exactly includes the period corresponding
+    to a component.
 
-    A period component can be either a full or partial datestamp, or a pre-defined textual key that
-    maps to a specific date.
+    A period component can be either a full or partial datestamp, or a
+    pre-defined textual key that maps to a specific date.
 
-    For example, if period component is 'today', then the date interval will range from
-    today to tomorrow, exactly including only today. Similarly, if component is '2019', then the
-    date interval will range from 2019/01/01 to 2020/01/01, including the full year period of 2019.
+    For example, if period component is 'today', then the date interval will
+    range from today to tomorrow, exactly including only today.
+    Similarly, if component is '2019', then the date interval will range from
+    2019/01/01 to 2020/01/01, including the full year period of 2019.
     """
     today = todayd()
     component = component.lower()
@@ -255,7 +256,8 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     # (both full and abbreviated e.g. 'march', 'jun', etc.)
     month = parse_month(component)
     if month is not None:
-        # todo: it's not easy to reach this point for a test; requires atypical language locale
+        # todo: it's not easy to reach this point for a test;
+        #       requires atypical language locale
         starting = date(today.year, month, 1)
         return starting, next_month(starting)
     # assume component is typical datestamp, as no textual keys match

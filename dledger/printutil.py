@@ -19,7 +19,8 @@ NO_COLOR = False
 
 
 def supports_color(stream) -> bool:  # type: ignore
-    """Determine whether an output stream (e.g. stdout/stderr) supports displaying colored text.
+    """Determine whether an output stream (e.g. stdout/stderr) supports
+    displaying colored text.
 
     A stream that is redirected to a file does not support color.
     """
@@ -35,7 +36,7 @@ def colored(text: str, color: str) -> str:
 
 
 def is_windows_environment() -> bool:
-    """Return True if on a Windows platform, False otherwise."""
+    """Return `True` if on a Windows platform, `False` otherwise."""
 
     return os.name == "nt"
 

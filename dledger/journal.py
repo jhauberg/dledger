@@ -18,8 +18,8 @@ from enum import Enum
 SUPPORTED_TYPES = ["journal", "nordnet"]
 
 POSITION_SET = 0           # (= 1) or blank; directive to set or infer absolute position
-POSITION_ADD = 1           # (+ 1) directive/multiplier to add to previous position
-POSITION_SUB = -1          # (- 1) directive/multiplier to subtract from previous position
+POSITION_ADD = 1           # (+ 1) directive to add to previous position
+POSITION_SUB = -1          # (- 1) directive to subtract from previous position
 POSITION_SPLIT = -2        # (X 2/1) directive to split keeping fractional position
 POSITION_SPLIT_WHOLE = -3  # (x 2/1) directive to split keeping whole position
 
@@ -44,13 +44,16 @@ class Amount:
 
 @dataclass(frozen=True)
 class EntryAttributes:
-    """Represents a set of attributes describing some facts about a journal entry.
+    """Represents a set of attributes describing some facts about a journal
+    entry.
 
-    These are properties that can only be known at parse-time, as a journal entry may undergo
-    several processing steps ultimately changing its final representation.
+    These are properties that can only be known at parse-time, as a journal
+    entry may undergo several processing steps ultimately changing its
+    final representation.
 
-    For example, whether a record is preliminary or not cannot be deduced after processing
-    as it will end up having a generated amount attached to it (where it would otherwise be None).
+    For example, whether a record is preliminary or not cannot be deduced after
+    processing as it will end up having a generated amount attached to it
+    (where it would otherwise be `None`).
     """
 
     location: Tuple[str, int]  # journal:linenumber
@@ -83,7 +86,8 @@ class Transaction:
 
     @property
     def ispositional(self) -> bool:
-        """Return True if transaction only records a position component, False otherwise.
+        """Return `True` if transaction only records a position component,
+        `False` otherwise.
 
         This is typically the case for a buy/sell transaction.
         """
@@ -93,14 +97,14 @@ class Transaction:
         def literal_location(r: Transaction) -> Tuple[str, int]:
             return r.entry_attr.location if r.entry_attr is not None else ("", 0)
 
-        # sort by primary date and always put buy/sell transactions later if on same date
+        # sort by entry date and always put buy/sell transactions later if on same date
         # e.g.  2019/01/01 ABC (+10)
         #       2019/01/01 ABC (10)  $ 1
         #   =>
         #       2019/01/01 ABC (10)  $ 1
         #       2019/01/01 ABC (+10)
         # thirdly, take literal order in journal into account (both linenumber and path)
-        # finally, to stabilize sorting in all cases, use ticker for alphabetical ordering
+        # finally, stabilize sorting using ticker for alphabetical ordering
         return (
             self.entry_date,
             self.ispositional,
@@ -119,7 +123,7 @@ class ParseError(Exception):
         super().__init__(f"{os.path.abspath(location[0])}:{location[1]} {message}")
 
 
-def read(path: str, kind: str) -> List[Transaction]:
+def read(path: str, *, kind: str) -> List[Transaction]:
     """Return a list of records imported from a file."""
 
     try:
@@ -141,9 +145,9 @@ def read(path: str, kind: str) -> List[Transaction]:
 def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transaction]:
     journal_entries = []
 
-    # note that this pattern will initially let inconsistent formatting pass (e.g. 2019/12-1)
-    # but will eventually raise a formatting error later on (it is faster to skip validation
-    # through parse_datestamp at this point)
+    # note that this pattern will initially let inconsistent formatting pass through
+    # (e.g. 2019/12-1), but will eventually raise a formatting error later on
+    # (it is faster to skip validation through parse_datestamp at this point)
     transaction_start = re.compile(r"[0-9]+[-/][0-9]+[-/][0-9]+")
     # any (stripped) line starting with "include" is considered an inclusion directive;
     # handled as it occurs in the journal
@@ -152,10 +156,10 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
     with open(path, newline="", encoding=encoding) as file:
         line_number = 0
         lines: List[Tuple[int, str]] = []
-        # start reading, line by line; each line read representing part of the current transaction
-        # once we encounter a line starting with what looks like a date, we take that to indicate
-        # the beginning of next transaction and parse all lines read up to this point (excluding
-        # that line), and then repeat until end of file
+        # start reading, line by line; each line being part of the current transaction
+        # once we encounter a line starting with what looks like a date, we take that
+        # to indicate the beginning of next transaction and parse all lines
+        # up to this point (excluding that line), and then repeat until end of file
         while line := file.readline():
             line_number += 1
             # strip any comment
@@ -194,14 +198,15 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                             "attempt to recursively include journal",
                             location=(path, line_number),
                         )
-                    # note that implicit dependencies could potentially be handled here by passing
-                    # on the current list of records to the read function or something similar-
-                    # for now this is just linearly drilling down through each journal and its
-                    # explicit dependencies
+                    # note that implicit dependencies could potentially be handled here
+                    # by passing on the current list of records to the read function or
+                    # something similar- for now this is just linearly drilling down
+                    # through each journal and its explicit dependencies
                     journal_entries.extend(
-                        # note that this assumes all included journals are of identical encoding
-                        # if we instead went `read(.., kind="journal"), then this would not support
-                        # pruning redundant records (as they might be needed during recursion)
+                        # note that this assumes all included journals are of identical
+                        # encoding; if we instead went `read(.., kind="journal"), then
+                        # this would not support pruning redundant records
+                        # (as they might be needed during recursion)
                         read_journal_transactions(include_path, encoding)
                     )
                     # clear out this line; we've dealt with the directive and
@@ -296,8 +301,9 @@ def infer(entries: Iterable[Transaction]) -> List[Transaction]:
             if record.amount.symbol == record.dividend.symbol:
                 inferred_p = record.amount.value / record.dividend.value
                 if position is not None:
-                    # determine whether position equates (close enough) to the inferred position
-                    # note that the precision here should match the precision of any inferred dividend
+                    # determine whether literal position is close enough to the
+                    # inferred position; note that the precision here should match
+                    # the precision of any inferred dividend
                     precision = 0.000001
                     if record.dividend.places is not None:
                         denominator = "1" + ("0" * (record.dividend.places - 1))
@@ -381,7 +387,8 @@ def read_journal_transaction(
         raise ParseError("invalid transaction", location)
 
     def anyindex(string: str, sub: List[str]) -> int:
-        """Return the first index of any matching string in a list of substrings."""
+        """Return the first index of any matching string in a list of
+        substrings."""
         return min([string.index(s) for s in sub if s in string])
 
     # combine all lines into single string, adding double-space to replace linebreak
@@ -403,16 +410,15 @@ def read_journal_transaction(
         raise ParseError(f"invalid date format ('{datestamp}')", location)
     condensed_line = condensed_line[datestamp_end_index:].strip()
     try:
-        # determine where ticker ends by the first appearance of any of the following separators
+        # determine where ticker ends by the first appearance of any of the separators;
         # note that by including [ as a breaker, we allow additional formatting options
-        # but it also requires any position () to always be the next component after ticker
+        # but also requires any position () to always be the next component after ticker
         # e.g. this format is allowed:
         #   "2019/12/31 ABC [2020/01/15] $ 1"
         # but this is not:
         #   "2019/12/31 ABC [2020/01/15] (10) $ 1"
         # it must instead be:
         #   "2019/12/31 ABC (10) [2020/01/15] $ 1"
-        # (the secondary date is like a tag attached to the cash amount)
         break_index = anyindex(condensed_line, ["(", "[", "  ", "\n", "\t"])
     except ValueError:
         raise ParseError(f"invalid transaction", location)
@@ -607,7 +613,8 @@ def parse_amount(amount: str, *, location: Tuple[str, int]) -> Amount:
         symbol = rhs.strip()
     if len(lhs) > 0:
         if symbol is not None:
-            # a symbol can exist on both sides of the string, but then which one do we use?
+            # a symbol can exist on both sides of the string,
+            # but then which one do we use?
             raise ParseError(
                 f"ambiguous symbol definition ('{symbol}' or '{lhs.strip()}'?)",
                 location,
@@ -660,7 +667,8 @@ def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transa
         required_min_header_count = sorted(required_headers.keys())[-1] + 1
         if len(headers) < required_min_header_count:
             raise ParseError(
-                f"unexpected number of columns ({len(headers)} < {required_min_header_count})",
+                f"unexpected number of columns "
+                f"({len(headers)} < {required_min_header_count})",
                 location,
             )
 
@@ -668,7 +676,8 @@ def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             header = str(headers[column]).strip()
             if header != expected_header:
                 raise ParseError(
-                    f'unexpected header at column {column} ("{header}" != "{expected_header}")',
+                    f"unexpected header at column {column} "
+                    f'("{header}" != "{expected_header}")',
                     location,
                 )
 
@@ -683,10 +692,12 @@ def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transa
             transactional_type = str(row[5]).strip()
 
             if transactional_type == "MAK. UDB.":
-                # note that we can't reasonably know which transaction is actually being reverted; even if we sort
-                # chronologically later and know the ticker, it is still not guaranteed to be "in order"
-                # so better bail out and have user fix the issue- similarly, with ambiguous values, we
-                # don't make any guesses as we simply cannot be certain which option is correct
+                # note that we can't reasonably know which transaction is actually
+                # being reverted; even if we sort chronologically later and know the
+                # ticker, it is still not guaranteed to be "in order"
+                # so better bail out and have user fix the issue- similarly,
+                # with ambiguous values, we don't make any guesses as we simply
+                # cannot be certain which option is correct
                 raise ParseError(
                     f"earlier transaction reverted; proceeding would cause duplicates",
                     location,
@@ -771,8 +782,8 @@ def read_nordnet_transaction(
     dividend_symbol = transaction_text_components[-1]
     dividend_rate_str = transaction_text_components[-2]
 
-    # hack: for this number, it is typically represented using period for decimals
-    #       but occasionally a comma sneaks in- we assume that is an error and correct it
+    # hack: for this number, it is typically represented using period for decimals, but
+    #       occasionally a comma sneaks in- we assume that is an error and correct it
     dividend_rate_str = dividend_rate_str.replace(",", ".")
 
     try:
@@ -826,9 +837,10 @@ def max_decimal_places(amounts: Iterable[Optional[Amount]]) -> Optional[int]:
     if len(places_by_inference) > 0:
         for places in places_by_inference:
             if max_decimals is None or (max_decimals < 2 and places > max_decimals):
-                # determine whether this amount actually has more decimals than the preference
-                # (i.e. potentially hiding some value [see #21])
-                # but clamp to no more than 2 decimal places; typically this would be a generated amount
+                # determine whether this amount actually has more decimals than the
+                # preference (i.e. potentially hiding some value [see #21])
+                # but clamp to no more than 2 decimal places;
+                # typically this would be a generated amount
                 max_decimals = min(places, 2)
     return max_decimals
 
