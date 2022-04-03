@@ -57,11 +57,12 @@ class EntryAttributes:
     """
 
     location: Tuple[str, int]  # journal:linenumber
-    # todo: we need this information during parsing in order to infer an absolute position,
-    #       however, once we're done parsing, this field rarely becomes very useful later on,
-    #       as it will generally always equal (position, POSITION_SET)
-    #       this is the case since because positional records are typically redundant and will
-    #       be pruned anyway. consider whether we can do something to make this more useful?
+    # todo: we need this information during parsing in order to infer an
+    #       absolute position, however, once we're done parsing, this field
+    #       rarely becomes very useful later on, as it will generally always
+    #       equal (position, POSITION_SET), this is the case since because
+    #       positional records are typically redundant and will be pruned anyway
+    #       consider whether we can do something to make this more useful?
     positioning: Tuple[
         Optional[float], int
     ]  # position/change:directive (i.e. POSITION_*)

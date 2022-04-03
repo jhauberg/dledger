@@ -264,7 +264,7 @@ def sample_ttm(
                     continue
                 # records dated identically (based on entry date)
                 # todo: note that there might be some intricacies with ex-date here
-                #       (i.e. in some cases ex-date could be the date to compare against),
+                #       (i.e. in some cases ex-date is the date to compare against),
                 #       but for now just base this logic on primary date
                 if (
                     record.kind == Distribution.SPECIAL

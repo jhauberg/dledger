@@ -156,13 +156,14 @@ def main() -> None:
         try:
             additional_records = read(input_path, kind=input_type)
             if len(additional_records) == 0:
-                # if this resulted in no records, it's likely that something didn't go as expected
-                # however, since no exception was raised, it is probably related to a type mismatch
+                # if this resulted in no records, it's likely that something
+                # didn't go as expected, however, since no exception was raised,
+                # it is probably related to a type mismatch
                 if is_verbose and (
                     input_type == "journal" and input_path.endswith(".csv")
                 ):
-                    # note that it is not unacceptable to use `csv` extension for a journal,
-                    # so this can not be considered an error
+                    # note that it is not unacceptable to use `csv` extension
+                    # for a journal, so this can not be considered an error
                     print(
                         f"{input_path}: path does not look like a journal; "
                         f"did you mean to add --type=nordnet ?",
@@ -189,9 +190,10 @@ def main() -> None:
     descending_order = args["--reverse"]
 
     if args["print"] or args["convert"] and descending_order:
-        # note that other program functions except records in ascending order, so we only
-        # apply reversal for this specific case - additionally, reporting commands
-        # typically have specific query mechanisms making record order insignificant
+        # note that other program functions except records in ascending order,
+        # so we only apply reversal for this specific case - additionally,
+        # reporting commands typically have specific query mechanisms making
+        # record order insignificant
         records.reverse()
     if args["print"]:
         write(records, file=sys.stdout, condensed=args["--condense"])
@@ -208,8 +210,9 @@ def main() -> None:
         except ValueError as e:
             sys.exit(f"{e}")
 
-    # determine exchange rates before filtering out any transactions, as we expect the
-    # latest rate to be applied in all cases, no matter the period, ticker or other criteria
+    # determine exchange rates before filtering out any transactions,
+    # as we expect the latest rate to be applied in all cases,
+    # no matter the period, ticker or other criteria
     exchange_rates = latest_exchange_rates(records)
 
     if args["stats"]:
@@ -233,16 +236,17 @@ def main() -> None:
         # filter down to only include records by ticker
         records = list(r for r in records if r.ticker == ticker)
 
-    # produce estimate amounts for preliminary or incomplete records,
-    # transforming them into transactions for all intents and purposes from this point onwards
+    # produce estimate amounts for preliminary or incomplete records, transforming
+    # them into transactions for all intents and purposes from this point onwards
     records = with_estimates(records, rates=exchange_rates)
-    # keep a copy of the list of records as they were before any date swapping, so that we can
-    # produce diagnostics only on those transactions entered manually; i.e. not forecasts
+    # keep a copy of the list of records as they were before any date swapping,
+    # so that we can produce diagnostics only on those transactions entered manually;
+    # i.e. not forecasts
     # note that because we copy the list at this point (i.e. *before* period filtering),
     # we have to apply any period filtering again when producing diagnostics
-    # if we had copied the list *after* period filtering, we would also be past the date-swapping
-    # step, causing every record to look like a diagnostic-producing case (i.e. they would all be
-    # lacking either payout or ex-date)
+    # if we had copied the list *after* period filtering, we would also be past
+    # the date-swapping step, causing every record to look like a diagnostic-producing
+    # case (i.e. they would all be lacking either payout or ex-date)
     journaled_transactions = (
         [
             r
@@ -255,7 +259,8 @@ def main() -> None:
     )
 
     if args["--by-payout-date"]:
-        # forcefully swap entry date with payout date, if able (diagnostic later if unable)
+        # forcefully swap entry date with payout date, if able
+        # (diagnostic later if unable)
         records = [
             r
             if r.payout_date is None
@@ -372,7 +377,8 @@ def main() -> None:
                         "" if existing_journal == journal else existing_journal
                     )
                     print(
-                        f"{journal}:{linenumber} potential transaction duplicate "
+                        f"{journal}:{linenumber} "
+                        f"potential transaction duplicate "
                         f"(see '{existing_journal}:{existing_linenumber}')",
                         file=sys.stderr,
                     )
@@ -396,7 +402,8 @@ def main() -> None:
                     assert transaction.entry_attr is not None
                     journal, linenumber = transaction.entry_attr.location
                     print(
-                        f"{journal}:{linenumber} transaction is missing payout date",
+                        f"{journal}:{linenumber} "
+                        f"transaction is missing payout date",
                         file=sys.stderr,
                     )
             elif args["--by-ex-date"]:
@@ -407,7 +414,8 @@ def main() -> None:
                     assert transaction.entry_attr is not None
                     journal, linenumber = transaction.entry_attr.location
                     print(
-                        f"{journal}:{linenumber} transaction is missing ex-dividend date",
+                        f"{journal}:{linenumber} "
+                        f"transaction is missing ex-dividend date",
                         file=sys.stderr,
                     )
 
@@ -441,7 +449,8 @@ def main() -> None:
                         assert txn.entry_attr is not None
                         journal, linenumber = txn.entry_attr.location
                         print(
-                            f"{journal}:{linenumber} transaction has duplicate tag: {tag}",
+                            f"{journal}:{linenumber} "
+                            f"transaction has duplicate tag: {tag}",
                             file=sys.stderr,
                         )
 

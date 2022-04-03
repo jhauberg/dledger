@@ -264,13 +264,15 @@ def print_simple_report(
             if isinstance(transaction, GeneratedTransaction):
                 if transaction.entry_date < today:
                     should_colorize_expired_transaction = True
-                    # call attention as it may be a payout about to happen, or a closed position
+                    # call attention as it may be a payout about to happen,
+                    # or a closed position
                     line = f"{line}  ~ {d} {transaction.ticker.ljust(8)}"
                 else:
                     # indicate that the transaction is expected before, or by, date
                     line = f"{line} <~ {d} {transaction.ticker.ljust(8)}"
             else:
-                # todo: we're ignoring these indicators for preliminary records; is that right?
+                # todo: we're ignoring these indicators for preliminary records;
+                #       is that right?
                 if transaction.kind is Distribution.INTERIM:
                     line = f"{line}  ^ {d} {transaction.ticker.ljust(8)}"
                 elif transaction.kind is Distribution.SPECIAL:
@@ -412,7 +414,8 @@ def print_journal_stats(records: List[Transaction], input_paths: List[str]) -> N
     )
     # find all journals that must have been specified as an input
     journal_paths = sorted(path for path in source_paths if path in input_source_paths)
-    # todo: consider only counting input sources and having included journals in separate section
+    # todo: consider only counting input sources and having included journals
+    #       in separate section
     for n, path in enumerate(journal_paths + included_paths):
         print_stat_row(
             f"Journal {n + 1}", path + (" (included)" if path in included_paths else "")
@@ -632,9 +635,11 @@ def print_balance_report(
                 amount = format_amount(amount)
             amount = fmt % amount
             if has_estimate:
-                line = f"~ {amount.rjust(18)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}"
+                line = (f"~ {amount.rjust(18)}  / {freq.ljust(2)} "
+                        f"{pct.rjust(7)} {ticker.ljust(8)}")
             else:
-                line = f"{amount.rjust(20)}  / {freq.ljust(2)} {pct.rjust(7)} {ticker.ljust(8)}"
+                line = (f"{amount.rjust(20)}  / {freq.ljust(2)} "
+                        f"{pct.rjust(7)} {ticker.ljust(8)}")
             p_decimals = decimalplaces(p)
             p = format_amount(p, places=p_decimals)
             position = f"({p})".rjust(18)
@@ -780,14 +785,15 @@ def decimals_per_component(
         #       this component had another layer of specificity; i.e. the ticker
         #       the problem is that if there's just _one_ occurrence of a dividend
         #       of e.g. 4 decimals, then _all_ dividends will be set to this precision
-        #       right now this is not a problem, because there is no report that includes
-        #       the dividend of more than just one ticker anyway
+        #       right now this is not a problem, because there is no report that
+        #       includes the dividend of more than just one ticker anyway
         dividend_decimal_places[symbol] = max_decimal_places(dividends(records, symbol))
         # todo: this would work as a fallback and could be useful
         #       in particular for forecasted records with no preference
         #       toward decimal places; however, it would also lead to
         #       probably unexpected number of decimals... same issue as above
-        #       for example, a "$ 0.1925" dividend would cause all payouts to have 4 decimal places
+        #       for example, a "$ 0.1925" dividend would cause all payouts to have
+        #       4 decimal places
         # if amount_decimal_places[symbol] is None:
         #     amount_decimal_places[symbol] = dividend_decimal_places[symbol]
     for ticker in tickers(records):
