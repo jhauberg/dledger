@@ -40,7 +40,27 @@ Depending on your Python setup, you might have to run `dledger` as a module:
 $ python3 -m dledger --version
 ```
 
-Similarly, you can also use the above command to run `dledger` without installing it (just navigate to project root).
+Similarly, you can also use the above command to run `dledger` without installing it (useful for development and debugging).
+
+*Note that you must navigate to project root; i.e. `$ python3 -m path/to/dledger --version` will not work.*
+
+<details>
+  <summary><strong>Uninstall</strong></summary>
+
+If you want to uninstall `dledger` and make sure to get rid of everything, you can run the installation again using the additional `--record` flag to get a list of all installed files that you need to delete from your system:
+
+```console
+$ python3 setup.py install --record files.txt
+```
+
+It should look something like this (note that any dependencies are _not_ included):
+
+```
+/usr/local/lib/python3.10/site-packages/dledger-0.9.0-py3.10.egg
+/usr/local/bin/dledger
+```
+<sup>&nbsp;&nbsp;**files.txt**</sup>
+</details>
 
 ### Usage
 
