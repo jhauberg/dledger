@@ -225,11 +225,9 @@ def print_simple_report(
             (x for x in reversed(records) if x.entry_date < today), None
         )
 
-    if len(records) > 0 and (
-        underlined_record is records[-1] or underlined_record is records[0]
-    ):
-        # don't underline the final transaction; there's no transactions below or above
-        underlined_record = None
+    if underlined_record is not None:
+        if not descending and underlined_record is records[-1]:
+            underlined_record = None
 
     for transaction in records:
         should_colorize_expired_transaction = False
