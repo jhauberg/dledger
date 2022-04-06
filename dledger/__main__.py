@@ -160,7 +160,7 @@ def main() -> None:
                     # for a journal, so this can not be considered an error
                     print(
                         f"{input_path}: path does not look like a journal; "
-                        f"did you mean to add --type=nordnet ?",
+                        f"did you mean to add `--type=nordnet` ?",
                         file=sys.stderr,
                     )
                 continue
@@ -334,7 +334,7 @@ def main() -> None:
                     # condition specified without --drift; this has no effect
                     sys.exit(
                         f"`{no_effect_flag}` has no effect; "
-                        f"did you mean to add `--drift`?"
+                        f"did you mean to add `--drift` ?"
                     )
                 print_balance_report(transactions, descending=descending_order)
         else:

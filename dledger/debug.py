@@ -21,7 +21,7 @@ def debug_find_missing_payout_date(transactions: List[Transaction]) -> None:
         assert transaction.entry_attr is not None
         journal, linenumber = transaction.entry_attr.location
         print(
-            f"{journal}:{linenumber} " f"transaction is missing payout date",
+            f"{journal}:{linenumber} transaction is missing payout date",
             file=sys.stderr,
         )
 
@@ -32,7 +32,7 @@ def debug_find_missing_ex_date(transactions: List[Transaction]) -> None:
         assert transaction.entry_attr is not None
         journal, linenumber = transaction.entry_attr.location
         print(
-            f"{journal}:{linenumber} " f"transaction is missing ex-dividend date",
+            f"{journal}:{linenumber} transaction is missing ex-dividend date",
             file=sys.stderr,
         )
 
@@ -118,6 +118,6 @@ def debug_find_duplicate_tags(transactions: List[Transaction]) -> None:
                 assert txn.entry_attr is not None
                 journal, linenumber = txn.entry_attr.location
                 print(
-                    f"{journal}:{linenumber} " f"transaction has duplicate tag: {tag}",
+                    f"{journal}:{linenumber} transaction has duplicate tag: {tag}",
                     file=sys.stderr,
                 )

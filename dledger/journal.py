@@ -133,7 +133,7 @@ def read(path: str, *, kind: str) -> List[Transaction]:
         encoding = None
 
     if encoding is None or len(encoding) == 0:
-        raise ValueError(f"Path could not be read: '{path}'")
+        raise ValueError(f"path could not be read: '{path}'")
 
     if kind == "journal":
         return read_journal_transactions(path, encoding)
