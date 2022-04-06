@@ -414,10 +414,10 @@ A tag is a flexible component that can exist anywhere in a transaction. It is al
   $ 73 ;my-second-tag
 ```
 
-You can filter by tags in both the `report` and `balance` commands. For example:
+You can only filter by tags in the `report` command. For example:
 
 ```shell
-$ dledger report --tagged=my-first-tag,my-second-tag
+$ dledger report --tag=my-first-tag,my-second-tag
 ```
 
 Every transaction that has, _at least_, one or more of the tags listed will be included in the report.
@@ -445,7 +445,7 @@ Here's a practical example where an investor might be taxed at different levels 
 Given these tags, the investor could then run:
 
 ```shell
-$ dledger report --sum --tagged=foreign
+$ dledger report --sum --tag=foreign
 ```
 
 This provides a summation of all the dividends that will be taxed under a certain category, which the investor can then use in their own calculations:
@@ -563,7 +563,7 @@ Depending on the fidelity of your records and [tracking method](#tracking-method
 
 ## Periods
 
-The `--period` flag can be used to drill down and limit transactions within a date interval.
+The `--period` (`-p` for short) flag can be used to drill down and limit transactions within a date interval.
 
 A period is specified through a simple syntax using `:` (colon) as a separator to indicate a starting and ending date.
 
@@ -600,7 +600,7 @@ The report includes [forecasts](#forecasts) and preliminary records, as indicate
 
 Taking a look at the last row, we might also notice that the date stands out from the others in two ways: **1)** it is set in the future, and **2)** it has a `<` next to it. Here, the `<` is to be read as a backwards facing arrow, indicating "by/before this date". So with this knowledge, the row now reads: "approximately $308 received by November 2020".
 
-If a journal contains income of multiple currencies, the report is split in a section for each currency (unless `--as-currency` is specified, see [consolidating income reports](#consolidating-income-reports)).
+If a journal contains income of multiple currencies, the report is split in a section for each currency (unless `--exchange-to` is specified, see [consolidating income reports](#consolidating-income-reports)).
 
 ### Monthly
 
@@ -670,7 +670,7 @@ Here, each row corresponds to the total income over the trailing 12-month period
 
 For example, in the above report, the first row represents the total income of the period ranging from `2018/03/01` (inclusive) through `2019/03/01` (exclusive). Similarly, the second row ranges from `2018/04/01` (inclusive) through `2019/04/01` (exclusive).
 
-The report will include forecasted transactions unless `--no-forecast` is set.
+The report will include forecasted transactions unless `--no-projection` is set.
 
 The last row stands out, as it does not correspond to a trailing 12-month period, but instead represent the forecasted and future 12-month period, starting from today (inclusive), and is effectively the sum of all future\* transactions.
 
@@ -712,7 +712,7 @@ $ dledger report example/simple.journal --weight --period=tomorrow:
 ~              $ 308    100.00%    AAPL
 ```
 
-*Note that the [balance](#balance) command can preferably be used instead for this particular case.*
+*Note that the [forecasting](#forecasts) flags can preferably be used instead for this particular case.*
 
 ### Sum
 
@@ -728,24 +728,24 @@ Since reports by default include forecasted transactions, the sum also counts th
 ~              $ 608
 ```
 
-You can apply `--no-forecast` to sum without forecasted transactions:
+You can apply `--no-projection` to sum without forecasted transactions:
 
 ```shell
-$ dledger report example/simple.journal --sum --no-forecast
+$ dledger report example/simple.journal --sum --no-projection
 ```
 
 ```console
                $ 304
 ```
 
-Similarly, you can reduce the number of transactions further by applying either `--period` or `--by-ticker`.
+Similarly, you can reduce the number of transactions further by applying either `--period` or `--ticker`.
 
 ## Detailed transactions
 
-The `--by-ticker` flag can be used to filter a report to only show transactions with a specific ticker. It also adds more details to each transaction (dividend and position).
+The `--ticker` flag can be used to filter a report to only show transactions with a specific ticker. It also adds more details to each transaction (dividend and position).
 
 ```shell
-$ dledger report example/simple.journal --by-ticker=AAPL
+$ dledger report example/simple.journal --ticker=AAPL
 ```
 
 ```console
@@ -762,17 +762,17 @@ $ dledger report example/simple.journal --by-ticker=AAPL
 You can provide partial ticker names if there's no ambiguity among other tickers. For example, the above report could also be run as:
 
 ```shell
-$ dledger report example/simple.journal --by-ticker=AAP
+$ dledger report example/simple.journal --ticker=AAP
 ```
 
-Ticker names are case-sensitive; i.e. `--by-ticker=Aapl` does not produce the same report as above.
+Ticker names are case-sensitive; i.e. `--ticker=Aapl` does not produce the same report as above.
 
 Ticker names can contain whitespace.
 
 For example, to filter by ticker "NOVO B", you must wrap it in quotes:
 
 ```shell
-$ dledger report ~/.journal --by-ticker="NOVO B"
+$ dledger report ~/.journal --ticker="NOVO B"
 ```
 
 ## Forecasts
@@ -781,7 +781,17 @@ In addition to listing all past or pending transactions, reports also include fo
 
 These forecasts can provide you with an overview of future cashflow, based on past cashflow, and are always projected conservatively, aiming at keeping future dividends in line with recent distributions.
 
-You can set `--no-forecast` to exclude forecasted transactions from a report entirely.
+You can set `--no-projection` to exclude forecasted transactions from a report entirely.
+
+### Future income
+
+The `--forecast` flag produces a report that provides an overview of your projected future income over the next full 12 months, per ticker. Optionally including an indication of drift from ideal weightings if `--drift` is also set.
+
+The "ideal" weight is considered to be the percentage split equally among every holding; i.e. if you have a portfolio of 100 different companies, then the ideal income weight for each ticker is 1%.
+
+This is a conservative approach that is grounded in the belief that you cannot predict winners vs. losers, and thus should spread your risk equally. This approach should only be viewed as a guideline; it is not advice, and it is subject to personal consideration based on own beliefs and convictions.
+
+By default, drift is indicated by the percentage difference/deviance from the ideal weight. Alternatively, you can show drift by position (shares), or currency (exposure), by setting either `--by-position`, or `--by-currency`, respectively.
 
 ## Exchange rates
 
@@ -793,7 +803,7 @@ The exchange rate is always based on the latest recorded transaction and is *not
 
 ### Consolidating income reports
 
-The `--as-currency` flag can be used to report all income in a specific currency. This can be particularly useful when you track and receive income in currency other than your domestic currency, but want to consolidate all reports into a single one.
+The `--exchange-to` flag can be used to report all income in a specific currency. This can be particularly useful when you track and receive income in currency other than your domestic currency, but want to consolidate all reports into a single one.
 
 This works by estimating how much the amount of cash received previously would be worth today, using the most recently known exchange rate; i.e. it does not determine what it was worth at the time of the transaction, but rather what it would be worth if exchanged today.
 
@@ -821,7 +831,7 @@ Building on the [previous tip](#report-only-future-transactions), you can apply 
 $ dledger report ~/.journal --period=tomorrow: --weight
 ```
 
-*Note that the [balance](#balance) command is typically more useful for this particular case.*
+*Note that the [forecasting](#forecasts) flags are typically more useful for this particular case.*
 
 ### Report how much you earned/received
 
@@ -869,7 +879,7 @@ Similarly, the tool `tail` can be used for the same purpose, but instead of read
 dledger report ~/.journal --no-forecast | tail -n 5
 ```
 
-*Note the use of `--no-forecast` to exclude any forecasted transactions.*
+*Note the use of `--no-projection` to exclude any forecasted transactions.*
 
 ### Archiving/condensing old journals
 
@@ -880,20 +890,10 @@ This can reduce the journal's filesize and linecount drastically, but at the exp
 *Warning: this will also __remove all comments__!*
 
 ```shell
-$ dledger print old.journal --condensed > archived.journal
+$ dledger print old.journal --condense > archived.journal
 ```
 
 This also ensures a consistent formatting and removes any redundant transactions.
-
-# Balance
-
-The `balance` command provides an overview of your projected future income over the next full 12 months, per ticker, along with an indication of drift from ideal weightings.
-
-The "ideal" weight is considered to be the percentage split equally among every holding; i.e. if you have a portfolio of 100 different companies, then the ideal income weight for each ticker is 1%.
-
-This is a conservative approach that is grounded in the belief that you cannot predict winners vs. losers, and thus should spread your risk equally. This approach should only be viewed as a guideline; it is not advice, and it is subject to personal consideration based on own beliefs and convictions.
-
-By default, drift is indicated by the percentage difference/deviance from the ideal weight. You can show drift by amount (cash), or position (shares), by setting either `--by-amount`, or `--by-position`, respectively.
 
 # Stats
 
@@ -905,15 +905,15 @@ $ dledger stats example/simple.journal
 
 ```console
  Journal 1: /Users/jhauberg/dledger/dledger/example/simple.journal
-    Locale: ('da_DK', 'UTF-8')
+    Locale: ('da_DK', 'UTF-8'), Numbers: "1.000,00"
    Records: 4
   Earliest: 2019/02/14
     Latest: 2019/11/14
    Tickers: 1
-   Symbols: ['$']
+Currencies: ['$']
 ```
 
-This reveals some statistics and information on symbol/exchange rate and how `dledger` reads and expects numbers to be formatted (see [locale](#locale)).
+This reveals some statistics and information on currency/exchange rate and how `dledger` reads and expects numbers to be formatted (see [locale](#locale)).
 
 # FAQ
 
