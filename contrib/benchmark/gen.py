@@ -38,5 +38,9 @@ assert len(records) > 0
 
 records.sort()
 
+# note that we never apply system locale in this script, so decimals will
+# always be written using default period (".") separator
+# this can cause reports to display unexpected values; though, it should not
+# matter for the purposes of this script, so just take note of it
 with open("benchmark.journal", "w") as file:
     write(records, file, condensed=True)
