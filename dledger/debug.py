@@ -4,6 +4,7 @@ from datetime import date
 
 from typing import List, Dict, Tuple
 
+from dledger.formatutil import format_amount
 from dledger.record import tickers, by_ticker
 from dledger.journal import (
     Transaction,
@@ -92,9 +93,17 @@ def debug_find_ambiguous_exchange_rates(
 
     for symbols, rates in ambiguous_exchange_rates.items():
         if len(rates) > 1:
+            applied_rate = exchange_rates[symbols]
+            applied_rate_amount = format_amount(applied_rate[1])
+            applied_datestamp = applied_rate[0].strftime("%Y/%m/%d")
+            ambiguous_rate = rates[:-1][0]  # take the first
+            ambiguous_rate_amount = format_amount(ambiguous_rate[1])
+            ambiguous_datestamp = ambiguous_rate[0].strftime("%Y/%m/%d")
+            from_symbol, to_symbol = symbols
             print(
-                f"ambiguous exchange rate {symbols} = "
-                f"{exchange_rates[symbols]}:\n or, {rates[:-1]}?",
+                f"ambiguous exchange rate for {from_symbol}/{to_symbol}:\n"
+                f" {applied_datestamp} {applied_rate_amount} (applied) or\n"
+                f" {ambiguous_datestamp} {ambiguous_rate_amount}",
                 file=sys.stderr,
             )
 
