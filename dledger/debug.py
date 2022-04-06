@@ -15,29 +15,23 @@ from dledger.projection import (
 
 
 def debug_find_missing_payout_date(transactions: List[Transaction]) -> None:
-    skipped_transactions = [
-        r for r in transactions if r.payout_date is None
-    ]
+    skipped_transactions = [r for r in transactions if r.payout_date is None]
     for transaction in skipped_transactions:
         assert transaction.entry_attr is not None
         journal, linenumber = transaction.entry_attr.location
         print(
-            f"{journal}:{linenumber} "
-            f"transaction is missing payout date",
+            f"{journal}:{linenumber} " f"transaction is missing payout date",
             file=sys.stderr,
         )
 
 
 def debug_find_missing_ex_date(transactions: List[Transaction]) -> None:
-    skipped_transactions = [
-        r for r in transactions if r.ex_date is None
-    ]
+    skipped_transactions = [r for r in transactions if r.ex_date is None]
     for transaction in skipped_transactions:
         assert transaction.entry_attr is not None
         journal, linenumber = transaction.entry_attr.location
         print(
-            f"{journal}:{linenumber} "
-            f"transaction is missing ex-dividend date",
+            f"{journal}:{linenumber} " f"transaction is missing ex-dividend date",
             file=sys.stderr,
         )
 
@@ -61,8 +55,8 @@ def debug_find_duplicate_entries(transactions: List[Transaction]) -> None:
                     # either is positional; move on
                     continue
                 if (
-                        txn.kind == Distribution.SPECIAL
-                        or other_txn.kind == Distribution.SPECIAL
+                    txn.kind == Distribution.SPECIAL
+                    or other_txn.kind == Distribution.SPECIAL
                 ):
                     continue
                 dupe = other_txn
@@ -81,8 +75,8 @@ def debug_find_duplicate_entries(transactions: List[Transaction]) -> None:
 
 
 def debug_find_ambiguous_exchange_rates(
-        transactions: List[Transaction],
-        exchange_rates: Dict[Tuple[str, str], Tuple[date, float]]
+    transactions: List[Transaction],
+    exchange_rates: Dict[Tuple[str, str], Tuple[date, float]],
 ) -> None:
     from dledger.projection import GeneratedAmount
 
@@ -115,7 +109,6 @@ def debug_find_duplicate_tags(transactions: List[Transaction]) -> None:
                 assert txn.entry_attr is not None
                 journal, linenumber = txn.entry_attr.location
                 print(
-                    f"{journal}:{linenumber} "
-                    f"transaction has duplicate tag: {tag}",
+                    f"{journal}:{linenumber} " f"transaction has duplicate tag: {tag}",
                     file=sys.stderr,
                 )

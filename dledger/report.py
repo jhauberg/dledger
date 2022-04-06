@@ -564,7 +564,7 @@ def print_balance_report(
     records: List[Transaction],
     *,
     deviance: int = -1,  # i.e. don't show any drift
-    descending: bool = False
+    descending: bool = False,
 ) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
     # todo: note that this isn't actually very useful; every record here
@@ -636,11 +636,15 @@ def print_balance_report(
                 amount = format_amount(amount)
             amount = fmt % amount
             if has_estimate:
-                line = (f"~ {amount.rjust(18)}  / {freq.ljust(2)} "
-                        f"{pct.rjust(7)} {ticker.ljust(8)}")
+                line = (
+                    f"~ {amount.rjust(18)}  / {freq.ljust(2)} "
+                    f"{pct.rjust(7)} {ticker.ljust(8)}"
+                )
             else:
-                line = (f"{amount.rjust(20)}  / {freq.ljust(2)} "
-                        f"{pct.rjust(7)} {ticker.ljust(8)}")
+                line = (
+                    f"{amount.rjust(20)}  / {freq.ljust(2)} "
+                    f"{pct.rjust(7)} {ticker.ljust(8)}"
+                )
             p_decimals = decimalplaces(p)
             p = format_amount(p, places=p_decimals)
             position = f"({p})".rjust(18)
@@ -660,11 +664,13 @@ def print_balance_report(
                 elif deviance == DRIFT_BY_POSITION:
                     if drift_by >= 0:
                         # increase position (buy)
-                        drift = f"+ {format_amount(drift_by, places=p_decimals)}".rjust(16)
+                        drift = f"+ {format_amount(drift_by, places=p_decimals)}".rjust(
+                            16
+                        )
                     else:
                         # decrease position (sell)
-                        drift = (
-                            f"- {format_amount(abs(drift_by), places=p_decimals)}".rjust(16)
+                        drift = f"- {format_amount(abs(drift_by), places=p_decimals)}".rjust(
+                            16
                         )
                 line = f"{line} {position} {drift}"
                 if i == should_underline_mid_at_index:
@@ -677,9 +683,7 @@ def print_balance_report(
 
 
 def print_currency_balance_report(
-    records: List[Transaction],
-    *,
-    descending: bool = False
+    records: List[Transaction], *, descending: bool = False
 ) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
     # todo: see note in print_balance_report

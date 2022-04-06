@@ -107,8 +107,10 @@ def main() -> None:
     if sys.version_info < (3, 8):
         # 3.8 required for the following peps/features:
         #  PEP 572 (walrus operator)
-        sys.exit(f"Python 3.8+ required; "
-                 f"{sys.version_info[0]}.{sys.version_info[1]} currently")
+        sys.exit(
+            f"Python 3.8+ required; "
+            f"{sys.version_info[0]}.{sys.version_info[1]} currently"
+        )
 
     args = docopt(__doc__, version="dledger " + __version__.__version__)
 
@@ -230,10 +232,10 @@ def main() -> None:
     journaled_records: Optional[Iterable[Transaction]] = None
     if is_verbose:
         journaled_records = (
-                r
-                for r in records
-                if r.entry_attr is not None  # only non-generated entries
-                and r.amount is not None  # only keep transactions
+            r
+            for r in records
+            if r.entry_attr is not None  # only non-generated entries
+            and r.amount is not None  # only keep transactions
         )
 
     ticker = args["--ticker"]
@@ -318,21 +320,32 @@ def main() -> None:
                 if args["--by-currency"]:
                     print_currency_balance_report(transactions)
                 elif args["--by-position"]:
-                    print_balance_report(transactions, deviance=DRIFT_BY_POSITION,
-                                         descending=descending_order)
+                    print_balance_report(
+                        transactions,
+                        deviance=DRIFT_BY_POSITION,
+                        descending=descending_order,
+                    )
                 elif args["--by-amount"]:
-                    print_balance_report(transactions, deviance=DRIFT_BY_AMOUNT,
-                                         descending=descending_order)
+                    print_balance_report(
+                        transactions,
+                        deviance=DRIFT_BY_AMOUNT,
+                        descending=descending_order,
+                    )
                 else:
-                    print_balance_report(transactions, deviance=DRIFT_BY_WEIGHT,
-                                         descending=descending_order)
+                    print_balance_report(
+                        transactions,
+                        deviance=DRIFT_BY_WEIGHT,
+                        descending=descending_order,
+                    )
             else:
                 keys = ("--by-amount", "--by-position", "--by-currency")
                 no_effect_flag = next((x for x in keys if args[x] is True), None)
                 if no_effect_flag is not None:
                     # condition specified without --drift; this has no effect
-                    sys.exit(f"`{no_effect_flag}` has no effect; "
-                             f"did you mean to add `--drift`?")
+                    sys.exit(
+                        f"`{no_effect_flag}` has no effect; "
+                        f"did you mean to add `--drift`?"
+                    )
                 print_balance_report(transactions, descending=descending_order)
         else:
             if args["--weight"]:
@@ -351,13 +364,17 @@ def main() -> None:
                 print_simple_report(
                     transactions,
                     detailed=ticker is not None,
-                    descending=descending_order
+                    descending=descending_order,
                 )
 
     if is_verbose:
         assert journaled_records is not None
         # only include those records applicable to current filter options
-        debuggable_entries = list(record for record in journaled_records if any(record.entry_attr == txn.entry_attr for txn in transactions))
+        debuggable_entries = list(
+            record
+            for record in journaled_records
+            if any(record.entry_attr == txn.entry_attr for txn in transactions)
+        )
         from dledger.debug import (
             debug_find_missing_payout_date,
             debug_find_missing_ex_date,
@@ -365,6 +382,7 @@ def main() -> None:
             debug_find_duplicate_tags,
             debug_find_ambiguous_exchange_rates,
         )
+
         if args["--by-payout-date"]:
             debug_find_missing_payout_date(debuggable_entries)
         if args["--by-ex-date"]:
@@ -381,7 +399,7 @@ def filter_by_tag(records: List[Transaction], tags: List[str]) -> List[Transacti
         filter(
             lambda txn: txn.tags is not None
             and any(x.strip() in txn.tags for x in tags),
-            records
+            records,
         )
     )
 
