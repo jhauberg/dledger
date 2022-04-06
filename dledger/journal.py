@@ -400,8 +400,7 @@ def read_journal_transaction(
     condensed_line, tags = strip_tags(condensed_line)
     try:
         # date must be followed by either of the following separators (one or more)
-        # todo: \n would never occur since we wrap to single line
-        datestamp_end_index = anyindex(condensed_line, [" ", "\n", "\t"])
+        datestamp_end_index = anyindex(condensed_line, [" ", "\t"])
     except ValueError:
         raise ParseError(f"invalid transaction", location)
     datestamp = condensed_line[:datestamp_end_index]
