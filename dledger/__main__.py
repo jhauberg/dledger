@@ -1,53 +1,50 @@
 """
 USAGE:
-  dledger report  [<journal>]... [--period=<interval>] [-d] [--no-color]
-                                 [--monthly | --quarterly | --yearly | --trailing | --weight | --sum]
-                                 [--no-forecast]
-                                 [--no-adjustment]
-                                 [--ticker=<ticker>]
-                                 [--by-payout-date | --by-ex-date]
-                                 [--in-currency=<symbol>]
-                                 [--as-currency=<symbol> | --no-exchange]
-                                 [--tagged=<tags>]
-                                 [--reverse]
-  dledger balance [<journal>]... [--by-position | --by-amount | --by-currency] [-d] [--no-color]
-                                 [--by-payout-date | --by-ex-date]
-                                 [--in-currency=<symbol>]
-                                 [--as-currency=<symbol> | --no-exchange]
-  dledger convert <file>...      [--type=<name>] [-d]
-                                 [--condense]
-                                 [--reverse]
-                                 [--output=<journal>]
-  dledger print   [<journal>]... [--condense] [-d]
-                                 [--reverse]
-  dledger stats   [<journal>]... [--period=<interval>] [-d]
+  dledger report [<journal>]... [--forecast [--drift (--by-position | --by-amount | --by-currency)] |
+                                 --monthly | --quarterly | --yearly | --trailing | --weight | --sum]
+                                [--period=<interval>]
+                                [--no-projection] [--no-adjustment]
+                                [--by-payout-date | --by-ex-date]
+                                [--dividend=<currency>] [--payout=<currency>]
+                                [--no-exchange | --exchange-to=<currency>]
+                                [--ticker=<ticker>]
+                                [--tag=<tags>]
+                                [--debug] [--reverse] [--no-color]
+  dledger convert <file>...     [--type=<name>]
+                                [--output=<journal>]
+                                [--condense] [-dr]
+  dledger print  [<journal>]... [--condense] [-dr]
+  dledger stats  [<journal>]... [--period=<interval>] [-d]
 
 
 OPTIONS:
      --type=<name>            Specify type of transaction data [default: journal]
      --output=<journal>       Specify journal filename [default: dividends.journal]
-     --period=<interval>      Specify reporting date interval
-     --no-forecast            Don't include forecasted transactions
+  -p --period=<interval>      Specify reporting date interval
+     --no-projection          Don't include forecasted transactions
      --no-adjustment          Don't adjust past transactions for splits
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
      --ticker=<ticker>        Show income by ticker
-     --in-currency=<symbol>   Show income exchanged from currency (exclusively)
-     --as-currency=<symbol>   Show income as if exchanged to currency
+     --dividend=<currency>    Show income exchanged from currency (exclusively)
+     --payout=<currency>      Show income exchanged to currency (exclusively)
+     --exchange-to=<currency> Show income as if exchanged to currency (latest known rate apply)
      --no-exchange            Show income prior to any exchange (both realized and forecasted)
+     --forecast               Show income forecast over the next 12 months (per ticker)
+     --drift                  Show drift from target weight
      --by-position            Show drift from target position
      --by-amount              Show drift from target income
-     --by-currency            Show drift from target currency exposure
-     --tagged=<tags>          Only include transactions tagged specifically
+     --by-currency            Show drift from target currency exposure (weight)
+     --tag=<tags>             Only include transactions tagged specifically
   -y --yearly                 Show income by year
   -q --quarterly              Show income by quarter
   -m --monthly                Show income by month
      --trailing               Show income by trailing 12-months (per month)
      --weight                 Show income by weight (per ticker)
      --sum                    Show income by totals
-     --no-color               Don't apply ANSI colors.
+     --no-color               Don't apply ANSI colors
      --condense               Write transactions in the shortest form possible
-  -r --reverse                List in reverse chronological order (descending; latest first)
+  -r --reverse                List in reverse order
   -d --debug                  Show diagnostic messages
   -h --help                   Show program help
   -v --version                Show program version
@@ -64,7 +61,7 @@ from docopt import docopt  # type: ignore
 from dledger import __version__
 from dledger.dateutil import parse_period
 from dledger.printutil import enable_color_escapes, suppress_color
-from dledger.record import in_period, tickers, by_ticker
+from dledger.record import in_period, tickers
 from dledger.report import (
     print_simple_report,
     print_simple_rolling_report,
@@ -83,12 +80,10 @@ from dledger.report import (
 from dledger.projection import (
     scheduled_transactions,
     latest_exchange_rates,
-    conversion_factors,
 )
 from dledger.journal import (
     ParseError,
     Transaction,
-    Distribution,
     write,
     read,
     SUPPORTED_TYPES,
@@ -103,7 +98,7 @@ from dledger.convert import (
 
 from dataclasses import replace
 
-from typing import List
+from typing import List, Iterable, Optional
 
 
 def main() -> None:
@@ -112,7 +107,8 @@ def main() -> None:
     if sys.version_info < (3, 8):
         # 3.8 required for the following peps/features:
         #  PEP 572 (walrus operator)
-        sys.exit("Python 3.8+ required")
+        sys.exit(f"Python 3.8+ required; "
+                 f"{sys.version_info[0]}.{sys.version_info[1]} currently")
 
     args = docopt(__doc__, version="dledger " + __version__.__version__)
 
@@ -149,7 +145,7 @@ def main() -> None:
     # note that --type defaults to 'journal' for all commands
     # (only convert supports setting type explicitly)
     if input_type not in SUPPORTED_TYPES:
-        sys.exit(f"Transaction type is not supported: {input_type}")
+        sys.exit(f"transaction type is not supported: {input_type}")
 
     records: List[Transaction] = []
     for input_path in input_paths:
@@ -179,17 +175,11 @@ def main() -> None:
     if len(records) == 0:
         sys.exit(0)
 
-    if args["print"]:
-        # disable adjusting for splits for print command
-        args["--no-adjustment"] = True
-
-    if not args["--no-adjustment"]:
-        records = adjusting_for_splits(records)
     records = sorted(removing_redundancies(records))
 
     descending_order = args["--reverse"]
 
-    if args["print"] or args["convert"] and descending_order:
+    if (args["print"] or args["convert"]) and descending_order:
         # note that other program functions except records in ascending order,
         # so we only apply reversal for this specific case - additionally,
         # reporting commands typically have specific query mechanisms making
@@ -203,8 +193,11 @@ def main() -> None:
             write(records, file=file, condensed=args["--condense"])
         sys.exit(0)
 
-    interval = args["--period"] if not args["balance"] else "tomorrow:"
+    interval = args["--period"]
     if interval is not None:
+        # note that given `-p=apr`, this translates to an interval of `=apr`
+        # this could be confusing since you can do `--period=apr` and get `apr`
+        # todo: consider checking/correcting this specifically
         try:
             interval = parse_period(interval)
         except ValueError as e:
@@ -222,22 +215,9 @@ def main() -> None:
         print_stats(records, input_paths=input_paths, rates=exchange_rates)
         sys.exit(0)
 
-    ticker = args["--ticker"]
-    if ticker is not None:
-        unique_tickers = tickers(records)
-        # first look for exact match
-        if ticker not in unique_tickers:
-            # otherwise look for partial matches
-            matching_tickers = [
-                t for t in unique_tickers if t.startswith(ticker)
-            ]  # note case-sensitive
-            if len(matching_tickers) == 1:  # unambiguous match
-                ticker = matching_tickers[0]
-        # filter down to only include records by ticker
-        records = list(r for r in records if r.ticker == ticker)
-
     # produce estimate amounts for preliminary or incomplete records, transforming
     # them into transactions for all intents and purposes from this point onwards
+    # (i.e. including them as journaled transactions for debug purposes)
     records = with_estimates(records, rates=exchange_rates)
     # keep a copy of the list of records as they were before any date swapping,
     # so that we can produce diagnostics only on those transactions entered manually;
@@ -247,16 +227,24 @@ def main() -> None:
     # if we had copied the list *after* period filtering, we would also be past
     # the date-swapping step, causing every record to look like a diagnostic-producing
     # case (i.e. they would all be lacking either payout or ex-date)
-    journaled_transactions = (
-        [
-            r
-            for r in records
-            if r.entry_attr is not None
-            and r.amount is not None  # only non-generated entries
-        ]  # only keep transactions
-        if is_verbose
-        else None
-    )
+    journaled_records: Optional[Iterable[Transaction]] = None
+    if is_verbose:
+        journaled_records = (
+                r
+                for r in records
+                if r.entry_attr is not None  # only non-generated entries
+                and r.amount is not None  # only keep transactions
+        )
+
+    ticker = args["--ticker"]
+    if ticker is not None:
+        # note that we can apply ticker filtering early because
+        # every record of significance will be associated with this ticker
+        # (unlike tag filtering, for example)
+        records = filter_by_ticker(records, ticker)
+
+    if not args["--no-adjustment"]:
+        records = adjusting_for_splits(records)
 
     if args["--by-payout-date"]:
         # forcefully swap entry date with payout date, if able
@@ -275,12 +263,15 @@ def main() -> None:
             for r in records
         ]
 
-    if args["--no-exchange"]:
-        records = in_dividend_currency(records)
-
-    if not args["--no-forecast"]:
+    forecasted_transactions = []
+    if not args["--no-projection"]:
         # produce forecasted transactions dated into the future
-        records.extend(scheduled_transactions(records, rates=exchange_rates))
+        forecasted_transactions = scheduled_transactions(records, rates=exchange_rates)
+
+    if args["--forecast"]:
+        records = forecasted_transactions
+    else:
+        records.extend(forecasted_transactions)
 
     # for reporting, keep only dividend transactions
     transactions = [r for r in records if r.amount is not None]
@@ -289,172 +280,124 @@ def main() -> None:
         # filter down to only transactions within period interval
         transactions = list(in_period(transactions, interval))
 
-    if args["--tagged"] is not None:
-        tags = args["--tagged"].strip().split(",")
+    tag = args["--tag"]
+    if tag is not None:
+        # note that we can only apply tag filtering at this point (late),
+        # because some records may be important for producing forecasts - and
+        # these could very well not be tagged
+        tags = tag.strip().split(",")
         if len(tags) > 0:
-            transactions = list(
-                filter(
-                    lambda txn: txn.tags is not None
-                    and any(x.strip() in txn.tags for x in tags),
-                    transactions,
-                )
-            )
+            transactions = filter_by_tag(transactions, tags)
 
-    filter_symbol = args["--in-currency"]
-    if filter_symbol is not None:
+    dividend_currency = args["--dividend"]
+    if dividend_currency is not None:
         transactions = [
-            txn for txn in transactions if txn.dividend.symbol == filter_symbol
+            txn for txn in transactions if txn.dividend.symbol == dividend_currency
+        ]
+    payout_currency = args["--payout"]
+    if payout_currency is not None:
+        transactions = [
+            txn for txn in transactions if txn.amount.symbol == payout_currency
         ]
 
     # (redundantly) sort for good measure
     transactions = sorted(transactions)
 
-    exchange_symbol = args["--as-currency"]
-    if exchange_symbol is not None:
+    if args["--no-exchange"]:
+        transactions = in_dividend_currency(transactions)
+
+    if args["--exchange-to"] is not None:
         # forcefully apply an exchange to given currency
         transactions = in_currency(
-            transactions, symbol=exchange_symbol, rates=exchange_rates
+            transactions, symbol=args["--exchange-to"], rates=exchange_rates
         )
-
-    if args["balance"]:
-        if args["--by-currency"]:
-            print_currency_balance_report(transactions)
-        elif args["--by-position"]:
-            print_balance_report(transactions, deviance=DRIFT_BY_POSITION)
-        elif args["--by-amount"]:
-            print_balance_report(transactions, deviance=DRIFT_BY_AMOUNT)
-        else:
-            print_balance_report(transactions, deviance=DRIFT_BY_WEIGHT)
 
     if args["report"]:
-        # finally produce and print a report
-        if args["--weight"]:
-            print_simple_weight_by_ticker(transactions)
-        elif args["--sum"]:
-            print_simple_sum_report(transactions)
-        elif args["--trailing"]:
-            print_simple_rolling_report(transactions, descending=descending_order)
-        elif args["--yearly"]:
-            print_simple_annual_report(transactions, descending=descending_order)
-        elif args["--monthly"]:
-            print_simple_monthly_report(transactions, descending=descending_order)
-        elif args["--quarterly"]:
-            print_simple_quarterly_report(transactions, descending=descending_order)
+        if args["--forecast"]:
+            if args["--drift"]:
+                if args["--by-currency"]:
+                    print_currency_balance_report(transactions)
+                elif args["--by-position"]:
+                    print_balance_report(transactions, deviance=DRIFT_BY_POSITION,
+                                         descending=descending_order)
+                elif args["--by-amount"]:
+                    print_balance_report(transactions, deviance=DRIFT_BY_AMOUNT,
+                                         descending=descending_order)
+                else:
+                    print_balance_report(transactions, deviance=DRIFT_BY_WEIGHT,
+                                         descending=descending_order)
+            else:
+                keys = ("--by-amount", "--by-position", "--by-currency")
+                no_effect_flag = next((x for x in keys if args[x] is True), None)
+                if no_effect_flag is not None:
+                    # condition specified without --drift; this has no effect
+                    sys.exit(f"`{no_effect_flag}` has no effect; "
+                             f"did you mean to add `--drift`?")
+                print_balance_report(transactions, descending=descending_order)
         else:
-            print_simple_report(
-                transactions, detailed=ticker is not None, descending=descending_order
-            )
-
-    if is_verbose:  # print diagnostics on final set of transactions, if any
-        assert journaled_transactions is not None
-        # find potential duplicate entries
-        for ticker in tickers(journaled_transactions):
-            entries = list(by_ticker(journaled_transactions, ticker))
-            dupes: List[Transaction] = []
-            for i, txn in enumerate(entries):
-                if txn in dupes:
-                    continue
-                for j, other_txn in enumerate(entries):
-                    if i == j:
-                        # don't compare to self
-                        continue
-                    if txn.entry_date != other_txn.entry_date:
-                        # not dated identically; move on
-                        continue
-                    if txn.ispositional or other_txn.ispositional:
-                        # either is positional; move on
-                        continue
-                    if (
-                        txn.kind == Distribution.SPECIAL
-                        or other_txn.kind == Distribution.SPECIAL
-                    ):
-                        continue
-                    dupe = other_txn
-                    dupes.append(dupe)
-                    journal, linenumber = dupe.entry_attr.location
-                    existing_journal, existing_linenumber = txn.entry_attr.location
-                    existing_journal = (
-                        "" if existing_journal == journal else existing_journal
-                    )
-                    print(
-                        f"{journal}:{linenumber} "
-                        f"potential transaction duplicate "
-                        f"(see '{existing_journal}:{existing_linenumber}')",
-                        file=sys.stderr,
-                    )
-
-        # find missing date entries when specifically sorting by date
-        if args["--by-payout-date"] or args["--by-ex-date"]:
-            if interval is not None:
-                journaled_transactions = list(
-                    in_period(journaled_transactions, interval)
+            if args["--weight"]:
+                print_simple_weight_by_ticker(transactions)
+            elif args["--sum"]:
+                print_simple_sum_report(transactions)
+            elif args["--trailing"]:
+                print_simple_rolling_report(transactions, descending=descending_order)
+            elif args["--yearly"]:
+                print_simple_annual_report(transactions, descending=descending_order)
+            elif args["--monthly"]:
+                print_simple_monthly_report(transactions, descending=descending_order)
+            elif args["--quarterly"]:
+                print_simple_quarterly_report(transactions, descending=descending_order)
+            else:
+                print_simple_report(
+                    transactions,
+                    detailed=ticker is not None,
+                    descending=descending_order
                 )
-            if ticker is not None:
-                journaled_transactions = [
-                    r for r in journaled_transactions if r.ticker == ticker
-                ]
-            journaled_transactions = sorted(journaled_transactions)
-            if args["--by-payout-date"]:
-                skipped_transactions = [
-                    r for r in journaled_transactions if r.payout_date is None
-                ]
-                for transaction in skipped_transactions:
-                    assert transaction.entry_attr is not None
-                    journal, linenumber = transaction.entry_attr.location
-                    print(
-                        f"{journal}:{linenumber} "
-                        f"transaction is missing payout date",
-                        file=sys.stderr,
-                    )
-            elif args["--by-ex-date"]:
-                skipped_transactions = [
-                    r for r in journaled_transactions if r.ex_date is None
-                ]
-                for transaction in skipped_transactions:
-                    assert transaction.entry_attr is not None
-                    journal, linenumber = transaction.entry_attr.location
-                    print(
-                        f"{journal}:{linenumber} "
-                        f"transaction is missing ex-dividend date",
-                        file=sys.stderr,
-                    )
 
-        # find ambiguous conversion rates
-        from dledger.projection import GeneratedAmount
-
-        ambiguous_exchange_rates = conversion_factors(
-            # only include journaled records, but don't include preliminary
-            # estimates (signified by GeneratedAmount)
-            [
-                record
-                for record in journaled_transactions
-                if not isinstance(record.amount, GeneratedAmount)
-            ]
+    if is_verbose:
+        assert journaled_records is not None
+        # only include those records applicable to current filter options
+        debuggable_entries = list(record for record in journaled_records if any(record.entry_attr == txn.entry_attr for txn in transactions))
+        from dledger.debug import (
+            debug_find_missing_payout_date,
+            debug_find_missing_ex_date,
+            debug_find_duplicate_entries,
+            debug_find_duplicate_tags,
+            debug_find_ambiguous_exchange_rates,
         )
-
-        for symbols, rates in ambiguous_exchange_rates.items():
-            if len(rates) > 1:
-                print(
-                    f"ambiguous exchange rate {symbols} = "
-                    f"{exchange_rates[symbols]}:\n or, {rates[:-1]}?",
-                    file=sys.stderr,
-                )
-
-        # find duplicate tags
-        for txn in journaled_transactions:
-            if txn.tags is not None:
-                unique_tags = set(txn.tags)
-                for tag in unique_tags:
-                    if txn.tags.count(tag) > 1:
-                        assert txn.entry_attr is not None
-                        journal, linenumber = txn.entry_attr.location
-                        print(
-                            f"{journal}:{linenumber} "
-                            f"transaction has duplicate tag: {tag}",
-                            file=sys.stderr,
-                        )
+        if args["--by-payout-date"]:
+            debug_find_missing_payout_date(debuggable_entries)
+        if args["--by-ex-date"]:
+            debug_find_missing_ex_date(debuggable_entries)
+        debug_find_duplicate_entries(debuggable_entries)
+        debug_find_ambiguous_exchange_rates(debuggable_entries, exchange_rates)
+        debug_find_duplicate_tags(debuggable_entries)
 
     sys.exit(0)
+
+
+def filter_by_tag(records: List[Transaction], tags: List[str]) -> List[Transaction]:
+    return list(
+        filter(
+            lambda txn: txn.tags is not None
+            and any(x.strip() in txn.tags for x in tags),
+            records
+        )
+    )
+
+
+def filter_by_ticker(records: List[Transaction], ticker: str) -> List[Transaction]:
+    unique_tickers = tickers(records)
+    # first look for exact match
+    if ticker not in unique_tickers:
+        # otherwise look for partial matches
+        matching_tickers = [
+            t for t in unique_tickers if t.startswith(ticker)
+        ]  # note case-sensitive
+        if len(matching_tickers) == 1:  # unambiguous match
+            ticker = matching_tickers[0]
+    # filter down to only include records by ticker
+    return list(r for r in records if r.ticker == ticker)
 
 
 if __name__ == "__main__":
