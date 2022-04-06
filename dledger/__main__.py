@@ -1,17 +1,15 @@
 """
 USAGE:
-  dledger report [<journal>]... [--forecast [--drift (--by-position | --by-amount | --by-currency)] |
-                                 --monthly | --quarterly | --yearly | --trailing | --weight | --sum]
-                                [--period=<interval>]
+  dledger report [<journal>]... [--forecast [--drift (--by-position | --by-currency)] |
+                                (--monthly | --quarterly | --yearly |
+                                 --trailing | --weight | --sum)]
+                                [--period=<interval>] [--by-payout-date | --by-ex-date]
                                 [--no-projection] [--no-adjustment]
-                                [--by-payout-date | --by-ex-date]
                                 [--dividend=<currency>] [--payout=<currency>]
                                 [--no-exchange | --exchange-to=<currency>]
-                                [--ticker=<ticker>]
-                                [--tag=<tags>]
+                                [--ticker=<ticker>] [--tag=<tags>]
                                 [--debug] [--reverse] [--no-color]
-  dledger convert <file>...     [--type=<name>]
-                                [--output=<journal>]
+  dledger convert <file>...     [--type=<name>] [--output=<journal>]
                                 [--condense] [-dr]
   dledger print  [<journal>]... [--condense] [-dr]
   dledger stats  [<journal>]... [--period=<interval>] [-d]
@@ -25,15 +23,14 @@ OPTIONS:
      --no-adjustment          Don't adjust past transactions for splits
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
-     --ticker=<ticker>        Show income by ticker
-     --dividend=<currency>    Show income exchanged from currency (exclusively)
-     --payout=<currency>      Show income exchanged to currency (exclusively)
-     --exchange-to=<currency> Show income as if exchanged to currency (latest known rate apply)
-     --no-exchange            Show income prior to any exchange (both realized and forecasted)
+     --ticker=<ticker>        Only show income by ticker
+     --dividend=<currency>    Only Show income exchanged from currency
+     --payout=<currency>      Only Show income exchanged to currency
+     --exchange-to=<currency> Show income as if exchanged to currency
+     --no-exchange            Show income prior to any exchange
      --forecast               Show income forecast over the next 12 months (per ticker)
      --drift                  Show drift from target weight
      --by-position            Show drift from target position
-     --by-amount              Show drift from target income
      --by-currency            Show drift from target currency exposure (weight)
      --tag=<tags>             Only include transactions tagged specifically
   -y --yearly                 Show income by year
@@ -74,7 +71,6 @@ from dledger.report import (
     print_currency_balance_report,
     print_stats,
     DRIFT_BY_WEIGHT,
-    DRIFT_BY_AMOUNT,
     DRIFT_BY_POSITION,
 )
 from dledger.projection import (
@@ -325,12 +321,6 @@ def main() -> None:
                         deviance=DRIFT_BY_POSITION,
                         descending=descending_order,
                     )
-                elif args["--by-amount"]:
-                    print_balance_report(
-                        transactions,
-                        deviance=DRIFT_BY_AMOUNT,
-                        descending=descending_order,
-                    )
                 else:
                     print_balance_report(
                         transactions,
@@ -338,7 +328,7 @@ def main() -> None:
                         descending=descending_order,
                     )
             else:
-                keys = ("--by-amount", "--by-position", "--by-currency")
+                keys = ("--by-position", "--by-currency")
                 no_effect_flag = next((x for x in keys if args[x] is True), None)
                 if no_effect_flag is not None:
                     # condition specified without --drift; this has no effect
