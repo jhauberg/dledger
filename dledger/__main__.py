@@ -171,7 +171,7 @@ def main() -> None:
             sys.exit(f"{ve}")
 
     if len(records) == 0:
-        sys.exit(0)
+        sys.exit(0)  # no further output possible, but not an error
 
     records = sorted(removing_redundancies(records))
 
@@ -267,6 +267,8 @@ def main() -> None:
         forecasted_transactions = scheduled_transactions(records, rates=exchange_rates)
 
     if args["--forecast"]:
+        if args["--no-projection"]:
+            sys.exit(0)  # no further output possible, but not an error
         records = forecasted_transactions
     else:
         records.extend(forecasted_transactions)
