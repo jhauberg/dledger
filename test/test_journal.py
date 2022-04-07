@@ -847,7 +847,8 @@ def test_distribution_followed_by_buy_journal():
         entry_attr=EntryAttributes(location=(path, 7), positioning=(100, POSITION_SET)),
     )
 
-    # note that while this record literally occurs _before_, chronologically it should occur _after_
+    # note that while this record literally occurs _before_,
+    # chronologically it should occur _after_
     assert records[1] == Transaction(
         date(2019, 2, 14),
         "AAPL",
@@ -1307,15 +1308,14 @@ def test_include_journal_out_of_order():
 
 
 def test_include_implicit_journal_dependency():
-    path = "subjects/include_dependency_third.journal"
+    path = "subjects/include_dependency_second.journal"
 
     # the three journals show the problem of implicit dependencies;
     # i.e. the second journal can never be read on its own- it has an implicit
-    # dependency on the first journal (which reveals the position), and similarly, so does the third journal
-
-    # the problem can be fixed by correctly setting the include directives on a per-journal basis;
-    # however, one might think applying all dependencies in the third journal should also do the trick
-    # currently, it does not and is expected behavior for now
+    # dependency on the first journal (which reveals the position),
+    # and similarly, so does the third journal
+    # the third, however, does include both the first and the second journal
+    # and thus has access to the information required
 
     try:
         _ = read(path, kind="journal")
@@ -1323,6 +1323,61 @@ def test_include_implicit_journal_dependency():
         assert True
     else:
         assert False
+
+    path = "subjects/include_dependency_third.journal"
+
+    if os.name == "nt":
+        included_resolved_path_first = "subjects\\include_dependency_first.journal"
+        included_resolved_path_second = "subjects\\include_dependency_second.journal"
+    else:
+        included_resolved_path_first = "subjects/include_dependency_first.journal"
+        included_resolved_path_second = "subjects/include_dependency_second.journal"
+
+    records = read(path, kind="journal")
+
+    assert len(records) == 4
+
+    assert records[0] == Transaction(
+        date(2019, 2, 14),
+        "AAPL",
+        100,
+        amount=Amount(73, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.73, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path_first, 3), positioning=(100, POSITION_SET)
+        ),
+    )
+    assert records[1] == Transaction(
+        date(2019, 5, 16),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(included_resolved_path_second, 3),
+            positioning=(None, POSITION_SET)
+        ),
+    )
+    assert records[2] == Transaction(
+        date(2019, 8, 15),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 6), positioning=(None, POSITION_SET)
+        ),
+    )
+    assert records[3] == Transaction(
+        date(2019, 11, 14),
+        "AAPL",
+        100,
+        amount=Amount(77, places=0, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
+        entry_attr=EntryAttributes(
+            location=(path, 9), positioning=(None, POSITION_SET)
+        ),
+    )
 
 
 def test_implicit_currency():
@@ -1409,14 +1464,14 @@ def test_nordnet_import():
     assert len(records) == 3
 
     assert records[0] == Transaction(
-        entry_date=date(2021, 3, 4),
-        payout_date=date(2021, 3, 4),
-        ex_date=date(2021, 3, 2),
-        ticker="ORSTED",
+        entry_date=date(2021, 2, 12),
+        payout_date=date(2021, 2, 11),
+        ex_date=date(2021, 2, 5),
+        ticker="AAPL",
         position=10,
-        amount=Amount(115, places=0, symbol="DKK", fmt="%s DKK"),
-        dividend=Amount(11.5, places=1, symbol="DKK", fmt="%s DKK"),
-        entry_attr=EntryAttributes(location=(path, 2), positioning=(10, POSITION_SET)),
+        amount=Amount(123.45, places=2, symbol="DKK", fmt="%s DKK"),
+        dividend=Amount(0.205, places=3, symbol="USD", fmt="%s USD"),
+        entry_attr=EntryAttributes(location=(path, 4), positioning=(10, POSITION_SET)),
     )
     assert records[1] == Transaction(
         entry_date=date(2021, 2, 17),
@@ -1429,14 +1484,14 @@ def test_nordnet_import():
         entry_attr=EntryAttributes(location=(path, 3), positioning=(10, POSITION_SET)),
     )
     assert records[2] == Transaction(
-        entry_date=date(2021, 2, 12),
-        payout_date=date(2021, 2, 11),
-        ex_date=date(2021, 2, 5),
-        ticker="AAPL",
+        entry_date=date(2021, 3, 4),
+        payout_date=date(2021, 3, 4),
+        ex_date=date(2021, 3, 2),
+        ticker="ORSTED",
         position=10,
-        amount=Amount(123.45, places=2, symbol="DKK", fmt="%s DKK"),
-        dividend=Amount(0.205, places=3, symbol="USD", fmt="%s USD"),
-        entry_attr=EntryAttributes(location=(path, 4), positioning=(10, POSITION_SET)),
+        amount=Amount(115, places=0, symbol="DKK", fmt="%s DKK"),
+        dividend=Amount(11.5, places=1, symbol="DKK", fmt="%s DKK"),
+        entry_attr=EntryAttributes(location=(path, 2), positioning=(10, POSITION_SET)),
     )
 
 

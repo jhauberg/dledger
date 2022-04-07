@@ -136,9 +136,12 @@ def read(path: str, *, kind: str) -> List[Transaction]:
         raise ValueError(f"path could not be read: '{path}'")
 
     if kind == "journal":
-        return read_journal_transactions(path, encoding)
+        records = read_journal_transactions(path, encoding)
+        transactions = infer(sorted(records))
+        return transactions
     elif kind == "nordnet":
-        return read_nordnet_transactions(path, encoding)
+        transactions = read_nordnet_transactions(path, encoding)
+        return sorted(transactions)
     else:
         raise ValueError(f"unsupported transaction type")
 
@@ -229,16 +232,9 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                     )
                     break
 
-    # transactions are not necessarily ordered by date in a journal
-    # so they must be sorted prior to inferring positions/currencies
-    # note that position change entries are always sorted to occur *after*
-    # any realized transaction on the same date (see Transaction.__lt__)
-    journal_entries = sorted(
-        journal_entries,
-        key=lambda r: (r.entry_date, r.amount is None and r.dividend is None),
-    )
-
-    return infer(journal_entries)
+    # todo: include traversal; i.e. if you include something already included previously
+    #       this could infinitely chain
+    return journal_entries
 
 
 def infer(entries: Iterable[Transaction]) -> List[Transaction]:
