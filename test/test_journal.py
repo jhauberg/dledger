@@ -80,70 +80,104 @@ def test_decimal_places():
 
 
 def test_parse_amount():
-    loc = ("", 0)
-
-    assert parse_amount("$", location=loc) == Amount(
+    assert parse_amount("$") == Amount(
         0, places=0, symbol="$", fmt="%s $"
     )
-    assert parse_amount("$10", location=loc) == Amount(
+    assert parse_amount("$10") == Amount(
         10, places=0, symbol="$", fmt="$%s"
     )
-    assert parse_amount("$ 10", location=loc) == Amount(
+    assert parse_amount("$ 10") == Amount(
         10, places=0, symbol="$", fmt="$ %s"
     )
-    assert parse_amount(" $ 10 ", location=loc) == Amount(
+    assert parse_amount(" $ 10 ") == Amount(
         10, places=0, symbol="$", fmt="$ %s"
     )
-    assert parse_amount("$  10", location=loc) == Amount(
+    assert parse_amount("$  10") == Amount(
         10, places=0, symbol="$", fmt="$ %s"
     )
-    assert parse_amount("10 kr", location=loc) == Amount(
+    assert parse_amount("10 kr") == Amount(
         10, places=0, symbol="kr", fmt="%s kr"
     )
-    assert parse_amount("10   kr", location=loc) == Amount(
+    assert parse_amount("10   kr") == Amount(
         10, places=0, symbol="kr", fmt="%s kr"
     )
-    assert parse_amount("10 danske kroner", location=loc) == Amount(
+    assert parse_amount("10 danske kroner") == Amount(
         10, places=0, symbol="danske kroner", fmt="%s danske kroner"
     )
-    assert parse_amount("10 danske  kroner", location=loc) == Amount(
+    assert parse_amount("danske kroner 10") == Amount(
+        10, places=0, symbol="danske kroner", fmt="danske kroner %s"
+    )
+    assert parse_amount("10 danske  kroner") == Amount(
         10, places=0, symbol="danske  kroner", fmt="%s danske  kroner"
     )
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        assert parse_amount("$ 0.50", location=loc) == Amount(
+        assert parse_amount("$ 0.50") == Amount(
             0.5, places=2, symbol="$", fmt="$ %s"
         )
-        assert parse_amount("0.50 kr", location=loc) == Amount(
+        assert parse_amount("0.50 kr") == Amount(
             0.5, places=2, symbol="kr", fmt="%s kr"
         )
-        assert parse_amount("0.00 kr", location=loc) == Amount(
+        assert parse_amount("0.00 kr") == Amount(
             0, places=2, symbol="kr", fmt="%s kr"
         )
-        assert parse_amount("$ .50", location=loc) == Amount(
+        assert parse_amount("$ .50") == Amount(
             0.5, places=2, symbol="$", fmt="$ %s"
         )
-        assert parse_amount(".50 kr", location=loc) == Amount(
+        assert parse_amount(".50 kr") == Amount(
             0.5, places=2, symbol="kr", fmt="%s kr"
         )
 
     with tempconv(DECIMAL_POINT_COMMA):
-        assert parse_amount("$ 0,50", location=loc) == Amount(
+        assert parse_amount("$ 0,50") == Amount(
             0.5, places=2, symbol="$", fmt="$ %s"
         )
-        assert parse_amount("0,50 kr", location=loc) == Amount(
+        assert parse_amount("0,50 kr") == Amount(
             0.5, places=2, symbol="kr", fmt="%s kr"
         )
-        assert parse_amount("0,00 kr", location=loc) == Amount(
+        assert parse_amount("0,00 kr") == Amount(
             0, places=2, symbol="kr", fmt="%s kr"
         )
 
-        assert parse_amount("$ ,50", location=loc) == Amount(
+        assert parse_amount("$ ,50") == Amount(
             0.5, places=2, symbol="$", fmt="$ %s"
         )
-        assert parse_amount(",50 kr", location=loc) == Amount(
+        assert parse_amount(",50 kr") == Amount(
             0.5, places=2, symbol="kr", fmt="%s kr"
         )
+
+    try:
+        parse_amount("10")
+    except ValueError as e:
+        assert "missing symbol definition" in str(e)
+    else:
+        assert False
+
+    try:
+        parse_amount("$ 10 $")
+    except ValueError as e:
+        assert "ambiguous symbol definition" in str(e)
+    else:
+        assert False
+
+    try:
+        parse_amount("$10 10")
+    except ValueError as e:
+        assert "invalid value" in str(e)
+    else:
+        assert False
+
+    # note that this parses too, but potentially with a confusing result
+    assert parse_amount("$ abc") == Amount(
+        0, places=0, symbol="$ abc", fmt="%s $ abc"
+    )
+    # this, however, does not parse
+    try:
+        parse_amount("$ .")
+    except ValueError as e:
+        assert "invalid value" in str(e)
+    else:
+        assert False
 
 
 def test_nonexistant_journal():
@@ -174,7 +208,8 @@ def test_recursive_include():
     try:
         _ = read(path, kind="journal")
     except ParseError as e:
-        assert f":3 attempt to recursively include journal" in str(e)
+        assert e.line_number == 3
+        assert "attempt to recursively include journal" in e.message
     else:
         assert False
 
@@ -185,7 +220,8 @@ def test_ambiguous_symbol():
     try:
         _ = read(path, kind="journal")
     except ParseError as e:
-        assert f":3 ambiguous symbol definition" in str(e)
+        assert e.line_number == 4
+        assert "ambiguous symbol definition" in e.message
     else:
         assert False
 
@@ -1319,8 +1355,9 @@ def test_include_implicit_journal_dependency():
 
     try:
         _ = read(path, kind="journal")
-    except ParseError:
-        assert True
+    except ParseError as e:
+        assert e.line_number == 3
+        assert "position could not be inferred" in e.message
     else:
         assert False
 
@@ -1385,8 +1422,9 @@ def test_implicit_currency():
 
     try:
         _ = read(path, kind="journal")
-    except ParseError:
-        assert True
+    except ParseError as e:
+        assert e.line_number == 4
+        assert "missing symbol definition" in e.message
     else:
         assert False
 

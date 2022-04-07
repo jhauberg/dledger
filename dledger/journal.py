@@ -120,8 +120,16 @@ class Transaction:
 
 
 class ParseError(Exception):
+    message: str
+    absolute_path: str
+    line_number: int
+
     def __init__(self, message: str, location: Tuple[str, int]):
-        super().__init__(f"{os.path.abspath(location[0])}:{location[1]} {message}")
+        path, lineno = location
+        self.message = message
+        self.absolute_path = os.path.abspath(path)
+        self.line_number = lineno
+        super().__init__(f"{self.absolute_path}:{self.line_number} {self.message}")
 
 
 def read(path: str, *, kind: str) -> List[Transaction]:
@@ -377,11 +385,32 @@ def strip_tags(text: str) -> Tuple[str, List[str]]:
     return text, tags
 
 
+# each component following initial datestamp could be on another line;
+# this function attempts (feebly and error-prone) to find the actual linenumber
+def find_potential_lineno(
+    component: str,
+    lines: List[Tuple[int, str]]
+) -> Optional[int]:
+    for (lineno, line) in lines:
+        if component in line:
+            return lineno
+    return None
+
+
+def find_potential_location(
+    component: str,
+    lines: List[Tuple[int, str]],
+    location: Tuple[str, int]
+) -> Tuple[str, int]:
+    lineno = find_potential_lineno(component, lines)
+    return location if lineno is None else (location[0], lineno)
+
+
 def read_journal_transaction(
     lines: List[Tuple[int, str]], *, location: Tuple[str, int]
 ) -> Transaction:
     if len(lines) == 0:
-        raise ParseError("invalid transaction", location)
+        raise ParseError("invalid transaction (empty line)", location)
 
     def anyindex(string: str, sub: List[str]) -> int:
         """Return the first index of any matching string in a list of
@@ -403,8 +432,12 @@ def read_journal_transaction(
     try:
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
-        raise ParseError(f"invalid date format ('{datestamp}')", location)
+        raise ParseError(
+            f"invalid transaction; unknown date format ('{datestamp}')",
+            location
+        )
     condensed_line = condensed_line[datestamp_end_index:].strip()
+
     try:
         # determine where ticker ends by the first appearance of any of the separators;
         # note that by including [ as a breaker, we allow additional formatting options
@@ -415,13 +448,13 @@ def read_journal_transaction(
         #   "2019/12/31 ABC [2020/01/15] (10) $ 1"
         # it must instead be:
         #   "2019/12/31 ABC (10) [2020/01/15] $ 1"
-        break_index = anyindex(condensed_line, ["(", "[", "  ", "\n", "\t"])
+        break_index = anyindex(condensed_line, ["(", "[", "  ", "\t"])
     except ValueError:
-        raise ParseError(f"invalid transaction", location)
+        raise ParseError(f"invalid transaction; missing components", location)
+
     kind = Distribution.FINAL
-    ticker = condensed_line[
-        :break_index
-    ].strip()  # todo: incorrect if */^ followed by newline
+    # todo: incorrect if */^ followed by newline
+    ticker = condensed_line[:break_index].strip()
     if ticker.startswith("*"):
         kind = Distribution.SPECIAL
         ticker = ticker[1:].strip()
@@ -430,7 +463,7 @@ def read_journal_transaction(
         ticker = ticker[1:].strip()
     condensed_line = condensed_line[break_index:].strip()
     if len(ticker) == 0:
-        raise ParseError("invalid ticker format", location)
+        raise ParseError("invalid transaction; empty ticker", location)
     position: Optional[float] = None
     position_change_directive = POSITION_SET
     if ")" in condensed_line:
@@ -442,7 +475,10 @@ def read_journal_transaction(
             try:
                 return locale.atof(text)
             except ValueError:
-                raise ParseError(f"invalid position ('{text}')", location)
+                raise ParseError(
+                    f"invalid transaction: unknown position format ('{text}')",
+                    find_potential_location(text, lines, location)
+                )
 
         if position_str.startswith("="):
             # for example: "(= 10)"
@@ -467,12 +503,14 @@ def read_journal_transaction(
             position_str = position_str[1:]
             if "/" not in position_str:
                 raise ParseError(
-                    f"invalid split directive ('{position_str}')", location
+                    f"invalid transaction; unknown split format ('{position_str}')",
+                    find_potential_location(position_str, lines, location)
                 )
             split_components = position_str.split("/")
             if len(split_components) != 2:
                 raise ParseError(
-                    f"invalid split directive ('{position_str}')", location
+                    f"invalid transaction; unknown split format ('{position_str}')",
+                    find_potential_location(position_str, lines, location)
                 )
             try:
                 # position actually becomes a multiplier in this case,
@@ -480,13 +518,17 @@ def read_journal_transaction(
                 a = locale.atof(split_components[0])
                 b = locale.atof(split_components[1])
             except ValueError:
-                raise ParseError(f"invalid position ('{position_str}')", location)
+                raise ParseError(
+                    f"invalid transaction; unknown position format ('{position_str}')",
+                    find_potential_location(position_str, lines, location)
+                )
             position = a / b
         else:
             # default to set/= directive
             position_change_directive = POSITION_SET
             position = parse_position(position_str)
         condensed_line = condensed_line[break_index:].strip()
+
     if len(condensed_line) == 0:
         return Transaction(
             d,
@@ -506,17 +548,26 @@ def read_journal_transaction(
             amount_components[1].strip()
         )
         if len(dividend_str) > 0:
-            dividend = parse_amount(dividend_str, location=location)
+            try:
+                dividend = parse_amount(dividend_str)
+            except ValueError as e:
+                raise ParseError(
+                    f"invalid transaction; {str(e)}",
+                    find_potential_location(dividend_str, lines, location)
+                )
             if dividend.value <= 0:
                 raise ParseError(
-                    f"negative or zero dividend ('{dividend.value}')", location
+                    f"invalid transaction; "
+                    f"negative or zero dividend ('{dividend.value}')",
+                    find_potential_location(dividend_str, lines, location)
                 )
         if dividend_datestamp is not None:
             try:
                 d3 = parse_datestamp(dividend_datestamp, strict=True)
             except ValueError:
                 raise ParseError(
-                    f"invalid date format ('{dividend_datestamp}')", location
+                    f"invalid date format ('{dividend_datestamp}')",
+                    find_potential_location(dividend_datestamp, lines, location)
                 )
     amount: Optional[Amount] = None
     d2: Optional[date] = None
@@ -524,17 +575,17 @@ def read_journal_transaction(
         amount_str, amount_datestamp = parse_amount_date(amount_components[0].strip())
         if len(amount_str) > 0:
             try:
-                amount = parse_amount(amount_str, location=location)
-            except ParseError as e:
-                lx = -1
-                for (linenumber, line) in lines:
-                    # todo: this is absolutely not bulletproof
-                    if amount_components[0] in line:
-                        lx = linenumber
-                assert lx != -1
-                raise ParseError(e.args[0], location=(location[0], lx))
+                amount = parse_amount(amount_str)
+            except ValueError as e:
+                raise ParseError(
+                    f"invalid transaction; {str(e)}",
+                    find_potential_location(amount_str, lines, location)
+                )
             if amount.value < 0:
-                raise ParseError(f"negative amount ('{amount.value}')", location)
+                raise ParseError(
+                    f"invalid transaction; negative amount ('{amount.value}')",
+                    find_potential_location(amount_str, lines, location)
+                )
         else:
             if dividend is None:
                 raise ParseError(f"missing dividend amount", location)
@@ -543,7 +594,8 @@ def read_journal_transaction(
                 d2 = parse_datestamp(amount_datestamp, strict=True)
             except ValueError:
                 raise ParseError(
-                    f"invalid date format ('{amount_datestamp}')", location
+                    f"invalid transaction; unknown date format ('{amount_datestamp}')",
+                    find_potential_location(amount_datestamp, lines, location)
                 )
     return Transaction(
         d,
@@ -570,7 +622,7 @@ def parse_amount_date(text: str) -> Tuple[str, Optional[str]]:
     return text.strip(), d
 
 
-def parse_amount(amount: str, *, location: Tuple[str, int]) -> Amount:
+def parse_amount(amount: str) -> Amount:
     def isbeginning(char: str) -> bool:
         return char.isdecimal() or (
             char == "+" or char == "-" or char == "." or char == ","
@@ -611,13 +663,12 @@ def parse_amount(amount: str, *, location: Tuple[str, int]) -> Amount:
         if symbol is not None:
             # a symbol can exist on both sides of the string,
             # but then which one do we use?
-            raise ParseError(
+            raise ValueError(
                 f"ambiguous symbol definition ('{symbol}' or '{lhs.strip()}'?)",
-                location,
             )
         symbol = lhs.strip()
     if symbol is None or len(symbol) == 0:
-        raise ParseError(f"missing symbol definition", location)
+        raise ValueError("missing symbol definition")
 
     # user-entered format; either lhs or rhs will always be empty at this point
     fmt = f"{lhs}%s{rhs}"
@@ -627,7 +678,7 @@ def parse_amount(amount: str, *, location: Tuple[str, int]) -> Amount:
         try:
             value = locale.atof(amount)
         except ValueError:
-            raise ParseError(f"invalid value ('{amount}')", location)
+            raise ValueError(f"invalid value ('{amount}')")
     else:
         value = int(0)  # note int-type
         # default/fallback format
