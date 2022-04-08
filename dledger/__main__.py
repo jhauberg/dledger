@@ -310,9 +310,12 @@ def main() -> None:
 
     if args["--exchange-to"] is not None:
         # forcefully apply an exchange to given currency
-        transactions = in_currency(
-            transactions, symbol=args["--exchange-to"], rates=exchange_rates
-        )
+        try:
+            transactions = in_currency(
+                transactions, symbol=args["--exchange-to"], rates=exchange_rates
+            )
+        except LookupError as e:
+            sys.exit(f"{e}")
 
     if args["report"]:
         if args["--forecast"]:

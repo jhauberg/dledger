@@ -364,7 +364,9 @@ def in_currency(
                 conversion_factor = rate[1]
                 conversion_factor = 1.0 / conversion_factor
             except KeyError:
-                raise ValueError(f"can't exchange between {rec.amount.symbol}/{symbol}")
+                raise LookupError(
+                    f"can't exchange between {rec.amount.symbol}/{symbol}"
+                )
         estimate_format: Optional[str] = None
         for t in reversed(transactions):
             assert t.amount is not None
