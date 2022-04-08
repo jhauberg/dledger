@@ -1,15 +1,14 @@
 import csv
 import re
-import math
 import locale
 import os
 
 from dledger.localeutil import DECIMAL_POINT_COMMA, DECIMAL_POINT_PERIOD, tempconv
-from dledger.formatutil import format_amount, decimalplaces, truncate_floating_point
+from dledger.formatutil import format_amount, decimalplaces
 from dledger.fileutil import fileencoding
 from dledger.dateutil import parse_datestamp, todayd
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime, date
 
 from typing import List, Union, Tuple, Optional, Any, Dict, Iterable
@@ -145,13 +144,11 @@ def read(path: str, *, kind: str) -> List[Transaction]:
 
     if kind == "journal":
         records = read_journal_transactions(path, encoding)
-        transactions = infer(sorted(records))
-        return transactions
     elif kind == "nordnet":
-        transactions = read_nordnet_transactions(path, encoding)
-        return sorted(transactions)
+        records = read_nordnet_transactions(path, encoding)
     else:
         raise ValueError(f"unsupported transaction type")
+    return sorted(records)
 
 
 def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transaction]:
@@ -243,135 +240,6 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
     # todo: include traversal; i.e. if you include something already included previously
     #       this could infinitely chain
     return journal_entries
-
-
-def infer(entries: Iterable[Transaction]) -> List[Transaction]:
-    transactions: List[Transaction] = []
-
-    for record in entries:
-        assert record.entry_attr is not None
-
-        # inferrable properties: Position, Dividend (and Entry Attributes)
-        # i.e. these may differ from original entry to the resulting transaction
-        attr = record.entry_attr
-        position, position_directive = attr.positioning
-        dividend = record.dividend
-
-        if position is None or (
-            position_directive == POSITION_ADD
-            or position_directive == POSITION_SUB
-            or position_directive == POSITION_SPLIT
-            or position_directive == POSITION_SPLIT_WHOLE
-        ):
-            # infer position from previous entries
-            by_ex_date = sorted(
-                transactions,
-                key=lambda r: (
-                    r.ex_date if r.ex_date is not None else r.entry_date,
-                    r.ispositional,
-                ),
-            )
-
-            for previous_record in reversed(by_ex_date):
-                if previous_record.ticker == record.ticker:
-                    if previous_record.position is None:
-                        continue
-                    if (
-                        record.ex_date is not None
-                        and previous_record.entry_date > record.ex_date
-                    ):
-                        continue
-                    if position is None:
-                        position = 0
-                    if position_directive == POSITION_SPLIT:
-                        position = truncate_floating_point(
-                            previous_record.position * position
-                        )
-                    elif position_directive == POSITION_SPLIT_WHOLE:
-                        position = truncate_floating_point(
-                            math.floor(previous_record.position * position)
-                        )
-                    else:
-                        position = truncate_floating_point(
-                            previous_record.position + (position * position_directive)
-                        )
-                    if position < 0:
-                        raise ParseError(
-                            f"position change to negative position ({position})",
-                            attr.location,
-                        )
-                    break
-
-        if record.amount is not None and record.dividend is not None:
-            if record.amount.symbol == record.dividend.symbol:
-                inferred_p = record.amount.value / record.dividend.value
-                if position is not None:
-                    # determine whether literal position is close enough to the
-                    # inferred position; note that the precision here should match
-                    # the precision of any inferred dividend
-                    precision = 0.000001
-                    if record.dividend.places is not None:
-                        denominator = "1" + ("0" * (record.dividend.places - 1))
-                        precision = 1 / int(denominator)
-                    if not math.isclose(position, inferred_p, abs_tol=precision):
-                        raise ParseError(
-                            f"ambiguous position ({position} or {inferred_p}?)",
-                            attr.location,
-                        )
-                else:
-                    position = truncate_floating_point(inferred_p)
-
-        if position is None:
-            raise ParseError(f"position could not be inferred", attr.location)
-
-        if record.amount is not None and position == 0:
-            raise ParseError(f"payout on closed position", attr.location)
-
-        if record.amount is not None and record.dividend is None:
-            inferred_dividend = truncate_floating_point(
-                record.amount.value / position, places=4
-            )
-            dividend = Amount(
-                inferred_dividend,
-                places=decimalplaces(inferred_dividend),
-                symbol=record.amount.symbol,
-                fmt=record.amount.fmt,
-            )
-
-        if record.amount is None and dividend is None:
-            if record.payout_date is not None or record.ex_date is not None:
-                raise ParseError(f"associated date on positional record", attr.location)
-
-        if record.payout_date is not None and record.ex_date is not None:
-            if record.payout_date < record.ex_date:
-                raise ParseError(
-                    f"payout date dated earlier than ex-date", attr.location
-                )
-
-        is_incomplete = False
-        prelim_amount = None
-        if (
-            record.amount is None
-            or record.amount is not None
-            and record.amount.value == 0
-        ) and dividend is not None:
-            prelim_amount = record.amount
-            is_incomplete = True
-
-        attr = replace(
-            attr, preliminary_amount=prelim_amount, is_preliminary=is_incomplete
-        )
-
-        record = replace(
-            record,
-            amount=record.amount if prelim_amount is None else None,
-            entry_attr=attr,
-            position=position,
-            dividend=dividend,
-        )
-
-        transactions.append(record)
-    return transactions
 
 
 def strip_tags(text: str) -> Tuple[str, List[str]]:

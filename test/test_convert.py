@@ -13,6 +13,7 @@ from dledger.journal import (
 )
 
 from dledger.convert import (
+    inferring_components,
     removing_redundancies,
     adjusting_for_splits,
     with_estimates,
@@ -105,7 +106,11 @@ def test_remove_redundant_entries():
 def test_adjusting_for_splits_whole():
     path = "../example/split.journal"
 
-    records = adjusting_for_splits(read(path, kind="journal"))
+    records = adjusting_for_splits(
+        inferring_components(
+            read(path, kind="journal")
+        )
+    )
 
     assert len(records) == 4
 
@@ -146,7 +151,7 @@ def test_adjusting_for_splits_whole():
 def test_adjusting_for_splits_ordering():
     path = "../example/split.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     # ensure that order does not matter for split adjustment
     tmp = records[0]
@@ -195,7 +200,7 @@ def test_adjusting_for_splits_fractional():
     path = "subjects/split_fractional.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
     records = adjusting_for_splits(records)
 
     assert len(records) == 7
@@ -261,7 +266,11 @@ def test_adjusting_for_splits_fractional():
 def test_adjusting_for_splits_reverse():
     path = "subjects/split_reverse.journal"
 
-    records = adjusting_for_splits(read(path, kind="journal"))
+    records = adjusting_for_splits(
+        inferring_components(
+            read(path, kind="journal")
+        )
+    )
 
     assert len(records) == 4
 
@@ -363,6 +372,3 @@ def test_convert_to_currency():
     import math
 
     assert math.floor(records[1].amount.value) == 33  # floor to ignore decimals
-
-
-# todo: test convert_to_native_currency

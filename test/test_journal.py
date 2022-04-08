@@ -21,7 +21,11 @@ from dledger.projection import (
     GeneratedAmount,
     scheduled_transactions,
 )
-from dledger.convert import removing_redundancies, with_estimates
+from dledger.convert import (
+    inferring_components,
+    removing_redundancies,
+    with_estimates
+)
 from dledger.localeutil import (
     tempconv,
     DECIMAL_POINT_COMMA,
@@ -237,7 +241,7 @@ def test_empty_journal():
 def test_single_journal():
     path = "subjects/single.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 1
 
@@ -254,7 +258,7 @@ def test_single_journal():
 def test_simple_journal():
     path = "../example/simple.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -299,7 +303,7 @@ def test_simple_journal():
 
     path = "../example/simple-condensed.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -401,7 +405,7 @@ def test_ordering_journal():
     path = "subjects/ordering.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 7
 
@@ -461,7 +465,7 @@ def test_positions_journal():
     path = "subjects/positions.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 5
 
@@ -518,7 +522,7 @@ def test_positions_journal():
     path = "subjects/positions-condensed.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 5
 
@@ -568,7 +572,7 @@ def test_positions_format_journal():
     path = "subjects/positions-oddformat.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 6
 
@@ -631,7 +635,7 @@ def test_position_inference_journal():
     path = "subjects/positioninference.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -678,7 +682,7 @@ def test_position_inference_from_missing_dividends_journal():
         included_path = "subjects/positioninference3.journal"
 
     with tempconv(DECIMAL_POINT_COMMA):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -737,7 +741,7 @@ def test_fractional_positions_journal():
     path = "subjects/fractionalpositions.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 5
 
@@ -791,7 +795,7 @@ def test_dividends_journal():
     path = "../example/dividends.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -843,7 +847,7 @@ def test_ambiguous_position_journal():
     path = "subjects/positionambiguity.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 2
 
@@ -870,7 +874,7 @@ def test_distribution_followed_by_buy_journal():
     path = "subjects/positionambiguity2.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 2
 
@@ -897,7 +901,7 @@ def test_nativedividends_journal():
     path = "subjects/nativedividends.journal"
 
     with tempconv(DECIMAL_POINT_COMMA):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -945,7 +949,7 @@ def test_strategic_journal():
     path = "subjects/strategic.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 6
 
@@ -1006,7 +1010,7 @@ def test_extended_journal():
     path = "subjects/extendingrecords.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -1062,7 +1066,7 @@ def test_preliminary_expected_currency():
     path = "subjects/preliminaryrecords.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -1089,7 +1093,7 @@ def test_preliminary_expected_currency():
 def test_stable_sort():
     path = "subjects/sorting.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 8
 
@@ -1139,7 +1143,7 @@ def test_include_journal():
     else:
         included_resolved_path = "../example/simple.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 5
 
@@ -1203,7 +1207,7 @@ def test_include_journal_quoted():
     else:
         included_resolved_path = "subjects/../../example/simple.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 5
 
@@ -1267,7 +1271,7 @@ def test_include_journal_out_of_order():
     else:
         included_resolved_path = "subjects/../../example/simple.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 7
 
@@ -1354,7 +1358,7 @@ def test_include_implicit_journal_dependency():
     # and thus has access to the information required
 
     try:
-        _ = read(path, kind="journal")
+        _ = inferring_components(read(path, kind="journal"))
     except ParseError as e:
         assert e.line_number == 3
         assert "position could not be inferred" in e.message
@@ -1370,7 +1374,7 @@ def test_include_implicit_journal_dependency():
         included_resolved_path_first = "subjects/include_dependency_first.journal"
         included_resolved_path_second = "subjects/include_dependency_second.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -1431,7 +1435,9 @@ def test_implicit_currency():
 
 def test_write():
     existing_path = "../example/simple.journal"
-    existing_records = read(existing_path, kind="journal")
+    existing_records = inferring_components(
+        read(existing_path, kind="journal")
+    )
 
     import os
     import tempfile
@@ -1439,7 +1445,9 @@ def test_write():
     fd, output_path = tempfile.mkstemp()
     with os.fdopen(fd, "w", newline="") as tmp:
         write(existing_records, file=tmp)
-    records = read(output_path, kind="journal")
+    records = inferring_components(
+        read(output_path, kind="journal")
+    )
     os.remove(output_path)
     assert len(records) == len(existing_records)
     for n, record in enumerate(records):
@@ -1472,9 +1480,8 @@ def verify_integrity(input_path: str, verification_path: str, condense: bool = F
     # _all_ comments are omitted, and some records _may_ be if deemed redundant
     # similarly, it is expected that output conforms to a consistent style
     # that do not necessarily match that of the input journal
-    existing_records = removing_redundancies(
-        read(input_path, kind="journal"), since=date(2019, 12, 10)
-    )
+    records = inferring_components(read(input_path, kind="journal"))
+    existing_records = removing_redundancies(records, since=date(2019, 12, 10))
 
     import os
     import tempfile
@@ -1483,7 +1490,9 @@ def verify_integrity(input_path: str, verification_path: str, condense: bool = F
     with os.fdopen(fd, "w", newline="") as tmp:
         with tempconv(DECIMAL_POINT_PERIOD):
             write(existing_records, file=tmp, condensed=condense)
-    records = read(output_path, kind="journal")
+    records = inferring_components(
+        read(output_path, kind="journal")
+    )
     assert len(records) == 7
     with open(output_path, "r") as f:
         output = f.read()
@@ -1497,7 +1506,7 @@ def test_nordnet_import():
     path = "subjects/nordnet_transactions.csv"
 
     with tempconv(DECIMAL_POINT_COMMA):
-        records = read(path, kind="nordnet")
+        records = inferring_components(read(path, kind="nordnet"))
 
     assert len(records) == 3
 
@@ -1563,7 +1572,7 @@ def test_splits_whole():
     path = "../example/split.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -1605,7 +1614,7 @@ def test_splits_fractional():
     path = "subjects/split_fractional.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 7
 
@@ -1671,7 +1680,7 @@ def test_reverse_split():
     path = "subjects/split_reverse.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = read(path, kind="journal")
+        records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 4
 
@@ -1712,7 +1721,7 @@ def test_reverse_split():
 def test_tags():
     path = "subjects/tags.journal"
 
-    records = read(path, kind="journal")
+    records = inferring_components(read(path, kind="journal"))
 
     assert len(records) == 6
 

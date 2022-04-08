@@ -85,6 +85,7 @@ from dledger.journal import (
     SUPPORTED_TYPES,
 )
 from dledger.convert import (
+    inferring_components,
     removing_redundancies,
     adjusting_for_splits,
     with_estimates,
@@ -173,7 +174,8 @@ def main() -> None:
     if len(records) == 0:
         sys.exit(0)  # no further output possible, but not an error
 
-    records = sorted(removing_redundancies(records))
+    records = inferring_components(records)
+    records = removing_redundancies(records)
 
     descending_order = args["--reverse"]
 
