@@ -5,7 +5,6 @@ from datetime import date
 from dledger.journal import (
     Transaction,
     Amount,
-    ParseError,
     POSITION_ADD,
     POSITION_SUB,
     POSITION_SPLIT,
@@ -26,6 +25,16 @@ from dledger.dateutil import in_months, todayd
 
 from dataclasses import replace
 from typing import List, Dict, Tuple, Optional, Iterable
+
+
+class InferenceError(Exception):
+    message: str
+    record: Transaction
+
+    def __init__(self, message: str, record: Transaction):
+        self.message = message
+        self.record = record
+        super().__init__(f"{self.message}")
 
 
 def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
@@ -79,11 +88,9 @@ def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
                             previous_record.position + (position * position_directive)
                         )
                     if position < 0:
-                        # todo: note that errors here are not necessarily "invalid transactions"
-                        #       but exact lineno is still very useful
-                        raise ParseError(
+                        raise InferenceError(
                             f"position change to negative position ({position})",
-                            attr.location,
+                            record,
                         )
                     break
 
@@ -99,18 +106,18 @@ def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
                         denominator = "1" + ("0" * (record.dividend.places - 1))
                         precision = 1 / int(denominator)
                     if not math.isclose(position, inferred_p, abs_tol=precision):
-                        raise ParseError(
+                        raise InferenceError(
                             f"ambiguous position ({position} or {inferred_p}?)",
-                            attr.location,
+                            record,
                         )
                 else:
                     position = truncate_floating_point(inferred_p)
 
         if position is None:
-            raise ParseError(f"position could not be inferred", attr.location)
+            raise InferenceError(f"position could not be inferred", record)
 
         if record.amount is not None and position == 0:
-            raise ParseError(f"payout on closed position", attr.location)
+            raise InferenceError(f"payout on closed position", record)
 
         if record.amount is not None and record.dividend is None:
             inferred_dividend = truncate_floating_point(
@@ -125,12 +132,12 @@ def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
 
         if record.amount is None and dividend is None:
             if record.payout_date is not None or record.ex_date is not None:
-                raise ParseError(f"associated date on positional record", attr.location)
+                raise InferenceError(f"associated date on positional record", record)
 
         if record.payout_date is not None and record.ex_date is not None:
             if record.payout_date < record.ex_date:
-                raise ParseError(
-                    f"payout date dated earlier than ex-date", attr.location
+                raise InferenceError(
+                    f"payout date dated earlier than ex-date", record
                 )
 
         is_incomplete = False

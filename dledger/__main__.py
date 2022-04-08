@@ -85,6 +85,7 @@ from dledger.journal import (
     SUPPORTED_TYPES,
 )
 from dledger.convert import (
+    InferenceError,
     inferring_components,
     removing_redundancies,
     adjusting_for_splits,
@@ -174,7 +175,11 @@ def main() -> None:
     if len(records) == 0:
         sys.exit(0)  # no further output possible, but not an error
 
-    records = inferring_components(records)
+    try:
+        records = inferring_components(records)
+    except InferenceError as e:
+        sys.exit(f"{ParseError(str(e), e.record.entry_attr.location)}")
+
     records = removing_redundancies(records)
 
     descending_order = args["--reverse"]

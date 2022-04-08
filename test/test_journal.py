@@ -22,6 +22,7 @@ from dledger.projection import (
     scheduled_transactions,
 )
 from dledger.convert import (
+    InferenceError,
     inferring_components,
     removing_redundancies,
     with_estimates
@@ -1359,8 +1360,8 @@ def test_include_implicit_journal_dependency():
 
     try:
         _ = inferring_components(read(path, kind="journal"))
-    except ParseError as e:
-        assert e.line_number == 3
+    except InferenceError as e:
+        assert e.record.entry_attr.location[1] == 3
         assert "position could not be inferred" in e.message
     else:
         assert False
