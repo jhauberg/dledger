@@ -1,3 +1,4 @@
+import os
 import math
 
 from datetime import date
@@ -35,6 +36,29 @@ class InferenceError(Exception):
         self.message = message
         self.record = record
         super().__init__(f"{self.message}")
+
+
+def has_identical_location(record: Transaction, other_record: Transaction) -> bool:
+    """Return `True` if both records have the same origin, `False` otherwise."""
+    journal, lineno = record.entry_attr.location
+    other_journal, other_lineno = other_record.entry_attr.location
+    a = os.path.abspath(journal)
+    b = os.path.abspath(other_journal)
+    originates_from_same_journal = a == b
+    return originates_from_same_journal and lineno == other_lineno
+
+
+def removing_duplicates(records: List[Transaction]) -> Tuple[List[Transaction], int]:
+    n = len(records)
+    backwards = list(reversed(records))
+    for i, record in enumerate(backwards):
+        for j, other_record in enumerate(backwards):
+            if i == j:
+                continue
+            if has_identical_location(record, other_record):
+                backwards.pop(j)
+    records = list(reversed(backwards))
+    return records, n - len(records)
 
 
 def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
@@ -136,9 +160,7 @@ def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
 
         if record.payout_date is not None and record.ex_date is not None:
             if record.payout_date < record.ex_date:
-                raise InferenceError(
-                    f"payout date dated earlier than ex-date", record
-                )
+                raise InferenceError(f"payout date dated earlier than ex-date", record)
 
         is_incomplete = False
         prelim_amount = None

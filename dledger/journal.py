@@ -207,10 +207,6 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                             "attempt to recursively include journal",
                             location=(path, line_number),
                         )
-                    # note that implicit dependencies could potentially be handled here
-                    # by passing on the current list of records to the read function or
-                    # something similar- for now this is just linearly drilling down
-                    # through each journal and its explicit dependencies
                     journal_entries.extend(
                         # note that this assumes all included journals are of identical
                         # encoding; if we instead went `read(.., kind="journal"), then
