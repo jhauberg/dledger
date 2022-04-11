@@ -97,7 +97,7 @@ from dledger.convert import (
 
 from dataclasses import replace
 
-from typing import List, Iterable, Optional
+from typing import List, Optional
 
 
 def main() -> None:
@@ -176,8 +176,6 @@ def main() -> None:
     if len(records) == 0:
         sys.exit(0)  # no further output possible, but not an error
 
-    # todo: this is really slow; preferably we avoid duplicates by just not
-    #       allowing identical include directives
     records, duplicates_removed = removing_duplicates(records)
 
     try:
@@ -237,9 +235,9 @@ def main() -> None:
     # if we had copied the list *after* period filtering, we would also be past
     # the date-swapping step, causing every record to look like a diagnostic-producing
     # case (i.e. they would all be lacking either payout or ex-date)
-    journaled_records: Optional[Iterable[Transaction]] = None
+    journaled_records: Optional[List[Transaction]] = None
     if is_verbose:
-        journaled_records = (
+        journaled_records = list(
             r
             for r in records
             if r.entry_attr is not None  # only non-generated entries
@@ -391,18 +389,18 @@ def main() -> None:
         from dledger.debug import (
             debug_find_missing_payout_date,
             debug_find_missing_ex_date,
-            debug_find_duplicate_entries,
+            debug_find_potential_duplicates,
             debug_find_duplicate_tags,
             debug_find_ambiguous_exchange_rates,
         )
 
+        debug_find_potential_duplicates(debuggable_entries)
+        debug_find_duplicate_tags(debuggable_entries)
         if args["--by-payout-date"]:
             debug_find_missing_payout_date(debuggable_entries)
         if args["--by-ex-date"]:
             debug_find_missing_ex_date(debuggable_entries)
-        debug_find_duplicate_entries(debuggable_entries)
         debug_find_ambiguous_exchange_rates(debuggable_entries, exchange_rates)
-        debug_find_duplicate_tags(debuggable_entries)
 
     sys.exit(0)
 

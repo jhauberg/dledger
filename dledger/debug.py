@@ -37,7 +37,7 @@ def debug_find_missing_ex_date(transactions: List[Transaction]) -> None:
         )
 
 
-def debug_find_duplicate_entries(transactions: List[Transaction]) -> None:
+def debug_find_potential_duplicates(transactions: List[Transaction]) -> None:
     for ticker in tickers(transactions):
         entries = list(by_ticker(transactions, ticker))
         dupes: List[Transaction] = []
@@ -109,7 +109,7 @@ def debug_find_ambiguous_exchange_rates(
 
 
 def debug_find_duplicate_tags(transactions: List[Transaction]) -> None:
-    tagged_transactions = [txn for txn in transactions if txn.tags is not None]
+    tagged_transactions = (txn for txn in transactions if txn.tags is not None)
     for txn in tagged_transactions:
         assert txn.entry_attr is not None
         unique_tags = set(txn.tags)
