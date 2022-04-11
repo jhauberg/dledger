@@ -381,10 +381,9 @@ def main() -> None:
             )
         assert journaled_records is not None
         # only include those records applicable to current filter options
+        entries = set(txn.entry_attr for txn in transactions)
         debuggable_entries = list(
-            record
-            for record in journaled_records
-            if any(record.entry_attr == txn.entry_attr for txn in transactions)
+            record for record in journaled_records if record.entry_attr in entries
         )
         from dledger.debug import (
             debug_find_missing_payout_date,
