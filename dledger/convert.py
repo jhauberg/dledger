@@ -181,8 +181,8 @@ def removing_redundancies(
         position_records = list(r for r in recs if r.ispositional)
         if len(position_records) == 0:
             continue
-        # find all records with a cash component
-        realized_records = list(r for r in recs if r not in position_records)
+        # find all records with either a cash or dividend component
+        realized_records = list(r for r in recs if not r.ispositional)
         latest_transaction: Optional[Transaction] = None
         if len(realized_records) > 0:
             latest_transaction = realized_records[-1]
