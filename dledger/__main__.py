@@ -377,7 +377,7 @@ def main() -> None:
             print(
                 f"removed {duplicates_removed} duplicate records; "
                 f"did you include the same journal more than once?",
-                file=sys.stderr
+                file=sys.stderr,
             )
         assert journaled_records is not None
         # only include those records applicable to current filter options

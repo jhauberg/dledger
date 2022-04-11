@@ -686,7 +686,6 @@ def print_currency_balance_report(
     records: List[Transaction], *, descending: bool = False
 ) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
-    # todo: see note in print_balance_report
     amount_decimals, _, _ = decimals_per_component(records)
     for commodity in commodities:
         matching_transactions = list(

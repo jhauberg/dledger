@@ -25,7 +25,7 @@ from dledger.convert import (
     InferenceError,
     inferring_components,
     removing_redundancies,
-    with_estimates
+    with_estimates,
 )
 from dledger.localeutil import (
     tempconv,
@@ -85,27 +85,13 @@ def test_decimal_places():
 
 
 def test_parse_amount():
-    assert parse_amount("$") == Amount(
-        0, places=0, symbol="$", fmt="%s $"
-    )
-    assert parse_amount("$10") == Amount(
-        10, places=0, symbol="$", fmt="$%s"
-    )
-    assert parse_amount("$ 10") == Amount(
-        10, places=0, symbol="$", fmt="$ %s"
-    )
-    assert parse_amount(" $ 10 ") == Amount(
-        10, places=0, symbol="$", fmt="$ %s"
-    )
-    assert parse_amount("$  10") == Amount(
-        10, places=0, symbol="$", fmt="$ %s"
-    )
-    assert parse_amount("10 kr") == Amount(
-        10, places=0, symbol="kr", fmt="%s kr"
-    )
-    assert parse_amount("10   kr") == Amount(
-        10, places=0, symbol="kr", fmt="%s kr"
-    )
+    assert parse_amount("$") == Amount(0, places=0, symbol="$", fmt="%s $")
+    assert parse_amount("$10") == Amount(10, places=0, symbol="$", fmt="$%s")
+    assert parse_amount("$ 10") == Amount(10, places=0, symbol="$", fmt="$ %s")
+    assert parse_amount(" $ 10 ") == Amount(10, places=0, symbol="$", fmt="$ %s")
+    assert parse_amount("$  10") == Amount(10, places=0, symbol="$", fmt="$ %s")
+    assert parse_amount("10 kr") == Amount(10, places=0, symbol="kr", fmt="%s kr")
+    assert parse_amount("10   kr") == Amount(10, places=0, symbol="kr", fmt="%s kr")
     assert parse_amount("10 danske kroner") == Amount(
         10, places=0, symbol="danske kroner", fmt="%s danske kroner"
     )
@@ -117,39 +103,23 @@ def test_parse_amount():
     )
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        assert parse_amount("$ 0.50") == Amount(
-            0.5, places=2, symbol="$", fmt="$ %s"
-        )
+        assert parse_amount("$ 0.50") == Amount(0.5, places=2, symbol="$", fmt="$ %s")
         assert parse_amount("0.50 kr") == Amount(
             0.5, places=2, symbol="kr", fmt="%s kr"
         )
-        assert parse_amount("0.00 kr") == Amount(
-            0, places=2, symbol="kr", fmt="%s kr"
-        )
-        assert parse_amount("$ .50") == Amount(
-            0.5, places=2, symbol="$", fmt="$ %s"
-        )
-        assert parse_amount(".50 kr") == Amount(
-            0.5, places=2, symbol="kr", fmt="%s kr"
-        )
+        assert parse_amount("0.00 kr") == Amount(0, places=2, symbol="kr", fmt="%s kr")
+        assert parse_amount("$ .50") == Amount(0.5, places=2, symbol="$", fmt="$ %s")
+        assert parse_amount(".50 kr") == Amount(0.5, places=2, symbol="kr", fmt="%s kr")
 
     with tempconv(DECIMAL_POINT_COMMA):
-        assert parse_amount("$ 0,50") == Amount(
-            0.5, places=2, symbol="$", fmt="$ %s"
-        )
+        assert parse_amount("$ 0,50") == Amount(0.5, places=2, symbol="$", fmt="$ %s")
         assert parse_amount("0,50 kr") == Amount(
             0.5, places=2, symbol="kr", fmt="%s kr"
         )
-        assert parse_amount("0,00 kr") == Amount(
-            0, places=2, symbol="kr", fmt="%s kr"
-        )
+        assert parse_amount("0,00 kr") == Amount(0, places=2, symbol="kr", fmt="%s kr")
 
-        assert parse_amount("$ ,50") == Amount(
-            0.5, places=2, symbol="$", fmt="$ %s"
-        )
-        assert parse_amount(",50 kr") == Amount(
-            0.5, places=2, symbol="kr", fmt="%s kr"
-        )
+        assert parse_amount("$ ,50") == Amount(0.5, places=2, symbol="$", fmt="$ %s")
+        assert parse_amount(",50 kr") == Amount(0.5, places=2, symbol="kr", fmt="%s kr")
 
     try:
         parse_amount("10")
@@ -173,9 +143,7 @@ def test_parse_amount():
         assert False
 
     # note that this parses too, but potentially with a confusing result
-    assert parse_amount("$ abc") == Amount(
-        0, places=0, symbol="$ abc", fmt="%s $ abc"
-    )
+    assert parse_amount("$ abc") == Amount(0, places=0, symbol="$ abc", fmt="%s $ abc")
     # this, however, does not parse
     try:
         parse_amount("$ .")
@@ -1397,7 +1365,7 @@ def test_include_implicit_journal_dependency():
         dividend=Amount(0.77, places=2, symbol="$", fmt="$ %s"),
         entry_attr=EntryAttributes(
             location=(included_resolved_path_second, 3),
-            positioning=(None, POSITION_SET)
+            positioning=(None, POSITION_SET),
         ),
     )
     assert records[2] == Transaction(

@@ -252,8 +252,7 @@ def strip_tags(text: str) -> Tuple[str, List[str]]:
 # each component following initial datestamp could be on another line;
 # this function attempts (feebly and error-prone) to find the actual linenumber
 def find_potential_lineno(
-    component: str,
-    lines: List[Tuple[int, str]]
+    component: str, lines: List[Tuple[int, str]]
 ) -> Optional[int]:
     for (lineno, line) in lines:
         if component in line:
@@ -262,9 +261,7 @@ def find_potential_lineno(
 
 
 def find_potential_location(
-    component: str,
-    lines: List[Tuple[int, str]],
-    location: Tuple[str, int]
+    component: str, lines: List[Tuple[int, str]], location: Tuple[str, int]
 ) -> Tuple[str, int]:
     lineno = find_potential_lineno(component, lines)
     return location if lineno is None else (location[0], lineno)
@@ -297,8 +294,7 @@ def read_journal_transaction(
         d = parse_datestamp(datestamp, strict=True)
     except ValueError:
         raise ParseError(
-            f"invalid transaction; unknown date format ('{datestamp}')",
-            location
+            f"invalid transaction; unknown date format ('{datestamp}')", location
         )
     condensed_line = condensed_line[datestamp_end_index:].strip()
 
@@ -341,7 +337,7 @@ def read_journal_transaction(
             except ValueError:
                 raise ParseError(
                     f"invalid transaction: unknown position format ('{text}')",
-                    find_potential_location(text, lines, location)
+                    find_potential_location(text, lines, location),
                 )
 
         if position_str.startswith("="):
@@ -368,13 +364,13 @@ def read_journal_transaction(
             if "/" not in position_str:
                 raise ParseError(
                     f"invalid transaction; unknown split format ('{position_str}')",
-                    find_potential_location(position_str, lines, location)
+                    find_potential_location(position_str, lines, location),
                 )
             split_components = position_str.split("/")
             if len(split_components) != 2:
                 raise ParseError(
                     f"invalid transaction; unknown split format ('{position_str}')",
-                    find_potential_location(position_str, lines, location)
+                    find_potential_location(position_str, lines, location),
                 )
             try:
                 # position actually becomes a multiplier in this case,
@@ -384,7 +380,7 @@ def read_journal_transaction(
             except ValueError:
                 raise ParseError(
                     f"invalid transaction; unknown position format ('{position_str}')",
-                    find_potential_location(position_str, lines, location)
+                    find_potential_location(position_str, lines, location),
                 )
             position = a / b
         else:
@@ -417,13 +413,13 @@ def read_journal_transaction(
             except ValueError as e:
                 raise ParseError(
                     f"invalid transaction; {str(e)}",
-                    find_potential_location(dividend_str, lines, location)
+                    find_potential_location(dividend_str, lines, location),
                 )
             if dividend.value <= 0:
                 raise ParseError(
                     f"invalid transaction; "
                     f"negative or zero dividend ('{dividend.value}')",
-                    find_potential_location(dividend_str, lines, location)
+                    find_potential_location(dividend_str, lines, location),
                 )
         if dividend_datestamp is not None:
             try:
@@ -431,7 +427,7 @@ def read_journal_transaction(
             except ValueError:
                 raise ParseError(
                     f"invalid date format ('{dividend_datestamp}')",
-                    find_potential_location(dividend_datestamp, lines, location)
+                    find_potential_location(dividend_datestamp, lines, location),
                 )
     amount: Optional[Amount] = None
     d2: Optional[date] = None
@@ -443,12 +439,12 @@ def read_journal_transaction(
             except ValueError as e:
                 raise ParseError(
                     f"invalid transaction; {str(e)}",
-                    find_potential_location(amount_str, lines, location)
+                    find_potential_location(amount_str, lines, location),
                 )
             if amount.value < 0:
                 raise ParseError(
                     f"invalid transaction; negative amount ('{amount.value}')",
-                    find_potential_location(amount_str, lines, location)
+                    find_potential_location(amount_str, lines, location),
                 )
         else:
             if dividend is None:
@@ -459,7 +455,7 @@ def read_journal_transaction(
             except ValueError:
                 raise ParseError(
                     f"invalid transaction; unknown date format ('{amount_datestamp}')",
-                    find_potential_location(amount_datestamp, lines, location)
+                    find_potential_location(amount_datestamp, lines, location),
                 )
     return Transaction(
         d,
