@@ -65,7 +65,7 @@ def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
         ):
             # infer position from previous entries
             by_ex_date = sorted(
-                transactions,
+                by_ticker(transactions, record.ticker),
                 key=lambda r: (
                     r.ex_date if r.ex_date is not None else r.entry_date,
                     r.ispositional,
@@ -73,34 +73,33 @@ def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
             )
 
             for previous_record in reversed(by_ex_date):
-                if previous_record.ticker == record.ticker:
-                    if previous_record.position is None:
-                        continue
-                    if (
-                        record.ex_date is not None
-                        and previous_record.entry_date > record.ex_date
-                    ):
-                        continue
-                    if position is None:
-                        position = 0
-                    if position_directive == POSITION_SPLIT:
-                        position = truncate_floating_point(
-                            previous_record.position * position
-                        )
-                    elif position_directive == POSITION_SPLIT_WHOLE:
-                        position = truncate_floating_point(
-                            math.floor(previous_record.position * position)
-                        )
-                    else:
-                        position = truncate_floating_point(
-                            previous_record.position + (position * position_directive)
-                        )
-                    if position < 0:
-                        raise InferenceError(
-                            f"position change to negative position ({position})",
-                            record,
-                        )
-                    break
+                if previous_record.position is None:
+                    continue
+                if (
+                    record.ex_date is not None
+                    and previous_record.entry_date > record.ex_date
+                ):
+                    continue
+                if position is None:
+                    position = 0
+                if position_directive == POSITION_SPLIT:
+                    position = truncate_floating_point(
+                        previous_record.position * position
+                    )
+                elif position_directive == POSITION_SPLIT_WHOLE:
+                    position = truncate_floating_point(
+                        math.floor(previous_record.position * position)
+                    )
+                else:
+                    position = truncate_floating_point(
+                        previous_record.position + (position * position_directive)
+                    )
+                if position < 0:
+                    raise InferenceError(
+                        f"position change to negative position ({position})",
+                        record,
+                    )
+                break
 
         if record.amount is not None and record.dividend is not None:
             if record.amount.symbol == record.dividend.symbol:
