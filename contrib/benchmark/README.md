@@ -31,3 +31,15 @@ This clocks in how long it took to execute the given command; in this case, a `r
 ```
 
 These timings will obviously differ depending on the system it runs on; but they can be used to gauge relative performance loss/increase when performed on the same machine.
+
+## Profiling
+
+Python includes a profiler `cProfile` that we can use to determine exactly which functions take most of the program run time.
+
+Navigate to root and run `cProfile` like so:
+
+```shell
+$ python3 -m cProfile -s tottime -m dledger report contrib/benchmark/benchmark.journal --debug > out.txt
+```
+
+Here we make sure to sort by total time spent so it's easier to find problematic functions.
