@@ -45,10 +45,7 @@ def debug_find_potential_duplicates(transactions: List[Transaction]) -> None:
             assert txn.entry_attr is not None
             if txn in dupes:
                 continue
-            for j, other_txn in enumerate(entries):
-                if i == j:
-                    # don't compare to self
-                    continue
+            for other_txn in entries[i + 1:]:
                 if txn.entry_date != other_txn.entry_date:
                     # not dated identically; move on
                     continue
