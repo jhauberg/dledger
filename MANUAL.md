@@ -2,7 +2,7 @@
 
 This document provides a reference to the usage and inner workings of the `dledger` command-line interface tool. 
 
-Documentation is based on [dledger 0.9.0](https://github.com/jhauberg/dledger/releases/tag/0.9.0).
+Documentation is based on [dledger 0.10.0](https://github.com/jhauberg/dledger/releases/tag/0.10.0).
 
 ## Introduction
 
@@ -31,7 +31,7 @@ $ dledger --version
 ```
 
 ```console
-dledger 0.9.0
+dledger 0.10.0
 ```
 
 Depending on your Python setup, you might have to run `dledger` as a module:
@@ -56,7 +56,7 @@ $ python3 setup.py install --record files.txt
 It should look something like this (note that any dependencies are _not_ included):
 
 ```
-/usr/local/lib/python3.10/site-packages/dledger-0.9.0-py3.10.egg
+/usr/local/lib/python3.10/site-packages/dledger-0.10.0-py3.10.egg
 /usr/local/bin/dledger
 ```
 <sup>&nbsp;&nbsp;**files.txt**</sup>
