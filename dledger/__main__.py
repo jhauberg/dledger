@@ -97,7 +97,7 @@ from dledger.convert import (
 
 from dataclasses import replace
 
-from typing import List, Optional
+from typing import List, Iterable, Optional
 
 
 def main() -> None:
@@ -235,9 +235,9 @@ def main() -> None:
     # if we had copied the list *after* period filtering, we would also be past
     # the date-swapping step, causing every record to look like a diagnostic-producing
     # case (i.e. they would all be lacking either payout or ex-date)
-    journaled_records: Optional[List[Transaction]] = None
+    journaled_records: Optional[Iterable[Transaction]] = None
     if is_verbose:
-        journaled_records = list(
+        journaled_records = (
             r
             for r in records
             if r.entry_attr is not None  # only non-generated entries
