@@ -62,8 +62,10 @@ class GeneratedAmount(Amount):
 @dataclass(frozen=True)
 class GeneratedTransaction(Transaction):
     """Represents a projected transaction."""
-
-    pass
+    # todo: could keep a set like this for each date (entry, ex, payout)
+    #       but only if we have something useful to do with them
+    earliest_entry_date: Optional[date] = None
+    latest_entry_date: Optional[date] = None
 
 
 @dataclass(frozen=True)
@@ -413,6 +415,21 @@ def scheduled_transactions(
                 # no change; this leads to an infinite recursion
                 raise RecursionError
             excess_projections = next_excess_projections
+    for i, txn in enumerate(scheduled):
+        comparables = list(
+            comparable_transactions(by_ticker(records, txn.ticker), txn)
+        )
+        def compare_by_day(r: Transaction):
+            return r.entry_date.day
+        earliest_comparable_transaction = min(comparables, key=compare_by_day)
+        latest_comparable_transaction = max(comparables, key=compare_by_day)
+        txn = replace(
+            txn,
+            earliest_entry_date=earliest_comparable_transaction.entry_date,
+            latest_entry_date=latest_comparable_transaction.entry_date
+        )
+        scheduled[i] = txn
+
     # finally, sort them by default transaction sorting rules
     return sorted(scheduled)
 
@@ -614,7 +631,7 @@ def next_linear_dividend(
     if latest_transaction is None or latest_transaction.dividend is None:
         return None
 
-    comparable_transactions: List[Transaction] = []
+    past_transactions: List[Transaction] = []
     for transaction in transactions:
         if transaction.kind is not kind:
             # skip if not same kind, as different kinds of distributions
@@ -625,12 +642,12 @@ def next_linear_dividend(
             or transaction.dividend.symbol != latest_transaction.dividend.symbol
         ):
             break
-        comparable_transactions.append(transaction)
+        past_transactions.append(transaction)
 
-    if len(comparable_transactions) == 0:
+    if len(past_transactions) == 0:
         return None
 
-    movements = deltas(dividends(comparable_transactions))
+    movements = deltas(dividends(past_transactions))
     # consider 'no change' same as going up
     movements = [1 if m == 0 else m for m in movements]
     assert all(e == 1 or e == -1 for e in movements)  # only contains 1 or -1 movements
@@ -639,7 +656,7 @@ def next_linear_dividend(
     # and downs), then we consider the dividend to follow a linear pattern
     has_linear_pattern = len(multimode(movements)) != 2
     if has_linear_pattern:
-        latest_comparable = latest(comparable_transactions)
+        latest_comparable = latest(past_transactions)
         assert latest_comparable is not None
         div = latest_comparable.dividend
         return GeneratedAmount(div.value, symbol=div.symbol, fmt=div.fmt)
@@ -663,6 +680,15 @@ def next_position(
 
     assert latest_record is not None
     return latest_record.position
+
+
+def comparable_transactions(records: Iterable[Transaction], transaction: Transaction) -> Iterable[Transaction]:
+    # todo: potentially allow a grace period going back X days; i.e. a month earlier or later;
+    #       could be problematic for monthly schedules?
+    return filter(
+        lambda txn: txn.entry_date.month == transaction.entry_date.month and txn.kind is transaction.kind,
+        records
+    )
 
 
 def future_transactions(

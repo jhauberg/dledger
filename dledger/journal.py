@@ -323,7 +323,7 @@ def read_journal_transaction(
         ticker = ticker[1:].strip()
     condensed_line = condensed_line[break_index:].strip()
     if len(ticker) == 0:
-        raise ParseError("invalid transaction; empty ticker", location)
+        raise ParseError("invalid transaction; missing ticker", location)
     position: Optional[float] = None
     position_change_directive = POSITION_SET
     if ")" in condensed_line:

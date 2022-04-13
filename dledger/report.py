@@ -268,6 +268,20 @@ def print_simple_report(
                 else:
                     # indicate that the transaction is expected before, or by, date
                     line = f"{line} <~ {d} {transaction.ticker.ljust(8)}"
+                    if not detailed:
+                        if transaction.earliest_entry_date is not None and transaction.latest_entry_date is not None:
+                            # todo: only show one or the other if identical
+                            # indicate previously seen, at the earliest/latest, on past date
+                            # i.e. "when can I expect this dividend at the earliest or latest"
+                            year_month = transaction.entry_date.strftime("%Y/%m")
+                            latest_day = transaction.latest_entry_date.strftime("%d")
+                            earliest_day = transaction.earliest_entry_date.strftime("%d")
+                            earliest_date = f"{year_month}/{earliest_day}"
+                            latest_date = f"{year_month}/{latest_day}"
+                            between_dates = f"{earliest_date} - {latest_date}"
+                            # todo: formatting- there might not be enough room for both dates if we want to keep columns aligned with other reports;
+                            #  can we do something clever here?
+                            line = f"{line} {between_dates.rjust(18)}"
             else:
                 # todo: we're ignoring these indicators for preliminary records;
                 #       is that right?
