@@ -111,6 +111,12 @@ def main() -> None:
             f"{sys.version_info[0]}.{sys.version_info[1]} currently"
         )
 
+    # allow shorthand specific to "report" command, entirely for convenience;
+    # i.e. transform "rep", "repo", "repor" => "report"
+    # note that other commands must still be fully typed out
+    if len(sys.argv) > 1 and "rep" in sys.argv[1]:
+        sys.argv[1] = "report"
+
     args = docopt(__doc__, version="dledger " + __version__.__version__)
 
     enable_color_escapes()
