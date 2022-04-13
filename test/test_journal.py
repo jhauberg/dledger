@@ -16,6 +16,7 @@ from dledger.journal import (
     read,
     parse_amount,
     write,
+    has_identical_location,
 )
 from dledger.projection import (
     GeneratedAmount,
@@ -171,6 +172,66 @@ def test_invalid_journal_type():
         _ = read(path, kind="other")
     except ValueError:
         assert True
+    else:
+        assert False
+
+
+def test_invalid_transaction_unknown_datestamp():
+    path = "subjects/invalidtransaction/unknown_datestamp.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert e.line_number == 3
+        assert "unknown date format" in e.message
+    else:
+        assert False
+
+
+def test_invalid_transaction_missing_ticker():
+    path = "subjects/invalidtransaction/missing_ticker.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert e.line_number == 3
+        assert "invalid transaction" in e.message
+    else:
+        assert False
+
+
+def test_invalid_transaction_empty_ticker():
+    path = "subjects/invalidtransaction/empty_ticker.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert e.line_number == 3
+        assert "missing ticker" in e.message
+    else:
+        assert False
+
+
+def test_invalid_transaction_missing_components():
+    path = "subjects/invalidtransaction/missing_components.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert e.line_number == 3
+        assert "missing components" in e.message
+    else:
+        assert False
+
+
+def test_invalid_transaction_unknown_position():
+    path = "subjects/invalidtransaction/unknown_position.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert e.line_number == 3
+        assert "unknown position format" in e.message
     else:
         assert False
 
@@ -1760,3 +1821,20 @@ def test_tags():
             location=(path, 21), positioning=(None, POSITION_SET)
         ),
     )
+
+
+def test_has_identical_location():
+    path = "subjects/single.journal"
+    records = read(path, kind="journal")
+    identical_records = read(path, kind="journal")
+
+    assert len(records) == 1 and len(records) == len(identical_records)
+    assert has_identical_location(records[0], identical_records[0])
+
+    path = "../example/simple.journal"
+    other_records = inferring_components(read(path, kind="journal"))
+
+    assert len(other_records) == 4
+    assert not has_identical_location(records[0], other_records[0])
+
+
