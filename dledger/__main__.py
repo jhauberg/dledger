@@ -203,9 +203,12 @@ def main() -> None:
 
     interval = args["--period"]
     if interval is not None:
-        # note that given `-p=apr`, this translates to an interval of `=apr`
-        # this could be confusing since you can do `--period=apr` and get `apr`
-        # todo: consider checking/correcting this specifically
+        # note that given `-p=apr`, this translates to a period of `=apr`, which
+        # is technically correct, but could be confusing since you can do
+        # `--period=apr` and get `apr`; we just correct this in all cases
+        # since the equals sign is never meaningful input here anyway
+        if interval.startswith("="):
+            interval = interval[1:]
         try:
             interval = parse_period(interval)
         except ValueError as e:
