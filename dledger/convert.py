@@ -5,7 +5,6 @@ from datetime import date
 from dledger.journal import (
     Transaction,
     Amount,
-    has_identical_location,
     POSITION_ADD,
     POSITION_SUB,
     POSITION_SPLIT,
