@@ -338,7 +338,9 @@ def main() -> None:
         if args["--forecast"]:
             if args["--drift"]:
                 if args["--by-currency"]:
-                    print_currency_balance_report(transactions)
+                    print_currency_balance_report(
+                        transactions, descending=descending_order
+                    )
                 elif args["--by-position"]:
                     print_balance_report(
                         transactions,

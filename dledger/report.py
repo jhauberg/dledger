@@ -640,11 +640,18 @@ def print_balance_report(
             has_positive = any(True for w in weights if w[5][deviance] > 0)
             has_negative = any(True for w in weights if w[5][deviance] < 0)
             if has_positive and has_negative:
-                first_positive_index = next(
-                    i for i, w in enumerate(weights) if w[5][deviance] > 0
-                )
-                last_negative_index = first_positive_index - 1
-                should_underline_mid_at_index = last_negative_index
+                if descending:
+                    first_negative_index = next(
+                        i for i, w in enumerate(weights) if w[5][deviance] < 0
+                    )
+                    last_positive_index = first_negative_index - 1
+                    should_underline_mid_at_index = last_positive_index
+                else:
+                    first_positive_index = next(
+                        i for i, w in enumerate(weights) if w[5][deviance] > 0
+                    )
+                    last_negative_index = first_positive_index - 1
+                    should_underline_mid_at_index = last_negative_index
         for i, weight in enumerate(weights):
             ticker, amount, fmt, pct, p, drift, n, has_estimate = weight
             pct = f"{format_amount(pct, places=2)}%"
@@ -672,9 +679,11 @@ def print_balance_report(
                 drift_by = drift[deviance]
                 if deviance == DRIFT_BY_WEIGHT:
                     if drift_by >= 0:
-                        drift = f"+ {format_amount(drift_by, places=2)}%".rjust(16)
+                        by = format_amount(drift_by, places=2)
+                        drift = f"+ {by}%".rjust(16)
                     else:
-                        drift = f"- {format_amount(abs(drift_by), places=2)}%".rjust(16)
+                        by = format_amount(abs(drift_by), places=2)
+                        drift = f"- {by}%".rjust(16)
                 elif deviance == DRIFT_BY_AMOUNT:
                     amount_drift = fmt % format_amount(abs(drift_by))
                     if drift_by >= 0:
@@ -684,14 +693,12 @@ def print_balance_report(
                 elif deviance == DRIFT_BY_POSITION:
                     if drift_by >= 0:
                         # increase position (buy)
-                        drift = f"+ {format_amount(drift_by, places=p_decimals)}".rjust(
-                            16
-                        )
+                        by = format_amount(drift_by, places=p_decimals)
+                        drift = f"+ {by}".rjust(16)
                     else:
                         # decrease position (sell)
-                        drift = f"- {format_amount(abs(drift_by), places=p_decimals)}".rjust(
-                            16
-                        )
+                        by = format_amount(abs(drift_by), places=p_decimals)
+                        drift = f"- {by}".rjust(16)
                 line = f"{line} {position} {drift}"
                 if i == should_underline_mid_at_index:
                     line = colored(line, COLOR_UNDERLINED)
@@ -749,11 +756,18 @@ def print_currency_balance_report(
             has_positive = any(True for w in weights if w[4] > 0)
             has_negative = any(True for w in weights if w[4] < 0)
             if has_positive and has_negative:
-                first_positive_index = next(
-                    i for i, w in enumerate(weights) if w[4] > 0
-                )
-                last_negative_index = first_positive_index - 1
-                should_underline_mid_at_index = last_negative_index
+                if descending:
+                    first_negative_index = next(
+                        i for i, w in enumerate(weights) if w[4] < 0
+                    )
+                    last_positive_index = first_negative_index - 1
+                    should_underline_mid_at_index = last_positive_index
+                else:
+                    first_positive_index = next(
+                        i for i, w in enumerate(weights) if w[4] > 0
+                    )
+                    last_negative_index = first_positive_index - 1
+                    should_underline_mid_at_index = last_negative_index
         for i, weight in enumerate(weights):
             symbol, amount, fmt, pct, wdrift, p, has_estimate = weight
             pct = f"{format_amount(pct, places=2)}%"
