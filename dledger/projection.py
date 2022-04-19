@@ -419,6 +419,9 @@ def scheduled_transactions(
         comparables = list(
             comparable_transactions(by_ticker(records, txn.ticker), txn)
         )
+        if len(comparables) == 0:
+            continue
+
         def compare_by_day(r: Transaction):
             return r.entry_date.day
         earliest_comparable_transaction = min(comparables, key=compare_by_day)
