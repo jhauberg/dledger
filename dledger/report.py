@@ -30,7 +30,7 @@ from dledger.record import (
     amounts,
 )
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Iterable
 
 
 def print_simple_annual_report(
@@ -797,18 +797,18 @@ def print_currency_balance_report(
 def most_prominent_payers(records: List[Transaction]) -> List[str]:
     combined_income_per_ticker = []
     for ticker in tickers(records):
-        filtered_records = list(by_ticker(records, ticker))
+        filtered_records = by_ticker(records, ticker)
         combined_income_per_ticker.append((ticker, income(filtered_records)))
     combined_income_per_ticker.sort(key=lambda x: x[1], reverse=True)
     return [ticker for ticker, _ in combined_income_per_ticker]
 
 
-def formatted_prominent_payers(records: List[Transaction], *, limit: int = 3) -> str:
-    payers = most_prominent_payers(records)
+def formatted_prominent_payers(records: Iterable[Transaction], *, limit: int = 5) -> str:
+    payers = most_prominent_payers(list(records))
     top = payers[:limit]
     bottom = [payer for payer in payers if payer not in top]
     formatted = ", ".join(top)
-    formatted = (formatted[:30] + "…") if len(formatted) > 30 else formatted
+    formatted = (formatted[:38] + "…") if len(formatted) > 38 else formatted
     if len(bottom) > 0:
         additionals = f"(+{len(bottom)})"
         formatted = f"{formatted} {additionals}"
