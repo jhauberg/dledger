@@ -353,7 +353,7 @@ def print_simple_weight_by_ticker(records: List[Transaction]) -> None:
 
         weights = []
         for ticker in tickers(matching_transactions):
-            filtered_records = list(by_ticker(records, ticker))
+            filtered_records = list(by_ticker(matching_transactions, ticker))
             income_by_ticker = income(filtered_records)
 
             decimals = amount_decimals[commodity]
