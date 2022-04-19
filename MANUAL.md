@@ -946,7 +946,7 @@ This explicitly states that your current, and total position (across all portfol
 
 *Note that even while keeping separate journals, the ambiguity will remain unless you also run separate reports.*
 
-## Company ABC announced they will eliminate their dividend; how do I avoid including it in forecasts?
+## Company ABC announced they will eliminate or suspend their dividend; how do I avoid including it in forecasts?
 
 Unfortunately, this does tend to happen every now and then, and seeing forecasts that you know to be incorrect is frustrating and will skew the outlook of your future situation.
 
@@ -963,7 +963,7 @@ For example:
 2019/03/16 ABC
   $ 1
 
-2019/06/01 ABC (0)  # dividend was eliminated indefinitely
+2019/06/01 ABC (0)  # dividend was suspended indefinitely
 ```
 
 It is good practice for your future self to leave a note as to why this line exists.
