@@ -254,10 +254,10 @@ def print_simple_report(
             line = f"{line}  ! {d} {transaction.ticker.ljust(8)}"
 
             if not detailed:
-                if transaction.payout_date is not None:
-                    pd = transaction.payout_date.strftime("%Y/%m/%d")
-                    pd = f"[{pd}]"
-                    line = f"{line} {pd.rjust(18)}"
+                if transaction.entry_date > today:
+                    days_until = (transaction.entry_date - today).days
+                    days_until = f"in {days_until} days"
+                    line = f"{line} {days_until.rjust(18)}"
         else:
             if isinstance(transaction, GeneratedTransaction):
 
