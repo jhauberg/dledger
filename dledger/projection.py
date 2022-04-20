@@ -16,6 +16,7 @@ from dledger.dateutil import (
     months_between,
     in_months,
     next_month,
+    previous_month,
     todayd,
 )
 from dledger.record import (
@@ -423,7 +424,15 @@ def scheduled_transactions(
             continue
 
         def compare_by_day(r: Transaction):
-            return r.entry_date.day
+            # we might have transactions dated either 1 month earlier or later
+            # so we can't just compare by day; i.e. a transaction dated
+            # dec 12 2020 should be considered lower than e.g. jan 2 2021
+            if months_between(r.entry_date, txn.entry_date, ignore_years=True) == 1:
+                if next_month(txn.entry_date).month == r.entry_date.month:
+                    return 1, r.entry_date.day
+                if previous_month(txn.entry_date).month == r.entry_date.month:
+                    return -1, r.entry_date.day
+            return 0, r.entry_date.day
         earliest_comparable_transaction = min(comparables, key=compare_by_day)
         latest_comparable_transaction = max(comparables, key=compare_by_day)
         txn = replace(
@@ -686,10 +695,16 @@ def next_position(
 
 
 def comparable_transactions(records: Iterable[Transaction], transaction: Transaction) -> Iterable[Transaction]:
-    # todo: potentially allow a grace period going back X days; i.e. a month earlier or later;
-    #       could be problematic for monthly schedules?
+    def is_comparable_date(a: date, b: date) -> bool:
+        if a.month == b.month:
+            return True
+        # dates late/early in neighboring months should also be considered comparable
+        if months_between(a, b, ignore_years=True) == 1:
+            # todo: prefer something like days_between
+            return a.day > 25 or a.day < 5
+
     return filter(
-        lambda txn: txn.entry_date.month == transaction.entry_date.month and txn.kind is transaction.kind,
+        lambda txn: is_comparable_date(txn.entry_date, transaction.entry_date) and txn.kind is transaction.kind,
         records
     )
 

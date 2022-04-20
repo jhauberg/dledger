@@ -206,6 +206,26 @@ def print_simple_quarterly_report(
             print()
 
 
+def previously_seen_on(txn: GeneratedTransaction) -> str:
+    # indicate previously seen, at the earliest-latest, on past date
+    # i.e. "when can I expect this dividend at the earliest or latest"
+    if txn.earliest_entry_date.month == txn.latest_entry_date.month:
+        earliest_day = txn.earliest_entry_date.day
+        month_name = txn.earliest_entry_date.strftime("%b")
+        if txn.earliest_entry_date == txn.latest_entry_date:
+            return f"{earliest_day} {month_name}"
+        else:
+            latest_day = txn.latest_entry_date.day
+            return f"{earliest_day}-{latest_day} {month_name}"
+    else:
+        earliest_day = txn.earliest_entry_date.day
+        earliest_month_name = txn.earliest_entry_date.strftime("%b")
+        latest_day = txn.latest_entry_date.day
+        latest_month_name = txn.latest_entry_date.strftime("%b")
+        return (f"{earliest_day} {earliest_month_name} - "
+                f"{latest_day} {latest_month_name}")
+
+
 def print_simple_report(
     records: List[Transaction], *, detailed: bool = False, descending: bool = False
 ) -> None:
@@ -260,18 +280,6 @@ def print_simple_report(
                     line = f"{line} {days_until.rjust(18)}"
         else:
             if isinstance(transaction, GeneratedTransaction):
-
-                def previously_seen_on(txn: GeneratedTransaction) -> str:
-                    # indicate previously seen, at the earliest-latest, on past date
-                    # i.e. "when can I expect this dividend at the earliest or latest"
-                    earliest_day = txn.earliest_entry_date.day
-                    month_name = txn.earliest_entry_date.strftime(f"%b")
-                    if txn.earliest_entry_date == txn.latest_entry_date:
-                        return f"{earliest_day} {month_name}"
-                    else:
-                        latest_day = txn.latest_entry_date.day
-                        return f"{earliest_day}-{latest_day} {month_name}"
-
                 if transaction.entry_date < today:
                     should_colorize_expired_transaction = True
                     # call attention as it may be a payout about to happen,
@@ -286,7 +294,7 @@ def print_simple_report(
                         transaction.earliest_entry_date is not None
                         and transaction.latest_entry_date is not None
                     ):
-                        seen_earlier = f"~ {previously_seen_on(transaction).rjust(9)}"
+                        seen_earlier = f"{previously_seen_on(transaction).rjust(15)}"
                         line = f"{line} {seen_earlier.rjust(18)}"
             else:
                 # todo: we're ignoring these indicators for preliminary records;
