@@ -310,7 +310,7 @@ def sample_ttm(
 
 
 def forecast_period(
-    starting: date, *, adding_grace_period: bool = True
+    starting: date, *, adding_grace_period: bool = False
 ) -> Tuple[date, date]:
     # weed out projections in the past or later than 12 months into the future
     # note that we potentially include more than 365 days here;

@@ -13,8 +13,9 @@ from dledger.printutil import (
     COLOR_MARKED,
 )
 from dledger.dateutil import previous_month, last_of_month, months_in_quarter, todayd
-from dledger.projection import GeneratedAmount, GeneratedTransaction
+from dledger.projection import GeneratedAmount, GeneratedTransaction, forecast_period
 from dledger.record import (
+    in_period,
     income,
     yearly,
     monthly,
@@ -526,7 +527,10 @@ def print_simple_rolling_report(
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
-        future_transactions = [r for r in matching_transactions if r.entry_date > today]
+        period = forecast_period(starting=today)
+        future_transactions = list(in_period(
+            matching_transactions, period)
+        )
         total = income(future_transactions)
         decimals = amount_decimals[commodity]
         if decimals is not None:
@@ -535,7 +539,16 @@ def print_simple_rolling_report(
             amount = format_amount(total)
         amount = latest_transaction.amount.fmt % amount
         payers = formatted_prominent_payers(future_transactions)
-        projected_line = f"~ {amount.rjust(18)}    next 12m   {payers}"
+        # period extends one month further to include all forecasted records;
+        # we expect this to always be 12
+        assert months_between(period[0], period[1]) - 1 == 12
+        # transactions dated in the future are not necessarily forecasts;
+        # could be preliminary, or fully "realized" records (all components known;
+        # just hasn't happened yet)
+        if contains_estimate_amount(future_transactions):
+            projected_line = f"~ {amount.rjust(18)}    next 12m   {payers}"
+        else:
+            projected_line = f"{amount.rjust(20)}    next 12m   {payers}"
         if descending:
             print(projected_line)
         for year in years:

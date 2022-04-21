@@ -56,7 +56,7 @@ import locale
 from docopt import docopt  # type: ignore
 
 from dledger import __version__
-from dledger.dateutil import parse_period, todayd, in_months
+from dledger.dateutil import parse_period, todayd
 from dledger.printutil import enable_color_escapes, suppress_color
 from dledger.record import in_period, tickers
 from dledger.report import (
@@ -76,6 +76,7 @@ from dledger.report import (
 from dledger.projection import (
     scheduled_transactions,
     latest_exchange_rates,
+    forecast_period,
 )
 from dledger.journal import (
     ParseError,
@@ -286,11 +287,9 @@ def main() -> None:
         forecasted_transactions = scheduled_transactions(records, rates=exchange_rates)
 
     if args["--forecast"]:
-        today = todayd()
-        cutoff_date = in_months(today, 12)
         # also include records dated in the future (but limited 12 month period);
         # these are typically preliminary records- but could also be realized records
-        future_records = in_period(records, (today, cutoff_date))
+        future_records = in_period(records, forecast_period(starting=todayd()))
         records = forecasted_transactions
         records.extend(future_records)
     else:
