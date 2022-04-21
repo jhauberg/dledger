@@ -684,6 +684,16 @@ def test_scheduled_transactions():
     records = [
         Transaction(date(2019, 3, 1), "ABC", 1, Amount(100)),
         Transaction(date(2019, 6, 1), "ABC", 1, Amount(100)),
+        Transaction(date(2019, 9, 1), "ABC", 1, Amount(100)),
+    ]
+
+    scheduled = scheduled_transactions(records, since=date(2020, 10, 1))
+
+    assert len(scheduled) == 0
+
+    records = [
+        Transaction(date(2019, 3, 1), "ABC", 1, Amount(100)),
+        Transaction(date(2019, 6, 1), "ABC", 1, Amount(100)),
         Transaction(date(2019, 9, 2), "ABC", 1, Amount(100)),
     ]
 
