@@ -14,6 +14,7 @@ from dledger.journal import (
 from dledger.dateutil import (
     last_of_month,
     months_between,
+    days_between,
     in_months,
     next_month,
     previous_month,
@@ -384,7 +385,7 @@ def scheduled_transactions(
                     # look back far enough to cover earlier-than-expected
                     # transactions, but not so far to hit _other_ forecasts
                     # if there's a hit, consider this forecast a false-positive
-                    abs((r.entry_date - sample_record.entry_date).days)
+                    days_between(r.entry_date, sample_record.entry_date)
                     <= 28
                 )
             )

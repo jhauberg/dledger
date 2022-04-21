@@ -20,6 +20,17 @@ def is_within_period(a: date, starting: date, ending: date) -> bool:
     """
     return ending > a >= starting
 
+
+def days_between(a: date, b: date) -> int:
+    """Return the number of days between two dates.
+
+    The result is an unsigned number of days;
+    i.e. whether `a` is earlier or later than `b` makes no difference.
+    """
+
+    return abs((a - b).days)
+
+
 def months_between(a: date, b: date, *, ignore_years: bool = False) -> int:
     """Return the number of months between two dates.
 
