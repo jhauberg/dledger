@@ -13,8 +13,18 @@ def todayd() -> date:
     return datetime.today().date()
 
 
+def is_within_period(a: date, starting: date, ending: date) -> bool:
+    """Determine whether a date is within a period.
+
+    Start is inclusive; end is exclusive.
+    """
+    return ending > a >= starting
+
 def months_between(a: date, b: date, *, ignore_years: bool = False) -> int:
-    """Return the number of months between two dates, from earliest to latest.
+    """Return the number of months between two dates.
+
+    The result is an unsigned number of months;
+    i.e. whether `a` is earlier or later than `b` makes no difference.
 
     Does not take days into account.
 

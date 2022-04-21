@@ -18,6 +18,7 @@ from dledger.dateutil import (
     next_month,
     previous_month,
     todayd,
+    is_within_period,
 )
 from dledger.record import (
     by_ticker,
@@ -63,6 +64,7 @@ class GeneratedAmount(Amount):
 @dataclass(frozen=True)
 class GeneratedTransaction(Transaction):
     """Represents a projected transaction."""
+
     # todo: could keep a set like this for each date (entry, ex, payout)
     #       but only if we have something useful to do with them
     earliest_entry_date: Optional[date] = None
@@ -306,6 +308,21 @@ def sample_ttm(
     return sample_records
 
 
+def forecast_period(
+    starting: date, *, adding_grace_period: bool = True
+) -> Tuple[date, date]:
+    # weed out projections in the past or later than 12 months into the future
+    # note that we potentially include more than 365 days here;
+    #   e.g. remainder of current month + 12 full months
+    cutoff_date = next_month(in_months(starting, months=12))
+    if not adding_grace_period:
+        return starting, cutoff_date
+    # and with a grace period going back in time,
+    # keeping unrealized projections around for a while
+    earliest_date = starting + timedelta(days=-EARLY_LATE_THRESHOLD)
+    return earliest_date, cutoff_date
+
+
 def scheduled_transactions(
     records: List[Transaction],
     *,
@@ -336,23 +353,14 @@ def scheduled_transactions(
             continue
         # it does not, so use this estimate to fill out gap
         scheduled.append(future_record)
-
-    def is_within_period(record: Transaction, starting: date, ending: date) -> bool:
-        """Determine whether a record is dated within a period."""
-        return ending > record.entry_date >= starting
-
-    # weed out projections in the past or later than 12 months into the future
-    # note that we potentially include more than 365 days here;
-    #   e.g. remainder of current month + 12 full months
-    cutoff_date = next_month(in_months(since, months=12))
-    # and with a grace period going back in time,
-    # keeping unrealized projections around for a while
-    earliest_date = since + timedelta(days=-EARLY_LATE_THRESHOLD)
+    earliest_date, cutoff_date = forecast_period(since, adding_grace_period=True)
     # example timespan: since=2020/04/08
     #   [2020/03/23] inclusive, up to
     #   [2021/05/01] exclusive
     scheduled = [
-        r for r in scheduled if is_within_period(r, earliest_date, cutoff_date)
+        r
+        for r in scheduled
+        if is_within_period(r.entry_date, earliest_date, cutoff_date)
     ]
     for sample_record in sample_records:
         if sample_record.amount is None:
