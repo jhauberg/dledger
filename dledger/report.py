@@ -12,7 +12,13 @@ from dledger.printutil import (
     COLOR_UNDERLINED,
     COLOR_MARKED,
 )
-from dledger.dateutil import previous_month, last_of_month, months_in_quarter, todayd
+from dledger.dateutil import (
+    previous_month,
+    last_of_month,
+    months_in_quarter,
+    todayd,
+    months_between,
+)
 from dledger.projection import GeneratedAmount, GeneratedTransaction, forecast_period
 from dledger.record import (
     in_period,
@@ -67,7 +73,7 @@ def print_simple_annual_report(
                 amount = format_amount(total)
             amount = latest_transaction.amount.fmt % amount
             d = f"{year}"
-            if any(isinstance(r.amount, GeneratedAmount) for r in yearly_transactions):
+            if contains_estimate_amount(yearly_transactions):
                 if year == final_year:
                     d = latest_transaction.entry_date.strftime("%Y/%m")
                     line = f"~ {amount.rjust(18)}  < {d.ljust(11)}"
@@ -126,9 +132,7 @@ def print_simple_monthly_report(
                 amount = latest_transaction.amount.fmt % amount
                 month_indicator = f"{month}".zfill(2)
                 d = f"{year}/{month_indicator}"
-                if any(
-                    isinstance(r.amount, GeneratedAmount) for r in monthly_transactions
-                ):
+                if contains_estimate_amount(monthly_transactions):
                     line = f"~ {amount.rjust(18)}    {d.ljust(11)}"
                 else:
                     line = f"{amount.rjust(20)}    {d.ljust(11)}"
@@ -190,10 +194,7 @@ def print_simple_quarterly_report(
                     amount = format_amount(total)
                 amount = latest_transaction.amount.fmt % amount
                 d = f"{year}/Q{quarter}"
-                if any(
-                    isinstance(r.amount, GeneratedAmount)
-                    for r in quarterly_transactions
-                ):
+                if contains_estimate_amount(quarterly_transactions):
                     line = f"~ {amount.rjust(18)}    {d.ljust(11)}"
                 else:
                     line = f"{amount.rjust(20)}    {d.ljust(11)}"
@@ -262,7 +263,7 @@ def print_simple_report(
 
         d = transaction.entry_date.strftime("%Y/%m/%d")
 
-        if isinstance(transaction.amount, GeneratedAmount):
+        if contains_estimate_amount([transaction]):
             line = f"~ {amount.rjust(18)}"
         else:
             line = f"{amount.rjust(20)}"
@@ -364,20 +365,14 @@ def print_simple_weight_by_ticker(records: List[Transaction]) -> None:
         for ticker in tickers(matching_transactions):
             filtered_records = list(by_ticker(matching_transactions, ticker))
             income_by_ticker = income(filtered_records)
-
             decimals = amount_decimals[commodity]
             if decimals is not None:
                 amount = format_amount(income_by_ticker, places=decimals)
             else:
                 amount = format_amount(income_by_ticker)
             amount = latest_transaction.amount.fmt % amount
-
             weight = income_by_ticker / total_income * 100
-
-            is_estimate = any(
-                isinstance(r.amount, GeneratedAmount) for r in filtered_records
-            )
-
+            is_estimate = contains_estimate_amount(filtered_records)
             weights.append((ticker, amount, weight, is_estimate))
         weights.sort(key=lambda w: w[2], reverse=True)
         for weight in weights:
@@ -412,7 +407,7 @@ def print_simple_sum_report(records: List[Transaction]) -> None:
             amount = format_amount(total)
         amount = latest_transaction.amount.fmt % amount
 
-        if any(isinstance(r.amount, GeneratedAmount) for r in matching_transactions):
+        if contains_estimate_amount(matching_transactions):
             line = f"~ {amount.rjust(18)}"
         else:
             line = f"{amount.rjust(20)}"
@@ -507,7 +502,6 @@ def print_simple_rolling_report(
     # having preliminary records that just pass their entry date can
     # incur a drop in the sum, which can look like it just disappeared
     # out of thin air - it will be included when the month passes
-    # todo: consider including past preliminary records as still being "in the future"
     today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
@@ -577,9 +571,7 @@ def print_simple_rolling_report(
                     amount = format_amount(total)
                 amount = latest_transaction.amount.fmt % amount
                 d = ending_date.strftime("%Y/%m")
-                if any(
-                    isinstance(r.amount, GeneratedAmount) for r in rolling_transactions
-                ):
+                if contains_estimate_amount(rolling_transactions):
                     line = f"~ {amount.rjust(18)}  < {d.ljust(11)}"
                 else:
                     line = f"{amount.rjust(20)}  < {d.ljust(11)}"
@@ -640,9 +632,7 @@ def print_balance_report(
             aps = income_by_ticker / position
             position_drift = amount_drift / aps
             drift = (weight_drift, amount_drift, position_drift)
-            has_estimate = any(
-                isinstance(r.amount, GeneratedAmount) for r in filtered_records
-            )
+            has_estimate = contains_estimate_amount(filtered_records)
             weights.append(
                 (
                     ticker,
@@ -757,9 +747,7 @@ def print_currency_balance_report(
             income_by_symbol = income(filtered_records)
             weight = income_by_symbol / total_income * 100
             weight_drift = target_weight - weight
-            has_estimate = any(
-                isinstance(r.amount, GeneratedAmount) for r in filtered_records
-            )
+            has_estimate = contains_estimate_amount(filtered_records)
             weights.append(
                 (
                     symbol,
@@ -868,3 +856,9 @@ def decimals_per_component(
             decimalplaces(r.position) for r in records if r.ticker == ticker
         )
     return amount_decimal_places, dividend_decimal_places, position_decimal_places
+
+
+def contains_estimate_amount(records: Iterable[Transaction]) -> bool:
+    """Return `True` if any record has an estimated amount component,
+    `False` otherwise."""
+    return any(isinstance(r.amount, GeneratedAmount) for r in records)
