@@ -224,8 +224,10 @@ def previously_seen_on(txn: GeneratedTransaction) -> str:
         earliest_month_name = txn.earliest_entry_date.strftime("%b")
         latest_day = txn.latest_entry_date.day
         latest_month_name = txn.latest_entry_date.strftime("%b")
-        return (f"{earliest_day} {earliest_month_name} - "
-                f"{latest_day} {latest_month_name}")
+        return (
+            f"{earliest_day} {earliest_month_name} - "
+            f"{latest_day} {latest_month_name}"
+        )
 
 
 def print_simple_report(
@@ -522,9 +524,7 @@ def print_simple_rolling_report(
             continue
         latest_transaction = latest(matching_transactions)
         period = forecast_period(starting=today)
-        future_transactions = list(in_period(
-            matching_transactions, period)
-        )
+        future_transactions = list(in_period(matching_transactions, period))
         total = income(future_transactions)
         decimals = amount_decimals[commodity]
         if decimals is not None:
@@ -812,7 +812,9 @@ def most_prominent_payers(records: List[Transaction]) -> List[str]:
     return [ticker for ticker, _ in combined_income_per_ticker]
 
 
-def formatted_prominent_payers(records: Iterable[Transaction], *, limit: int = 5) -> str:
+def formatted_prominent_payers(
+    records: Iterable[Transaction], *, limit: int = 5
+) -> str:
     payers = most_prominent_payers(list(records))
     top = payers[:limit]
     bottom = [payer for payer in payers if payer not in top]

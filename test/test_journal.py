@@ -1836,5 +1836,3 @@ def test_has_identical_location():
 
     assert len(other_records) == 4
     assert not has_identical_location(records[0], other_records[0])
-
-

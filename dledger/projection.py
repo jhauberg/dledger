@@ -354,7 +354,9 @@ def scheduled_transactions(
             continue
         # it does not, so use this estimate to fill out gap
         scheduled.append(future_record)
-    earliest_date, cutoff_date = forecast_period(since, adding_grace_period=True)
+    earliest_date, cutoff_date = forecast_period(
+        starting=since, adding_grace_period=True
+    )
     # example timespan: since=2020/04/08
     #   [2020/03/23] inclusive, up to
     #   [2021/05/01] exclusive
@@ -426,9 +428,7 @@ def scheduled_transactions(
                 raise RecursionError
             excess_projections = next_excess_projections
     for i, txn in enumerate(scheduled):
-        comparables = list(
-            comparable_transactions(by_ticker(records, txn.ticker), txn)
-        )
+        comparables = list(comparable_transactions(by_ticker(records, txn.ticker), txn))
         if len(comparables) == 0:
             continue
 
@@ -442,12 +442,13 @@ def scheduled_transactions(
                 if previous_month(txn.entry_date).month == r.entry_date.month:
                     return -1, r.entry_date.day
             return 0, r.entry_date.day
+
         earliest_comparable_transaction = min(comparables, key=compare_by_day)
         latest_comparable_transaction = max(comparables, key=compare_by_day)
         txn = replace(
             txn,
             earliest_entry_date=earliest_comparable_transaction.entry_date,
-            latest_entry_date=latest_comparable_transaction.entry_date
+            latest_entry_date=latest_comparable_transaction.entry_date,
         )
         scheduled[i] = txn
 
@@ -703,7 +704,9 @@ def next_position(
     return latest_record.position
 
 
-def comparable_transactions(records: Iterable[Transaction], transaction: Transaction) -> Iterable[Transaction]:
+def comparable_transactions(
+    records: Iterable[Transaction], transaction: Transaction
+) -> Iterable[Transaction]:
     def is_comparable_date(a: date, b: date) -> bool:
         if a.month == b.month:
             return True
@@ -713,8 +716,9 @@ def comparable_transactions(records: Iterable[Transaction], transaction: Transac
             return a.day > 25 or a.day < 5
 
     return filter(
-        lambda txn: is_comparable_date(txn.entry_date, transaction.entry_date) and txn.kind is transaction.kind,
-        records
+        lambda txn: is_comparable_date(txn.entry_date, transaction.entry_date)
+        and txn.kind is transaction.kind,
+        records,
     )
 
 
