@@ -2,7 +2,7 @@ import sys
 
 from datetime import date
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Iterable
 
 from dledger.formatutil import format_amount
 from dledger.record import tickers, by_ticker
@@ -13,6 +13,32 @@ from dledger.journal import (
 from dledger.projection import (
     conversion_factors,
 )
+
+
+def debug_find_non_weekday_dates(transactions: Iterable[Transaction]) -> None:
+    non_weekdays = [5, 6]  # saturday and sunday
+    for txn in transactions:
+        journal, lineno = txn.entry_attr.location
+        if txn.entry_date.weekday() in non_weekdays:
+            day = txn.entry_date.strftime("%a")
+            print(
+                f"{journal}:{lineno} transaction is dated on non-weekday ({day})",
+                file=sys.stderr,
+            )
+        if txn.payout_date is not None and txn.payout_date.weekday() in non_weekdays:
+            day = txn.payout_date.strftime("%a")
+            print(
+                f"{journal}:{lineno} transaction has payout date on non-weekday "
+                f"({day})",
+                file=sys.stderr,
+            )
+        if txn.ex_date is not None and txn.ex_date.weekday() in non_weekdays:
+            day = txn.ex_date.strftime("%a")
+            print(
+                f"{journal}:{lineno} transaction has ex-dividend date on non-weekday "
+                f"({day})",
+                file=sys.stderr,
+            )
 
 
 def debug_find_missing_payout_date(transactions: List[Transaction]) -> None:

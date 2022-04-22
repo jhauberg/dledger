@@ -405,10 +405,12 @@ def main() -> None:
             debug_find_potential_duplicates,
             debug_find_duplicate_tags,
             debug_find_ambiguous_exchange_rates,
+            debug_find_non_weekday_dates,
         )
 
         debug_find_potential_duplicates(debuggable_entries)
         debug_find_duplicate_tags(debuggable_entries)
+        debug_find_non_weekday_dates(debuggable_entries)
         if args["--by-payout-date"]:
             debug_find_missing_payout_date(debuggable_entries)
         if args["--by-ex-date"]:
