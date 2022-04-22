@@ -212,13 +212,20 @@ def projected_timeframe(d: date) -> int:
 def projected_date(d: date, *, timeframe: int) -> GeneratedDate:
     """Return a date where day of month is set according to given timeframe."""
 
+    next_date: GeneratedDate
     if timeframe == EARLY:
-        return GeneratedDate(d.year, d.month, day=EARLY_LATE_THRESHOLD)
-    if timeframe == LATE:
+        next_date = GeneratedDate(d.year, d.month, day=EARLY_LATE_THRESHOLD)
+    elif timeframe == LATE:
         d = last_of_month(d)
-        return GeneratedDate(d.year, d.month, d.day)
-
-    raise ValueError(f"invalid timeframe")
+        next_date = GeneratedDate(d.year, d.month, d.day)
+    else:
+        raise ValueError(f"invalid timeframe")
+    weekday = next_date.weekday()
+    if weekday in [5, 6]:  # saturday or sunday
+        # offset to previous friday
+        days_after_friday = weekday - 4
+        next_date = next_date - timedelta(days=days_after_friday)
+    return next_date
 
 
 def sample_ttm(
@@ -365,6 +372,19 @@ def scheduled_transactions(
         for r in scheduled
         if is_within_period(r.entry_date, earliest_date, cutoff_date)
     ]
+
+    def is_too_closely_dated(txn: GeneratedTransaction, d: date) -> bool:
+        # if a transaction is dated same month and same year
+        # then consider this forecast a false-positive
+        if txn.entry_date.year == d.year and txn.entry_date.month == d.month:
+            return True
+        # look back far enough to cover earlier-than-expected
+        # transactions, but not so far to hit _other_ forecasts
+        # if there's a hit, consider this forecast a false-positive
+        if days_between(txn.entry_date, d) <= 26:
+            return True
+        return False
+
     for sample_record in sample_records:
         if sample_record.amount is None:
             # skip buy/sell transactions;
@@ -376,21 +396,7 @@ def scheduled_transactions(
             r
             for r in scheduled
             if r.ticker == sample_record.ticker
-            and (
-                (
-                    # if a transaction is dated same month and same year
-                    # then consider this forecast a false-positive
-                    r.entry_date.year == sample_record.entry_date.year
-                    and r.entry_date.month == sample_record.entry_date.month
-                )
-                or (
-                    # look back far enough to cover earlier-than-expected
-                    # transactions, but not so far to hit _other_ forecasts
-                    # if there's a hit, consider this forecast a false-positive
-                    days_between(r.entry_date, sample_record.entry_date)
-                    <= 28
-                )
-            )
+            and is_too_closely_dated(r, sample_record.entry_date)
         ]
         for discarded_record in discards:
             scheduled.remove(discarded_record)
