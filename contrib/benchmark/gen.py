@@ -1,14 +1,21 @@
 import sys
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 sys.path.append("../../")
 
 from dledger.journal import Transaction, Amount, EntryAttributes, write
 from dledger.dateutil import previous_month
 
-today = datetime.today().date()
 
+def first_non_weekend_weekday(a: date):
+    b = date(a.year, a.month, 1)
+    while b.weekday() in [5, 6]:
+        b = b + timedelta(days=1)
+    return b
+
+
+today = datetime.today().date()
 starting_date = date(today.year, today.month, 1)
 
 MAX_RECORDS = 10000
@@ -16,7 +23,7 @@ MAX_RECORDS = 10000
 # generate monthly transactions, starting from this month, going back MAX_RECORDS months
 records = []
 
-d = starting_date
+d = first_non_weekend_weekday(starting_date)
 while len(records) < MAX_RECORDS:
     records.append(
         Transaction(
@@ -32,7 +39,7 @@ while len(records) < MAX_RECORDS:
             ),
         )
     )
-    d = previous_month(d)
+    d = first_non_weekend_weekday(previous_month(d))
 
 assert len(records) > 0
 
