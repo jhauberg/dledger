@@ -266,9 +266,9 @@ def parse_period_component(component: str) -> Tuple[date, date]:
     if component == "yesterday":
         return today + timedelta(days=-1), today
     if component == "q1" or component == "q2" or component == "q3" or component == "q4":
-        months = months_in_quarter(int(component[-1]))
-        return date(today.year, months[0], 1), next_month(
-            date(today.year, months[-1], 1)
+        starting_month, _, ending_month = months_in_quarter(int(component[-1]))
+        return date(today.year, starting_month, 1), next_month(
+            date(today.year, ending_month, 1)
         )
     if component in default_month_keys:
         starting = date(today.year, default_month_keys.index(component) + 1, 1)
