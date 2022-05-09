@@ -62,6 +62,13 @@ def months_between(a: date, b: date, *, ignore_years: bool = False) -> int:
 
 
 def months_in_quarter(quarter: int) -> List[int]:
+    """Return the months in a given quarter.
+
+    There are always 3 months in a valid quarter (1-4).
+
+    Months are ordered such that January is `1` and December is `12`.
+    """
+
     if quarter < 1 or quarter > 4:
         raise ValueError("quarter must be within 1-4 range")
 
