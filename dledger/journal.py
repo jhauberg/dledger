@@ -105,6 +105,10 @@ class Transaction:
         #       2019/01/01 ABC (+10)
         # thirdly, take literal order in journal into account (both linenumber and path)
         # finally, stabilize sorting using ticker for alphabetical ordering
+        # todo: don't we have a problem when using literal order for sorting?
+        #       i.e. if a journal by convention places newer records at top
+        #       of file rather than at bottom- then potentially ambiguous selections
+        #       (like exchange rates) may be based on older records rather than later
         return (
             self.entry_date,
             self.ispositional,
