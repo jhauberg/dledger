@@ -117,10 +117,26 @@ def debug_find_ambiguous_exchange_rates(
     for symbols, rates in ambiguous_exchange_rates.items():
         if len(rates) > 1:
             applied_rate = exchange_rates[symbols]
-            applied_rate_amount = format_amount(applied_rate[1])
-            applied_datestamp = applied_rate[0].strftime("%Y/%m/%d")
             ambiguous_rate = rates[:-1][0]  # take the first
-            ambiguous_rate_amount = format_amount(ambiguous_rate[1])
+            # using 4 decimal places because that should match the precision
+            # used to determine rate ambiguity
+            ambiguous_rate_amount = format_amount(ambiguous_rate[1], places=4)
+            applied_rate_amount = format_amount(applied_rate[1], places=4)
+            # truncate both formatted amounts to the fewest amount of decimal places
+            # where a difference is still visible;
+            # i.e. 7.1421 / 7.1418 =>
+            #      7.142  / 7.141
+            slice_index = -1
+            for n, c in enumerate(applied_rate_amount):
+                if ambiguous_rate_amount[n] != c:
+                    slice_index = n + 1
+                    break
+            assert slice_index != -1
+            assert slice_index < len(ambiguous_rate_amount)
+            assert slice_index < len(applied_rate_amount)
+            ambiguous_rate_amount = ambiguous_rate_amount[:slice_index]
+            applied_rate_amount = applied_rate_amount[:slice_index]
+            applied_datestamp = applied_rate[0].strftime("%Y/%m/%d")
             ambiguous_datestamp = ambiguous_rate[0].strftime("%Y/%m/%d")
             from_symbol, to_symbol = symbols
             print(
