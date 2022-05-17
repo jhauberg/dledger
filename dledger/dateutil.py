@@ -78,6 +78,18 @@ def months_in_quarter(quarter: int) -> List[int]:
     return [month for month in range(starting_month, starting_month + number_of_months)]
 
 
+def next_quarter(quarter: int) -> int:
+    if quarter < 1 or quarter > 4:
+        raise ValueError("quarter must be within 1-4 range")
+    return (quarter + 1 - 1) % 4 + 1
+
+
+def previous_quarter(quarter: int) -> int:
+    if quarter < 1 or quarter > 4:
+        raise ValueError("quarter must be within 1-4 range")
+    return (quarter - 1 + 4 - 1) % 4 + 1
+
+
 def in_months(d: date, months: int) -> date:
     """Return the date in a number of months."""
 
