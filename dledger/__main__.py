@@ -52,6 +52,7 @@ See https://github.com/jhauberg/dledger for additional details.
 import os
 import sys
 import locale
+import datetime
 
 from docopt import docopt  # type: ignore
 
@@ -289,7 +290,8 @@ def main() -> None:
     if args["--forecast"]:
         # also include records dated in the future (but limited 12 month period);
         # these are typically preliminary records- but could also be realized records
-        future_records = in_period(records, forecast_period(starting=todayd()))
+        tomorrow = todayd() + datetime.timedelta(days=1)
+        future_records = in_period(records, forecast_period(starting=tomorrow))
         records = forecasted_transactions
         records.extend(future_records)
     else:
