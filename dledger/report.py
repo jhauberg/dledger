@@ -10,12 +10,12 @@ from dledger.printutil import (
     COLOR_NEGATIVE,
     COLOR_NEGATIVE_UNDERLINED,
     COLOR_UNDERLINED,
-    COLOR_MARKED,
 )
 from dledger.dateutil import (
     previous_month,
     last_of_month,
     months_in_quarter,
+    previous_quarter,
     todayd,
     months_between,
 )
@@ -83,8 +83,13 @@ def print_simple_annual_report(
                 line = f"{amount.rjust(20)}    {d.ljust(11)}"
             payers = formatted_prominent_payers(yearly_transactions)
             line = f"{line}{payers}"
-            if today.year == year:
-                print(colored(line, COLOR_MARKED))
+            if year == today.year and not descending:
+                # pad to full width to make underline consistent across reports
+                line = f"{line: <79}"
+                print(colored(line, COLOR_UNDERLINED))
+            elif year == today.year + 1 and descending:
+                line = f"{line: <79}"
+                print(colored(line, COLOR_UNDERLINED))
             else:
                 print(line)
         if commodity != commodities[-1]:
@@ -138,8 +143,13 @@ def print_simple_monthly_report(
                     line = f"{amount.rjust(20)}    {d.ljust(11)}"
                 payers = formatted_prominent_payers(monthly_transactions)
                 line = f"{line}{payers}"
-                if today.year == year and today.month == month:
-                    print(colored(line, COLOR_MARKED))
+                if year == today.year and month == today.month and not descending:
+                    # pad to full width to make underline consistent across reports
+                    line = f"{line: <79}"
+                    print(colored(line, COLOR_UNDERLINED))
+                elif year == today.year and month == today.month + 1 and descending:
+                    line = f"{line: <79}"
+                    print(colored(line, COLOR_UNDERLINED))
                 else:
                     print(line)
 
@@ -173,10 +183,7 @@ def print_simple_quarterly_report(
             if descending:
                 quarters = reversed(quarters)
             for quarter in quarters:
-                months = months_in_quarter(quarter)
-                starting_month = months[0]
-                ending_month = months[-1]
-
+                starting_month, _, ending_month = months_in_quarter(quarter)
                 quarterly_transactions = []
                 for month in range(starting_month, ending_month + 1):
                     monthly_transactions = monthly(
@@ -200,8 +207,21 @@ def print_simple_quarterly_report(
                     line = f"{amount.rjust(20)}    {d.ljust(11)}"
                 payers = formatted_prominent_payers(quarterly_transactions)
                 line = f"{line}{payers}"
-                if today.year == year and ending_month > today.month >= starting_month:
-                    print(colored(line, COLOR_MARKED))
+                if (
+                    year == today.year
+                    and today.month in months_in_quarter(quarter)
+                    and not descending
+                ):
+                    # pad to full width to make underline consistent across reports
+                    line = f"{line: <79}"
+                    print(colored(line, COLOR_UNDERLINED))
+                elif (
+                    year == today.year
+                    and today.month in months_in_quarter(previous_quarter(quarter))
+                    and descending
+                ):
+                    line = f"{line: <79}"
+                    print(colored(line, COLOR_UNDERLINED))
                 else:
                     print(line)
         if commodity != commodities[-1]:
@@ -246,7 +266,7 @@ def print_simple_report(
         )
     else:
         underlined_record = next(
-            (x for x in reversed(records) if x.entry_date < today), None
+            (x for x in reversed(records) if x.entry_date <= today), None
         )
 
     if underlined_record is not None:
@@ -578,7 +598,7 @@ def print_simple_rolling_report(
                 payers = formatted_prominent_payers(rolling_transactions)
                 line = f"{line}{payers}"
                 if today.year == year and today.month == month:
-                    print(colored(line, COLOR_MARKED))
+                    print(colored(line, COLOR_UNDERLINED))
                 else:
                     print(line)
         if not descending:
