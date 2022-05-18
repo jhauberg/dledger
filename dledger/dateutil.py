@@ -13,6 +13,35 @@ def todayd() -> date:
     return datetime.today().date()
 
 
+def is_weekend(d: date) -> bool:
+    return d.weekday() in [5, 6]
+
+
+def closest_weekday(d: date) -> date:
+    weekday = d.weekday()
+    if weekday in [0, 1, 2, 3, 4]:
+        return d
+    if weekday == 5:
+        return d - timedelta(days=1)
+    if weekday == 6:
+        return d + timedelta(days=1)
+
+
+def next_weekday(d: date) -> date:
+    d = d + timedelta(days=1)
+    weekday = d.weekday()
+    if weekday not in [5, 6]:
+        return d
+    days_to_weekday = 6 - weekday + 1
+    return d + timedelta(days=days_to_weekday)
+
+
+def previous_friday(d: date) -> date:
+    to_monday = timedelta(days=d.weekday())  # reset to monday
+    to_friday = timedelta(days=4, weeks=-1)  # move back a week, then move to friday
+    return d - to_monday + to_friday
+
+
 def is_within_period(a: date, starting: date, ending: date) -> bool:
     """Determine whether a date is within a period.
 

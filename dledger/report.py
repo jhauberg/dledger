@@ -231,6 +231,8 @@ def print_simple_quarterly_report(
 def previously_seen_on(txn: GeneratedTransaction) -> str:
     # indicate previously seen, at the earliest-latest, on past date
     # i.e. "when can I expect this dividend at the earliest or latest"
+    assert txn.earliest_entry_date is not None
+    assert txn.latest_entry_date is not None
     if txn.earliest_entry_date.month == txn.latest_entry_date.month:
         earliest_day = txn.earliest_entry_date.day
         month_name = txn.earliest_entry_date.strftime("%b")

@@ -93,10 +93,11 @@ class Transaction:
         """
         return self.amount is None and self.dividend is None
 
-    def __lt__(self, other):  # type: ignore
-        def literal_location(r: Transaction) -> Tuple[str, int]:
-            return r.entry_attr.location if r.entry_attr is not None else ("", 0)
+    @property
+    def literal_location(self) -> Optional[Tuple[str, int]]:
+        return self.entry_attr.location if self.entry_attr is not None else None
 
+    def __lt__(self, other: 'Transaction'):  # type: ignore
         # sort by entry date and always put buy/sell transactions later if on same date
         # e.g.  2019/01/01 ABC (+10)
         #       2019/01/01 ABC (10)  $ 1
@@ -112,12 +113,12 @@ class Transaction:
         return (
             self.entry_date,
             self.ispositional,
-            literal_location(self),
+            self.literal_location,
             self.ticker,
         ) < (
             other.entry_date,
             other.ispositional,
-            literal_location(other),
+            other.literal_location,
             other.ticker,
         )
 

@@ -20,6 +20,10 @@ from dledger.dateutil import (
     previous_month,
     todayd,
     is_within_period,
+    is_weekend,
+    next_weekday,
+    closest_weekday,
+    previous_friday,
 )
 from dledger.record import (
     by_ticker,
@@ -68,8 +72,23 @@ class GeneratedTransaction(Transaction):
 
     # todo: could keep a set like this for each date (entry, ex, payout)
     #       but only if we have something useful to do with them
+    # note that, if applicable, both dates will be set (i.e. if only one comparable
+    # transaction is found, that date will act as both the earliest and the latest)
     earliest_entry_date: Optional[date] = None
     latest_entry_date: Optional[date] = None
+
+    def __lt__(self, other: Transaction):  # type: ignore
+        return (
+           self.entry_date,
+           self.earliest_entry_date,
+           self.latest_entry_date,
+           self.ticker,
+        ) < (
+           other.entry_date,
+           other.earliest_entry_date if isinstance(other, GeneratedTransaction) else None,
+           other.latest_entry_date if isinstance(other, GeneratedTransaction) else None,
+           other.ticker,
+        )
 
 
 @dataclass(frozen=True)
@@ -220,11 +239,10 @@ def projected_date(d: date, *, timeframe: int) -> GeneratedDate:
         next_date = GeneratedDate(d.year, d.month, d.day)
     else:
         raise ValueError(f"invalid timeframe")
-    weekday = next_date.weekday()
-    if weekday in [5, 6]:  # saturday or sunday
-        # offset to previous friday
-        days_after_friday = weekday - 4
-        next_date = next_date - timedelta(days=days_after_friday)
+    if is_weekend(next_date):
+        d = previous_friday(next_date)
+        # always go backwards in time to prevent jumping months
+        next_date = GeneratedDate(d.year, d.month, d.day)
     return next_date
 
 
@@ -438,23 +456,49 @@ def scheduled_transactions(
         if len(comparables) == 0:
             continue
 
-        def compare_by_day(r: Transaction):
+        def compare_by_day(other: Transaction):
             # we might have transactions dated either 1 month earlier or later
             # so we can't just compare by day; i.e. a transaction dated
             # dec 12 2020 should be considered lower than e.g. jan 2 2021
-            if months_between(r.entry_date, txn.entry_date, ignore_years=True) == 1:
-                if next_month(txn.entry_date).month == r.entry_date.month:
-                    return 1, r.entry_date.day
-                if previous_month(txn.entry_date).month == r.entry_date.month:
-                    return -1, r.entry_date.day
-            return 0, r.entry_date.day
+            # todo: note that this has potentially odd effect for monthly dividends
+            if months_between(other.entry_date, txn.entry_date, ignore_years=True) == 1:
+                if next_month(txn.entry_date).month == other.entry_date.month:
+                    return 1, other.entry_date.day
+                if previous_month(txn.entry_date).month == other.entry_date.month:
+                    return -1, other.entry_date.day
+            return 0, other.entry_date.day
 
         earliest_comparable_transaction = min(comparables, key=compare_by_day)
         latest_comparable_transaction = max(comparables, key=compare_by_day)
+
+        def next_valid_day(year: int, month: int, day: int) -> date:
+            try:
+                return date(year, month, day)
+            except ValueError:
+                return next_valid_day(year, month, day - 1)
+
+        earliest_entry_date = earliest_comparable_transaction.entry_date
+        if earliest_entry_date.month == 12 and txn.entry_date.month == 1:
+            earliest_entry_date = next_valid_day(txn.entry_date.year - 1, earliest_entry_date.month, earliest_entry_date.day)
+        else:
+            earliest_entry_date = next_valid_day(txn.entry_date.year, earliest_entry_date.month, earliest_entry_date.day)
+        latest_entry_date = latest_comparable_transaction.entry_date
+        if latest_entry_date.month == 1 and txn.entry_date.month == 12:
+            latest_entry_date = next_valid_day(txn.entry_date.year + 1, latest_entry_date.month, latest_entry_date.day)
+        else:
+            latest_entry_date = next_valid_day(txn.entry_date.year, latest_entry_date.month, latest_entry_date.day)
+
+        if is_weekend(earliest_entry_date):
+            # earliest can go both back and forward in time
+            earliest_entry_date = closest_weekday(earliest_entry_date)
+        if is_weekend(latest_entry_date):
+            # latest can only go forward in time
+            latest_entry_date = next_weekday(latest_entry_date)
+
         txn = replace(
             txn,
-            earliest_entry_date=earliest_comparable_transaction.entry_date,
-            latest_entry_date=latest_comparable_transaction.entry_date,
+            earliest_entry_date=earliest_entry_date,
+            latest_entry_date=latest_entry_date,
         )
         scheduled[i] = txn
 
