@@ -12,6 +12,8 @@ from dledger.dateutil import (
     parse_datestamp,
     parse_month,
     months_in_quarter,
+    next_quarter,
+    previous_quarter,
 )
 
 
@@ -115,6 +117,48 @@ def test_months_between_normalized():
         )
         == 11
     )
+
+
+def test_next_quarter():
+    assert next_quarter(1) == 2
+    assert next_quarter(2) == 3
+    assert next_quarter(3) == 4
+    assert next_quarter(4) == 1
+
+    try:
+        _ = next_quarter(5)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        _ = next_quarter(-1)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+
+def test_previous_quarter():
+    assert previous_quarter(1) == 4
+    assert previous_quarter(2) == 1
+    assert previous_quarter(3) == 2
+    assert previous_quarter(4) == 3
+
+    try:
+        _ = previous_quarter(5)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+    try:
+        _ = previous_quarter(-1)
+    except ValueError:
+        assert True
+    else:
+        assert False
 
 
 def test_months_in_quarter():
