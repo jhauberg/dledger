@@ -269,6 +269,10 @@ Alternatively, to avoid any confusion, the total new number of shares can be put
 
 Which method to use is a matter of preference and context as both methods (relative or absolute) are equally valid.
 
+However, if you have a lot of transactions and often find yourself going through your journals, it can be useful to make it a personal convention to always record the absolute position for dividend transactions.
+
+For example, consider the case where you forgot to put in a buy transaction previously and now are in the process of recording a recent dividend transaction. In this case, if you opt to omit the position, the record entry will be wrong because the position is believed to not have changed, causing unproportional dividend and cash amounts. This will affect both reports and forecasts negatively and might not be obvious immediately.
+
 ### Special dividends
 
 A company may occasionally choose to distribute additional cash through what is commonly referred to as a *special dividend*, or *extra dividend*. This is a non-recurring disitribution that is not considered part of the normal dividend schedule and frequency.
