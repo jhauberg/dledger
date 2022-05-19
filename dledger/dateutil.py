@@ -37,9 +37,10 @@ def next_weekday(d: date) -> date:
 
 
 def previous_friday(d: date) -> date:
-    to_monday = timedelta(days=d.weekday())  # reset to monday
-    to_friday = timedelta(days=4, weeks=-1)  # move back a week, then move to friday
-    return d - to_monday + to_friday
+    weekday = d.weekday()
+    if weekday in [5, 6]:
+        return d - timedelta(days=weekday - 4)
+    return d - timedelta(weeks=1) + timedelta(days=4 - weekday)
 
 
 def is_within_period(a: date, starting: date, ending: date) -> bool:
