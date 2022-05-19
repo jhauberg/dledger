@@ -603,6 +603,7 @@ def print_simple_rolling_report(
                 payers = formatted_prominent_payers(rolling_transactions)
                 line = f"{line}{payers}"
                 if today.year == year and today.month == month:
+                    line = f"{line: <79}"
                     print(colored(line, COLOR_UNDERLINED))
                 else:
                     print(line)
@@ -737,6 +738,7 @@ def print_balance_report(
                         drift = f"- {by}".rjust(16)
                 line = f"{line} {position} {drift}"
                 if i == should_underline_mid_at_index:
+                    line = f"{line: <79}"
                     line = colored(line, COLOR_UNDERLINED)
             else:
                 line = f"{line} {position}"
@@ -822,6 +824,7 @@ def print_currency_balance_report(
                 line = f"{amount.rjust(20)}"
             line = f"{line}       {pct.rjust(7)} {symbol.ljust(8)} {positions} {drift}"
             if i == should_underline_mid_at_index:
+                line = f"{line: <79}"
                 line = colored(line, COLOR_UNDERLINED)
             print(line)
         if commodity != commodities[-1]:
