@@ -21,7 +21,7 @@ from dledger.projection import (
     latest_exchange_rates,
 )
 from dledger.formatutil import decimalplaces, truncate_floating_point
-from dledger.dateutil import in_months, todayd
+from dledger.dateutil import months_between, todayd
 
 from dataclasses import replace
 from typing import List, Dict, Tuple, Optional, Iterable
@@ -200,7 +200,7 @@ def removing_redundancies(
                 # this record is not used for inference nor forecasts,
                 # because no dividend transactions exist
                 is_redundant = True
-            elif record.entry_date < in_months(since, months=-12):
+            elif months_between(record.entry_date, since) > 12:
                 # more than a year has passed;
                 # forecasts will expire naturally, so record is redundant
                 is_redundant = True

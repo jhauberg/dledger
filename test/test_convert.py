@@ -102,6 +102,22 @@ def test_remove_redundant_entries():
     assert records[2].position == 10
     assert records[2].ticker == "DEF"
 
+    # observed issue for T where position was closed same month;
+    # a discrepancy in year/month counting between projection and redundancy removal
+    # caused a projection to appear unexpectedly
+    # i.e. redundancy check was essentially based on 365 days passing, while
+    # projection discards records dated more than 13 months back
+    records = [
+        Transaction(date(2021, 5, 4), "ABC", 10, amount=Amount(1), ex_date=date(2021, 4, 8), payout_date=date(2021, 5, 3)),
+        Transaction(date(2021, 5, 18), "ABC", 0),
+    ]
+
+    assert len(removing_redundancies(records, since=date(2022, 5, 18))) == 2
+
+    records = removing_redundancies(records, since=date(2022, 5, 19))
+
+    assert len(records) == 2
+
 
 def test_adjusting_for_splits_whole():
     path = "../example/split.journal"
