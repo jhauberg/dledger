@@ -14,7 +14,41 @@ from dledger.dateutil import (
     months_in_quarter,
     next_quarter,
     previous_quarter,
+    is_weekend,
+    previous_friday,
+    next_weekday,
+    closest_weekday,
 )
+
+
+def test_is_weekend():
+    assert is_weekend(date(2022, 5, 21))
+    assert is_weekend(date(2022, 5, 22))
+    assert not is_weekend(date(2022, 5, 23))
+    assert not is_weekend(date(2022, 5, 24))
+    assert not is_weekend(date(2022, 5, 25))
+    assert not is_weekend(date(2022, 5, 26))
+    assert not is_weekend(date(2022, 5, 27))
+
+
+def test_previous_friday():
+    assert previous_friday(date(2022, 5, 20)) == date(2022, 5, 13)
+    assert previous_friday(date(2022, 5, 21)) == date(2022, 5, 20)
+    assert previous_friday(date(2022, 5, 22)) == date(2022, 5, 20)
+    assert previous_friday(date(2022, 5, 27)) == date(2022, 5, 20)
+
+
+def test_next_weekday():
+    assert next_weekday(date(2022, 5, 19)) == date(2022, 5, 20)
+    assert next_weekday(date(2022, 5, 20)) == date(2022, 5, 23)
+    assert next_weekday(date(2022, 5, 23)) == date(2022, 5, 24)
+
+
+def test_closest_weekday():
+    assert closest_weekday(date(2022, 5, 19)) == date(2022, 5, 19)
+    assert closest_weekday(date(2022, 5, 20)) == date(2022, 5, 20)
+    assert closest_weekday(date(2022, 5, 21)) == date(2022, 5, 20)
+    assert closest_weekday(date(2022, 5, 22)) == date(2022, 5, 23)
 
 
 def test_months_between():
