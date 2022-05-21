@@ -29,9 +29,9 @@ OPTIONS:
      --exchange-to=<currency> Show income as if exchanged to currency
      --no-exchange            Show income prior to any exchange
      --forecast               Show income forecast over the next 12 months (per ticker)
-     --drift                  Show drift from target weight
-     --by-position            Show drift from target position
-     --by-currency            Show drift from target currency exposure (weight)
+     --drift                  Show drift from balanced weight
+     --by-position            Show drift from balanced position
+     --by-currency            Show drift from balanced currency exposure (weight)
      --tag=<tags>             Only include transactions tagged specifically
   -y --yearly                 Show income by year
   -q --quarterly              Show income by quarter
