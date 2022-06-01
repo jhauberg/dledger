@@ -162,7 +162,7 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
     # note that this pattern will initially let inconsistent formatting pass through
     # (e.g. 2019/12-1), but will eventually raise a formatting error later on
     # (it is faster to skip validation through parse_datestamp at this point)
-    transaction_start = re.compile(r"[0-9]+[-/][0-9]+[-/][0-9]+")
+    transaction_start = re.compile(r"\d+[-/]\d+[-/]\d+")
     # any (stripped) line starting with "include" is considered an inclusion directive;
     # handled as it occurs in the journal
     include_start = re.compile(r"include")
