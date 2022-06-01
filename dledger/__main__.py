@@ -185,6 +185,7 @@ def main() -> None:
         sys.exit(0)  # no further output possible, but not an error
 
     records, duplicates_removed = removing_duplicates(records)
+    records.sort()
 
     try:
         records = inferring_components(records)
@@ -325,7 +326,7 @@ def main() -> None:
         ]
 
     # (redundantly) sort for good measure
-    transactions = sorted(transactions)
+    transactions.sort()
 
     if args["--no-exchange"]:
         transactions = in_dividend_currency(transactions)

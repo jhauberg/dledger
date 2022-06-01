@@ -153,7 +153,7 @@ def read(path: str, *, kind: str) -> List[Transaction]:
         records = read_nordnet_transactions(path, encoding)
     else:
         raise ValueError(f"unsupported transaction type")
-    return sorted(records)
+    return records
 
 
 def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transaction]:

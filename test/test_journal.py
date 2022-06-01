@@ -435,7 +435,22 @@ def test_ordering_journal():
     path = "subjects/ordering.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = inferring_components(read(path, kind="journal"))
+        records = read(path, kind="journal")
+
+    assert len(records) == 7
+
+    assert records[0].entry_date == date(2019, 11, 14)
+    assert records[1].entry_date == date(2019, 11, 14)
+    assert records[2].entry_date == date(2019, 8, 15)
+    assert records[3].entry_date == date(2019, 8, 15)
+    assert records[4].entry_date == date(2019, 5, 16)
+    assert records[5].entry_date == date(2019, 5, 16)
+    assert records[6].entry_date == date(2019, 2, 14)
+
+    with tempconv(DECIMAL_POINT_PERIOD):
+        records = inferring_components(
+            sorted(read(path, kind="journal"))
+        )
 
     assert len(records) == 7
 
@@ -904,7 +919,7 @@ def test_distribution_followed_by_buy_journal():
     path = "subjects/positionambiguity2.journal"
 
     with tempconv(DECIMAL_POINT_PERIOD):
-        records = inferring_components(read(path, kind="journal"))
+        records = inferring_components(sorted(read(path, kind="journal")))
 
     assert len(records) == 2
 
@@ -1536,7 +1551,9 @@ def test_nordnet_import():
     path = "subjects/nordnet_transactions.csv"
 
     with tempconv(DECIMAL_POINT_COMMA):
-        records = inferring_components(read(path, kind="nordnet"))
+        records = inferring_components(
+            sorted(read(path, kind="nordnet"))
+        )
 
     assert len(records) == 3
 
