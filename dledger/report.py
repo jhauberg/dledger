@@ -237,9 +237,6 @@ def previously_seen_on(txn: GeneratedTransaction) -> str:
         earliest_day = txn.earliest_entry_date.day
         month_name = txn.earliest_entry_date.strftime("%b")
         if txn.earliest_entry_date == txn.latest_entry_date:
-            if earliest_day == txn.entry_date.day:
-                # todo: probably should be filtered out rather than end up in here
-                return ""  # hide this case
             return f"{earliest_day} {month_name}"
         else:
             latest_day = txn.latest_entry_date.day
