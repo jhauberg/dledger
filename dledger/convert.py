@@ -202,8 +202,12 @@ def removing_redundancies(
                 is_redundant = True
             elif months_between(record.entry_date, since) > 12:
                 # more than a year has passed;
-                # forecasts will expire naturally, so record is redundant
-                is_redundant = True
+                # forecasts will expire naturally, so record might be redundant
+                if latest_transaction.ex_date is not None:
+                    if record.entry_date < latest_transaction.ex_date:
+                        is_redundant = True
+                else:
+                    is_redundant = True
             elif record.entry_date < latest_transaction.entry_date:
                 # dated earlier than latest transaction; i.e. this positional
                 # record will not be used for inference nor forecasts

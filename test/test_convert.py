@@ -118,6 +118,22 @@ def test_remove_redundant_entries():
 
     assert len(records) == 2
 
+    # observed issue for LTC where position was closed prior to receiving final
+    # payout; ex-date properly recorded and all, but record considered redundant
+
+    records = [
+        Transaction(date(2021, 3, 1), "ABC", 10, amount=Amount(1), ex_date=date(2021, 2, 17), payout_date=date(2021, 2, 26)),
+        Transaction(date(2021, 4, 1), "ABC", 10, amount=Amount(1), ex_date=date(2021, 3, 22), payout_date=date(2021, 3, 31)),
+        Transaction(date(2021, 5, 3), "ABC", 10, amount=Amount(1), ex_date=date(2021, 4, 21), payout_date=date(2021, 4, 30)),
+        Transaction(date(2021, 5, 26), "ABC", 0),
+        Transaction(date(2021, 6, 1), "ABC", 10, amount=Amount(1), ex_date=date(2021, 5, 19), payout_date=date(2021, 5, 28)),
+    ]
+
+    assert len(removing_redundancies(records, since=date(2022, 5, 30))) == 5
+    assert len(removing_redundancies(records, since=date(2022, 5, 31))) == 5
+    assert len(removing_redundancies(records, since=date(2022, 6, 1))) == 5
+    assert len(removing_redundancies(records, since=date(2022, 7, 1))) == 5
+
 
 def test_adjusting_for_splits_whole():
     path = "../example/split.journal"
