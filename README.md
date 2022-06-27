@@ -44,10 +44,14 @@ $ dledger report ~/.journal
                 $ 77    2019/05/16 AAPL
                 $ 77    2019/08/15 AAPL
 ~               $ 77 <~ 2019/11/15 AAPL
-~               $ 77 <~ 2020/02/15 AAPL
-~               $ 77 <~ 2020/05/31 AAPL
-~               $ 77 <~ 2020/08/15 AAPL
+~               $ 77 <~ 2020/02/14 AAPL                 14 Feb
+~               $ 77 <~ 2020/05/29 AAPL              15-18 May
+~               $ 77 <~ 2020/08/14 AAPL              14-17 Aug
 ```
+
+This particular report projects that (if following its recent schedule), Apple will distribute 4 dividends over the next 12 months; **Nov**, **Feb**, **May** and **Aug**.
+
+The projected dividends are estimates based on latest-known exchange rates (if applicable), and distribution dates are forecast with up to two levels of specificity: 1) most likely in either the first or second half of a given month, and 2) likely within a range of previously observed dates.
 
 Read the [manual](MANUAL.md#reports) to learn more.
 
