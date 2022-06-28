@@ -454,6 +454,14 @@ def test_ordering_journal():
 
     assert len(records) == 7
 
+    assert records[0].entry_date == date(2019, 2, 14)
+    assert records[1].entry_date == date(2019, 5, 16)
+    assert records[2].entry_date == date(2019, 5, 16)
+    assert records[3].entry_date == date(2019, 8, 15)
+    assert records[4].entry_date == date(2019, 8, 15)
+    assert records[5].entry_date == date(2019, 11, 14)
+    assert records[6].entry_date == date(2019, 11, 14)
+
     records = removing_redundancies(records, since=date(2019, 12, 1))
 
     assert len(records) == 5
@@ -727,7 +735,7 @@ def test_position_inference_from_missing_dividends_journal():
         included_path = "subjects/positioninference3.journal"
 
     with tempconv(DECIMAL_POINT_COMMA):
-        records = inferring_components(read(path, kind="journal"))
+        records = inferring_components(sorted(read(path, kind="journal")))
 
     assert len(records) == 4
 
@@ -1188,7 +1196,7 @@ def test_include_journal():
     else:
         included_resolved_path = "../example/simple.journal"
 
-    records = inferring_components(read(path, kind="journal"))
+    records = inferring_components(sorted(read(path, kind="journal")))
 
     assert len(records) == 5
 
@@ -1252,7 +1260,7 @@ def test_include_journal_quoted():
     else:
         included_resolved_path = "subjects/../../example/simple.journal"
 
-    records = inferring_components(read(path, kind="journal"))
+    records = inferring_components(sorted(read(path, kind="journal")))
 
     assert len(records) == 5
 
@@ -1316,7 +1324,7 @@ def test_include_journal_out_of_order():
     else:
         included_resolved_path = "subjects/../../example/simple.journal"
 
-    records = inferring_components(read(path, kind="journal"))
+    records = inferring_components(sorted(read(path, kind="journal")))
 
     assert len(records) == 7
 
@@ -1403,7 +1411,7 @@ def test_include_implicit_journal_dependency():
     # and thus has access to the information required
 
     try:
-        _ = inferring_components(read(path, kind="journal"))
+        _ = inferring_components(sorted(read(path, kind="journal")))
     except InferenceError as e:
         assert e.record.entry_attr.location[1] == 3
         assert "position could not be inferred" in e.message
@@ -1419,7 +1427,7 @@ def test_include_implicit_journal_dependency():
         included_resolved_path_first = "subjects/include_dependency_first.journal"
         included_resolved_path_second = "subjects/include_dependency_second.journal"
 
-    records = inferring_components(read(path, kind="journal"))
+    records = inferring_components(sorted(read(path, kind="journal")))
 
     assert len(records) == 4
 
