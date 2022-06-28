@@ -243,7 +243,7 @@ def test_recursive_include():
         _ = read(path, kind="journal")
     except ParseError as e:
         assert e.line_number == 3
-        assert "attempt to recursively include journal" in e.message
+        assert "attempt to include same journal twice" in e.message
     else:
         assert False
 
