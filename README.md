@@ -8,7 +8,7 @@ Reports and forecasts are based entirely on your own data; no external sources a
 
 <br />
 
-| [Latest release (0.10.0)](https://github.com/jhauberg/dledger/releases/tag/0.10.0) | Download the latest stable release.                            |
+| [Latest release (0.11.0)](https://github.com/jhauberg/dledger/releases/tag/0.11.0) | Download the latest stable release.                            |
 | :--------------------------------------------------------------------------------- | :------------------------------------------------------------- |
 | [Issue tracker](https://github.com/jhauberg/dledger/issues)                        | Contribute your bugs, comments or feature requests.            |
 | [Manual](MANUAL.md)                                                                | Instructions on [setup](MANUAL.md#install) and detailed usage. |
