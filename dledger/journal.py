@@ -155,7 +155,7 @@ def read(
 
     if kind == "journal":
         if sources is None:
-            sources = set()
+            sources = {path}
         records, include_paths = read_journal_transactions(path, encoding)
         for include_path, location in include_paths:
             if any(
