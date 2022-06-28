@@ -90,7 +90,6 @@ from dledger.convert import (
     InferenceError,
     inferring_components,
     removing_redundancies,
-    removing_duplicates,
     adjusting_for_splits,
     with_estimates,
     in_currency,
@@ -184,7 +183,6 @@ def main() -> None:
     if len(records) == 0:
         sys.exit(0)  # no further output possible, but not an error
 
-    records, duplicates_removed = removing_duplicates(records)
     records.sort()
 
     try:
@@ -390,12 +388,6 @@ def main() -> None:
                 )
 
     if is_verbose:
-        if duplicates_removed > 0:
-            print(
-                f"removed {duplicates_removed} duplicate records; "
-                f"did you include the same journal more than once?",
-                file=sys.stderr,
-            )
         assert journaled_records is not None
         # only include those records applicable to current filter options
         entries = set(txn.entry_attr for txn in transactions)

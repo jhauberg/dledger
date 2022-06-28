@@ -11,7 +11,7 @@ from dledger.dateutil import parse_datestamp, todayd
 from dataclasses import dataclass
 from datetime import datetime, date
 
-from typing import List, Union, Tuple, Optional, Any, Dict, Iterable
+from typing import List, Union, Tuple, Optional, Any, Dict, Iterable, Set
 from enum import Enum
 
 SUPPORTED_TYPES = ["journal", "nordnet"]
@@ -97,7 +97,7 @@ class Transaction:
     def literal_location(self) -> Optional[Tuple[str, int]]:
         return self.entry_attr.location if self.entry_attr is not None else None
 
-    def __lt__(self, other: 'Transaction'):  # type: ignore
+    def __lt__(self, other: "Transaction"):  # type: ignore
         # sort by entry date and always put buy/sell transactions later if on same date
         # e.g.  2019/01/01 ABC (+10)
         #       2019/01/01 ABC (10)  $ 1
@@ -136,8 +136,14 @@ class ParseError(Exception):
         super().__init__(f"{self.absolute_path}:{self.line_number} {self.message}")
 
 
-def read(path: str, *, kind: str) -> List[Transaction]:
-    """Return a list of records imported from a file."""
+def read(
+    path: str, *, kind: str, sources: Optional[Set[str]] = None
+) -> List[Transaction]:
+    """Return a list of records imported from a file.
+
+    Raises `ParseError` when path also appears as a previously read source.
+    Only applicable to source kinds with recursive inclusion directives.
+    """
 
     try:
         encoding = fileencoding(path)
@@ -148,7 +154,20 @@ def read(path: str, *, kind: str) -> List[Transaction]:
         raise ValueError(f"path could not be read: '{path}'")
 
     if kind == "journal":
-        records = read_journal_transactions(path, encoding)
+        if sources is None:
+            sources = set()
+        records, include_paths = read_journal_transactions(path, encoding)
+        for include_path, location in include_paths:
+            if any(
+                os.path.samefile(prior_source_path, include_path)
+                for prior_source_path in sources
+            ):
+                raise ParseError(
+                    "attempt to include same journal twice",
+                    location=location,
+                )
+            records.extend(read(include_path, kind=kind, sources=sources))
+            sources.add(include_path)
     elif kind == "nordnet":
         records = read_nordnet_transactions(path, encoding)
     else:
@@ -156,8 +175,11 @@ def read(path: str, *, kind: str) -> List[Transaction]:
     return records
 
 
-def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transaction]:
-    journal_entries = []
+def read_journal_transactions(
+    path: str, encoding: str = "utf-8"
+) -> Tuple[List[Transaction], List[Tuple[str, Tuple[str, int]]]]:
+    journal_entries: List[Transaction] = []
+    include_directives: List[Tuple[str, Tuple[str, int]]] = []
 
     # note that this pattern will initially let inconsistent formatting pass through
     # (e.g. 2019/12-1), but will eventually raise a formatting error later on
@@ -212,13 +234,7 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                             "attempt to recursively include journal",
                             location=(path, line_number),
                         )
-                    journal_entries.extend(
-                        # note that this assumes all included journals are of identical
-                        # encoding; if we instead went `read(.., kind="journal"), then
-                        # this would not support pruning redundant records
-                        # (as they might be needed during recursion)
-                        read_journal_transactions(include_path, encoding)
-                    )
+                    include_directives.append((include_path, (path, line_number)))
                     # clear out this line; we've dealt with the directive and
                     # don't want to handle it when parsing next transaction
                     line = ""
@@ -238,9 +254,7 @@ def read_journal_transactions(path: str, encoding: str = "utf-8") -> List[Transa
                     )
                     break
 
-    # todo: include traversal; i.e. if you include something already included previously
-    #       this could infinitely chain
-    return journal_entries
+    return journal_entries, include_directives
 
 
 def strip_tags(text: str) -> Tuple[str, List[str]]:

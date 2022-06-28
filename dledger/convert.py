@@ -37,13 +37,6 @@ class InferenceError(Exception):
         super().__init__(f"{self.message}")
 
 
-def removing_duplicates(records: List[Transaction]) -> Tuple[List[Transaction], int]:
-    n = len(records)
-    by_location = {record.entry_attr.location: record for record in records}
-    distinct_records = [record for record in by_location.values()]
-    return distinct_records, n - len(distinct_records)
-
-
 def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
     transactions: List[Transaction] = []
 
