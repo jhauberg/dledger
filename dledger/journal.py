@@ -373,7 +373,6 @@ def read_journal_transaction(
             position = parse_position(position_str[1:])
         elif position_str.lower().startswith("x"):
             # for example: "(x 4/1)"
-            # todo: maybe prefer something that augments the "x"; maybe "x~" ?
             position_change_directive = (
                 POSITION_SPLIT  # keep fractional shares
                 if position_str.startswith("X")
