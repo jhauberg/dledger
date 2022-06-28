@@ -79,15 +79,15 @@ class GeneratedTransaction(Transaction):
 
     def __lt__(self, other: Transaction):  # type: ignore
         return (
-           self.entry_date,
-           self.earliest_entry_date,
-           self.latest_entry_date,
-           self.ticker,
+            self.entry_date,
+            self.earliest_entry_date,
+            self.latest_entry_date,
+            self.ticker,
         ) < (
-           other.entry_date,
-           other.earliest_entry_date if isinstance(other, GeneratedTransaction) else None,
-           other.latest_entry_date if isinstance(other, GeneratedTransaction) else None,
-           other.ticker,
+            other.entry_date,
+            other.earliest_entry_date if isinstance(other, GeneratedTransaction) else None,
+            other.latest_entry_date if isinstance(other, GeneratedTransaction) else None,
+            other.ticker,
         )
 
 
@@ -479,14 +479,24 @@ def scheduled_transactions(
 
         earliest_entry_date = earliest_comparable_transaction.entry_date
         if earliest_entry_date.month == 12 and txn.entry_date.month == 1:
-            earliest_entry_date = next_valid_day(txn.entry_date.year - 1, earliest_entry_date.month, earliest_entry_date.day)
+            earliest_entry_date = next_valid_day(
+                txn.entry_date.year - 1,
+                earliest_entry_date.month,
+                earliest_entry_date.day,
+            )
         else:
-            earliest_entry_date = next_valid_day(txn.entry_date.year, earliest_entry_date.month, earliest_entry_date.day)
+            earliest_entry_date = next_valid_day(
+                txn.entry_date.year, earliest_entry_date.month, earliest_entry_date.day
+            )
         latest_entry_date = latest_comparable_transaction.entry_date
         if latest_entry_date.month == 1 and txn.entry_date.month == 12:
-            latest_entry_date = next_valid_day(txn.entry_date.year + 1, latest_entry_date.month, latest_entry_date.day)
+            latest_entry_date = next_valid_day(
+                txn.entry_date.year + 1, latest_entry_date.month, latest_entry_date.day
+            )
         else:
-            latest_entry_date = next_valid_day(txn.entry_date.year, latest_entry_date.month, latest_entry_date.day)
+            latest_entry_date = next_valid_day(
+                txn.entry_date.year, latest_entry_date.month, latest_entry_date.day
+            )
 
         if is_weekend(earliest_entry_date):
             # earliest can go both back and forward in time
