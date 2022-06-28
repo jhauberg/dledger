@@ -1,0 +1,4 @@
+# this file serves as a test journal for dledger
+
+include include_dependency_third.journal
+include include_dependency_first.journal

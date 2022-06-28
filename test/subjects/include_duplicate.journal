@@ -1,0 +1,4 @@
+# this file serves as a test journal for dledger
+
+include single.journal
+include ../subjects/single.journal  # same journal

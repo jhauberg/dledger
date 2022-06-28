@@ -248,6 +248,30 @@ def test_recursive_include():
         assert False
 
 
+def test_include_duplicate():
+    path = "subjects/include_duplicate.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert e.line_number == 4
+        assert "attempt to include same journal twice" in e.message
+    else:
+        assert False
+
+
+def test_include_duplicate_recursively():
+    path = "subjects/include_duplicate_recursive.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert e.line_number == 4
+        assert "attempt to include same journal twice" in e.message
+    else:
+        assert False
+
+
 def test_ambiguous_symbol():
     path = "subjects/ambiguous_symbol.journal"
 
