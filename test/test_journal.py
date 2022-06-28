@@ -272,6 +272,18 @@ def test_include_duplicate_recursively():
         assert False
 
 
+def test_include_circularly():
+    path = "subjects/circularinclude/a.journal"
+
+    try:
+        _ = read(path, kind="journal")
+    except ParseError as e:
+        assert e.line_number == 1
+        assert "attempt to include same journal twice" in e.message
+    else:
+        assert False
+
+
 def test_ambiguous_symbol():
     path = "subjects/ambiguous_symbol.journal"
 
