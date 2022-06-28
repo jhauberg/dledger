@@ -141,8 +141,8 @@ def read(
 ) -> List[Transaction]:
     """Return a list of records imported from a file.
 
-    Raises `ParseError` when path also appears as a previously read source.
-    Only applicable to source kinds with recursive inclusion directives.
+    Raises `ParseError` when path also appears as a previously read source (only
+    applicable to sources with include directives).
     """
 
     try:
@@ -153,11 +153,17 @@ def read(
     if encoding is None or len(encoding) == 0:
         raise ValueError(f"path could not be read: '{path}'")
 
+    if sources is None:
+        sources = {path}
+
     if kind == "journal":
-        if sources is None:
-            sources = {path}
         records, include_paths = read_journal_transactions(path, encoding)
         for include_path, location in include_paths:
+            if not os.path.exists(include_path):
+                raise ParseError(
+                    f"journal does not exist: '{include_path}'",
+                    location=location,
+                )
             if any(
                 os.path.samefile(prior_source_path, include_path)
                 for prior_source_path in sources
@@ -166,7 +172,9 @@ def read(
                     "attempt to include same journal twice",
                     location=location,
                 )
-            records.extend(read(include_path, kind=kind, sources=sources))
+            records.extend(
+                read(include_path, kind=kind, sources=sources)
+            )
             sources.add(include_path)
     elif kind == "nordnet":
         records = read_nordnet_transactions(path, encoding)
@@ -229,12 +237,9 @@ def read_journal_transactions(
                     include_path = os.path.normcase(
                         os.path.join(os.path.dirname(path), relative_include_path)
                     )
-                    if os.path.samefile(path, include_path):
-                        raise ParseError(
-                            "attempt to recursively include journal",
-                            location=(path, line_number),
-                        )
-                    include_directives.append((include_path, (path, line_number)))
+                    include_directives.append(
+                        (include_path, (path, line_number))
+                    )
                     # clear out this line; we've dealt with the directive and
                     # don't want to handle it when parsing next transaction
                     line = ""
