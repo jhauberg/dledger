@@ -234,11 +234,15 @@ def read_journal_transactions(
                         relative_include_path = relative_include_path[1:].strip()
                     if relative_include_path.endswith('"'):
                         relative_include_path = relative_include_path[:-1].strip()
-                    include_path = os.path.normcase(
-                        os.path.join(os.path.dirname(path), relative_include_path)
-                    )
+                    relative_include_path = os.path.expanduser(relative_include_path)
+                    if os.path.isabs(relative_include_path):
+                        include_path = relative_include_path
+                    else:
+                        include_path = os.path.join(
+                            os.path.dirname(path), relative_include_path
+                        )
                     include_directives.append(
-                        (include_path, (path, line_number))
+                        (os.path.normcase(include_path), (path, line_number))
                     )
                     # clear out this line; we've dealt with the directive and
                     # don't want to handle it when parsing next transaction
