@@ -249,8 +249,7 @@ def read_journal_transactions(
                     line = ""
                 lines.append(
                     (line_number, line)
-                )  # todo: also attach info, e.g. TRANSACTION_START
-                #       so we don't have to do regex check twice
+                )
         if len(lines) > 0:
             for n, (previous_line_number, previous_line) in enumerate(reversed(lines)):
                 if transaction_start.match(previous_line) is not None:

@@ -623,11 +623,8 @@ def print_balance_report(
     descending: bool = False,
 ) -> None:
     commodities = sorted(symbols(records, excluding_dividends=True))
-    # todo: note that this isn't actually very useful; every record here
-    #       is likely to be a generated one; i.e. a forecasted record,
-    #       and these typically have no preference on decimal places
-    #       so what will happen is format_amount will always fallback
-    #       to the default number of decimal places
+    # note that this typically results in default decimal places preference,
+    # but does have utility in some cases (e.g. if all amounts are trailing zeroes)
     amount_decimals, _, _ = decimals_per_component(records)
 
     for commodity in commodities:
@@ -862,21 +859,7 @@ def decimals_per_component(
 
     for symbol in symbols(records):
         amount_decimal_places[symbol] = max_decimal_places(amounts(records, symbol))
-        # todo: note that this is not necessarily what we want; i think preferably
-        #       this component had another layer of specificity; i.e. the ticker
-        #       the problem is that if there's just _one_ occurrence of a dividend
-        #       of e.g. 4 decimals, then _all_ dividends will be set to this precision
-        #       right now this is not a problem, because there is no report that
-        #       includes the dividend of more than just one ticker anyway
         dividend_decimal_places[symbol] = max_decimal_places(dividends(records, symbol))
-        # todo: this would work as a fallback and could be useful
-        #       in particular for forecasted records with no preference
-        #       toward decimal places; however, it would also lead to
-        #       probably unexpected number of decimals... same issue as above
-        #       for example, a "$ 0.1925" dividend would cause all payouts to have
-        #       4 decimal places
-        # if amount_decimal_places[symbol] is None:
-        #     amount_decimal_places[symbol] = dividend_decimal_places[symbol]
     for ticker in tickers(records):
         # note ticker key for position component; not symbol
         position_decimal_places[ticker] = max(

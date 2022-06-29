@@ -772,7 +772,6 @@ def comparable_transactions(
             return True
         # dates late/early in neighboring months should also be considered comparable
         if months_between(a, b, ignore_years=True) == 1:
-            # todo: prefer something like days_between
             return a.day > 25 or a.day < 5
 
     return filter(
