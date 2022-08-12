@@ -521,23 +521,14 @@ def print_stats(
 def print_simple_rolling_report(
     records: List[Transaction], *, descending: bool = False
 ) -> None:
-    # note that this report can be confusing; the "next 12m" row
-    # indicates the sum of all forecasted/preliminary records, however
-    # having preliminary records that just pass their entry date can
-    # incur a drop in the sum, which can look like it just disappeared
-    # out of thin air - it will be included when the month passes
     today = todayd()
     years = range(
         earliest(records).entry_date.year, latest(records).entry_date.year + 1
     )
-
     if descending:
         years = reversed(years)
-
     commodities = sorted(symbols(records, excluding_dividends=True))
-
     amount_decimals, _, _ = decimals_per_component(records)
-
     for commodity in commodities:
         matching_transactions = list(
             filter(lambda r: r.amount.symbol == commodity, records)
@@ -545,28 +536,7 @@ def print_simple_rolling_report(
         if len(matching_transactions) == 0:
             continue
         latest_transaction = latest(matching_transactions)
-        period = forecast_period(starting=today)
-        future_transactions = list(in_period(matching_transactions, period))
-        total = income(future_transactions)
         decimals = amount_decimals[commodity]
-        if decimals is not None:
-            amount = format_amount(total, places=decimals)
-        else:
-            amount = format_amount(total)
-        amount = latest_transaction.amount.fmt % amount
-        payers = formatted_prominent_payers(future_transactions)
-        # period extends one month further to include all forecasted records;
-        # we expect this to always be 12
-        assert months_between(period[0], period[1]) - 1 == 12
-        # transactions dated in the future are not necessarily forecasts;
-        # could be preliminary, or fully "realized" records (all components known;
-        # just hasn't happened yet)
-        if contains_estimate_amount(future_transactions):
-            projected_line = f"~ {amount.rjust(18)}    next 12m   {payers}"
-        else:
-            projected_line = f"{amount.rjust(20)}    next 12m   {payers}"
-        if descending:
-            print(projected_line)
         for year in years:
             months = range(1, 12 + 1)
             if descending:
@@ -586,7 +556,6 @@ def print_simple_rolling_report(
                 if len(rolling_transactions) == 0:
                     continue
                 total = income(rolling_transactions)
-                decimals = amount_decimals[commodity]
                 if decimals is not None:
                     amount = format_amount(total, places=decimals)
                 else:
@@ -599,14 +568,7 @@ def print_simple_rolling_report(
                     line = f"{amount.rjust(20)}  < {d.ljust(11)}"
                 payers = formatted_prominent_payers(rolling_transactions)
                 line = f"{line}{payers}"
-                if today.year == year and today.month == month:
-                    line = f"{line: <79}"
-                    print(colored(line, COLOR_UNDERLINED))
-                else:
-                    print(line)
-        if not descending:
-            print(projected_line)
-
+                print(line)
         if commodity != commodities[-1]:
             print()
 
