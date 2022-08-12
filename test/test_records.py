@@ -232,7 +232,13 @@ def test_pruned():
         Transaction(date(2019, 3, 1), "ABC", 1),
     ]
 
-    assert len(pruned(records)) == 3
+    pruned_records = pruned(records)
+
+    assert len(pruned_records) == 3
+
+    assert pruned_records[0].entry_date == date(2018, 3, 1)
+    assert pruned_records[1].entry_date == date(2018, 8, 1)
+    assert pruned_records[2].entry_date == date(2019, 3, 1)
 
 
 def test_in_period():
