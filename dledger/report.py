@@ -626,7 +626,6 @@ def print_balance_report(
     # note that this typically results in default decimal places preference,
     # but does have utility in some cases (e.g. if all amounts are trailing zeroes)
     amount_decimals, _, _ = decimals_per_component(records)
-
     for commodity in commodities:
         matching_transactions = list(
             filter(lambda r: r.amount.symbol == commodity, records)
@@ -635,6 +634,8 @@ def print_balance_report(
             continue
         latest_transaction = latest(matching_transactions)
         total_income = income(matching_transactions)
+        total_income_has_estimate = contains_estimate_amount(matching_transactions)
+        decimals = amount_decimals[commodity]
         ticks = tickers(matching_transactions)
         target_weight = 100 / len(ticks)
         target_income = total_income * target_weight / 100
@@ -687,7 +688,6 @@ def print_balance_report(
             ticker, amount, fmt, pct, p, drift, n, has_estimate = weight
             pct = f"{format_amount(pct, places=2)}%"
             freq = f"{n}"
-            decimals = amount_decimals[commodity]
             if decimals is not None:
                 amount = format_amount(amount, places=decimals)
             else:
@@ -737,6 +737,17 @@ def print_balance_report(
             else:
                 line = f"{line} {position}"
             print(line)
+        if decimals is not None:
+            amount = format_amount(total_income, places=decimals)
+        else:
+            amount = format_amount(total_income)
+        amount = latest_transaction.amount.fmt % amount
+        print("=" * 20)
+        if total_income_has_estimate:
+            line = f"~ {amount.rjust(18)}"
+        else:
+            line = f"{amount.rjust(20)}"
+        print(line)
         if commodity != commodities[-1]:
             print()
 
@@ -754,6 +765,8 @@ def print_currency_balance_report(
             continue
         latest_transaction = latest(matching_transactions)
         total_income = income(matching_transactions)
+        total_income_has_estimate = contains_estimate_amount(matching_transactions)
+        decimals = amount_decimals[commodity]
         weights = []
         dividend_symbols = []
         for transaction in matching_transactions:
@@ -801,7 +814,6 @@ def print_currency_balance_report(
         for i, weight in enumerate(weights):
             symbol, amount, fmt, pct, wdrift, p, has_estimate = weight
             pct = f"{format_amount(pct, places=2)}%"
-            decimals = amount_decimals[commodity]
             if decimals is not None:
                 amount = format_amount(amount, places=decimals)
             else:
@@ -821,6 +833,17 @@ def print_currency_balance_report(
                 line = f"{line: <79}"
                 line = colored(line, COLOR_UNDERLINED)
             print(line)
+        if decimals is not None:
+            amount = format_amount(total_income, places=decimals)
+        else:
+            amount = format_amount(total_income)
+        amount = latest_transaction.amount.fmt % amount
+        print("=" * 20)
+        if total_income_has_estimate:
+            line = f"~ {amount.rjust(18)}"
+        else:
+            line = f"{amount.rjust(20)}"
+        print(line)
         if commodity != commodities[-1]:
             print()
 
