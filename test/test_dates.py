@@ -375,6 +375,13 @@ def test_parse_datestamp():
 
 
 def test_parse_period():
+    try:
+        parse_period(":")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
     assert parse_period("2019/11/11:2020/11/11") == (
         date(2019, 11, 11),
         date(2020, 11, 11),
@@ -391,10 +398,13 @@ def test_parse_period():
 
     assert parse_period("2019/11/11:2020/11") == (date(2019, 11, 11), date(2020, 11, 1))
 
-    assert parse_period("2020/11/11:2019/11/11") == (
-        date(2019, 11, 11),
-        date(2020, 11, 11),
-    )
+    try:
+        parse_period("2020/11/11:2019/11/11")
+    except ValueError:
+        assert True
+    else:
+        assert False
+
     assert parse_period("2019/11/11:2019/11/11") == (
         date(2019, 11, 11),
         date(2019, 11, 11),
@@ -418,7 +428,14 @@ def test_parse_period():
 
     assert parse_period("11") == (date(today.year, 11, 1), date(today.year, 12, 1))
     assert parse_period("11:12") == (date(today.year, 11, 1), date(today.year, 12, 1))
-    assert parse_period("6:1") == (date(today.year, 1, 1), date(today.year, 6, 1))
+    assert parse_period("1:6") == (date(today.year, 1, 1), date(today.year, 6, 1))
+
+    try:
+        parse_period("6:1")
+    except ValueError:
+        assert True
+    else:
+        assert False
 
     assert parse_period("q1") == (date(today.year, 1, 1), date(today.year, 4, 1))
     assert parse_period("q2") == (date(today.year, 4, 1), date(today.year, 7, 1))
@@ -427,7 +444,14 @@ def test_parse_period():
 
     assert parse_period("q2:q3") == (date(today.year, 4, 1), date(today.year, 7, 1))
     assert parse_period("q2:q4") == (date(today.year, 4, 1), date(today.year, 10, 1))
-    assert parse_period("q4:q1") == (date(today.year, 1, 1), date(today.year, 10, 1))
+    assert parse_period("q1:q4") == (date(today.year, 1, 1), date(today.year, 10, 1))
+
+    try:
+        parse_period("q4:q1")
+    except ValueError:
+        assert True
+    else:
+        assert False
 
     tomorrow = today + timedelta(days=1)
     yesterday = today + timedelta(days=-1)
