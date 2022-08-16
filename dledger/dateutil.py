@@ -231,7 +231,7 @@ def parse_datestamp(datestamp: str, *, strict: bool = False) -> date:
 def parse_interval(interval: str) -> Tuple[Optional[date], Optional[date]]:
     datestamps = interval.split(":")
 
-    if len(datestamps) > 2 or len(datestamps) == 0:
+    if len(datestamps) != 2:
         raise ValueError("malformed interval")
 
     starting_datestamp = datestamps[0].strip()
@@ -250,10 +250,7 @@ def parse_interval(interval: str) -> Tuple[Optional[date], Optional[date]]:
 
     if starting is not None and ending is not None:
         if starting > ending:
-            # flip dates such that starting is always earlier
-            tmp = starting
-            starting = ending
-            ending = tmp
+            raise ValueError("malformed interval (end is earlier than start)")
 
     return starting, ending
 
@@ -355,5 +352,7 @@ def parse_period_component(component: str) -> Tuple[date, date]:
 def parse_period(interval: str) -> Tuple[Optional[date], Optional[date]]:
     interval = interval.strip()
     if ":" in interval:
+        if len(interval) == 1:
+            raise ValueError("malformed interval")
         return parse_interval(interval)
     return parse_period_component(interval)
