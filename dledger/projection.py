@@ -78,15 +78,16 @@ class GeneratedTransaction(Transaction):
     latest_entry_date: Optional[date] = None
 
     def __lt__(self, other: Transaction):  # type: ignore
+        compare_observed_dates = isinstance(other, GeneratedTransaction)
         return (
             self.entry_date,
-            self.earliest_entry_date,
-            self.latest_entry_date,
+            self.earliest_entry_date if compare_observed_dates else None,
+            self.latest_entry_date if compare_observed_dates else None,
             self.ticker,
         ) < (
             other.entry_date,
-            other.earliest_entry_date if isinstance(other, GeneratedTransaction) else None,
-            other.latest_entry_date if isinstance(other, GeneratedTransaction) else None,
+            other.earliest_entry_date if compare_observed_dates else None,
+            other.latest_entry_date if compare_observed_dates else None,
             other.ticker,
         )
 
