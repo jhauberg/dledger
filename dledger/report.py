@@ -716,8 +716,14 @@ def print_balance_report(
         else:
             line = f"{amount.rjust(20)}"
         pct = f"{format_amount(accumulated_pct, places=2)}%"
-        positions = f"{len(ticks)}"
+        if deviance != -1:
+            positions = f"/ {len(weights)}"
+        else:
+            positions = f"{len(weights)}"
         line = f"{line.ljust(26)}{pct.rjust(8)}{positions.rjust(28)}"
+        if deviance != -1:
+            target_pct = f"= {format_amount(target_weight, places=2)}%"
+            line = f"{line} {target_pct.rjust(16)}"
         print(line)
         if commodity != commodities[-1]:
             print()
@@ -782,8 +788,10 @@ def print_currency_balance_report(
                     )
                     last_negative_index = first_positive_index - 1
                     should_underline_mid_at_index = last_negative_index
+        accumulated_pct = 0
         for i, weight in enumerate(weights):
             symbol, amount, fmt, pct, wdrift, p, has_estimate = weight
+            accumulated_pct = accumulated_pct + pct
             pct = f"{format_amount(pct, places=2)}%"
             if decimals is not None:
                 amount = format_amount(amount, places=decimals)
@@ -809,11 +817,17 @@ def print_currency_balance_report(
         else:
             amount = format_amount(total_income)
         amount = latest_transaction.amount.fmt % amount
-        print("=" * 20)
+        result_separator = "=" * 79  # padded fully
+        print(result_separator)
         if total_income_has_estimate:
             line = f"~ {amount.rjust(18)}"
         else:
             line = f"{amount.rjust(20)}"
+        pct = f"{format_amount(accumulated_pct, places=2)}%"
+        positions = f"/ {len(weights)}"
+        line = f"{line.ljust(26)}{pct.rjust(8)}{positions.rjust(28)}"
+        target_pct = f"= {format_amount(target_weight, places=2)}%"
+        line = f"{line} {target_pct.rjust(16)}"
         print(line)
         if commodity != commodities[-1]:
             print()
