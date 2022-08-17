@@ -646,8 +646,10 @@ def print_balance_report(
                     )
                     last_negative_index = first_positive_index - 1
                     should_underline_mid_at_index = last_negative_index
+        accumulated_pct = 0
         for i, weight in enumerate(weights):
             ticker, amount, fmt, pct, p, drift, n, has_estimate = weight
+            accumulated_pct = accumulated_pct + pct
             pct = f"{format_amount(pct, places=2)}%"
             freq = f"{n}"
             if decimals is not None:
@@ -704,11 +706,18 @@ def print_balance_report(
         else:
             amount = format_amount(total_income)
         amount = latest_transaction.amount.fmt % amount
-        print("=" * 20)
+        if should_underline_mid_at_index is not None:
+            result_separator = "=" * 79  # then pad fully
+        else:
+            result_separator = "=" * 62  # then pad to position
+        print(result_separator)
         if total_income_has_estimate:
             line = f"~ {amount.rjust(18)}"
         else:
             line = f"{amount.rjust(20)}"
+        pct = f"{format_amount(accumulated_pct, places=2)}%"
+        positions = f"{len(ticks)}"
+        line = f"{line.ljust(26)}{pct.rjust(8)}{positions.rjust(28)}"
         print(line)
         if commodity != commodities[-1]:
             print()
