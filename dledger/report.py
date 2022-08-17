@@ -90,6 +90,7 @@ def print_simple_annual_report(
             elif year == today.year + 1 and descending:
                 line = f"{line: <79}"
                 print(colored(line, COLOR_UNDERLINED))
+            # todo: underline might not show when there's years with no income
             else:
                 print(line)
         if commodity != commodities[-1]:
@@ -150,6 +151,7 @@ def print_simple_monthly_report(
                 elif year == today.year and month == today.month + 1 and descending:
                     line = f"{line: <79}"
                     print(colored(line, COLOR_UNDERLINED))
+                # todo: underline might not show when there's months with no income
                 else:
                     print(line)
 
@@ -222,6 +224,7 @@ def print_simple_quarterly_report(
                 ):
                     line = f"{line: <79}"
                     print(colored(line, COLOR_UNDERLINED))
+                # todo: underline might not show when there's quarters with no income
                 else:
                     print(line)
         if commodity != commodities[-1]:
