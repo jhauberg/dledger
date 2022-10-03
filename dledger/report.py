@@ -129,7 +129,14 @@ def print_simple_monthly_report(
                 if len(monthly_transactions) == 0:
                     continue
 
+                comparable_transactions = list(
+                    monthly(matching_transactions, year=year - 1, month=month)
+                )
                 total = income(monthly_transactions)
+                total_comparable = income(comparable_transactions)
+                pct_change = None
+                if total_comparable > 0:
+                    pct_change = (total - total_comparable) / total_comparable
                 decimals = amount_decimals[commodity]
                 if decimals is not None:
                     amount = format_amount(total, places=decimals)
@@ -142,8 +149,12 @@ def print_simple_monthly_report(
                     line = f"~ {amount.rjust(18)}    {d.ljust(11)}"
                 else:
                     line = f"{amount.rjust(20)}    {d.ljust(11)}"
-                payers = formatted_prominent_payers(monthly_transactions)
-                line = f"{line}{payers}"
+                if pct_change is not None and abs(pct_change) >= 0.01:
+                    indicator = "+ " if pct_change > 0 else "- "
+                    pct_change = f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+                else:
+                    pct_change = ""
+                line = f"{line}{pct_change}"
                 if year == today.year and month == today.month and not descending:
                     # pad to full width to make underline consistent across reports
                     line = f"{line: <79}"
