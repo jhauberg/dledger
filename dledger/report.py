@@ -17,11 +17,9 @@ from dledger.dateutil import (
     months_in_quarter,
     previous_quarter,
     todayd,
-    months_between,
 )
-from dledger.projection import GeneratedAmount, GeneratedTransaction, forecast_period
+from dledger.projection import GeneratedAmount, GeneratedTransaction
 from dledger.record import (
-    in_period,
     income,
     yearly,
     monthly,
