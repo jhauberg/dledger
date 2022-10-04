@@ -23,7 +23,6 @@ OPTIONS:
      --no-adjustment          Don't adjust past transactions for splits
      --by-payout-date         List chronologically by payout date
      --by-ex-date             List chronologically by ex-dividend date
-     --ticker=<ticker>        Only show income by ticker
      --dividend=<currency>    Only Show income exchanged from currency
      --payout=<currency>      Only Show income exchanged to currency
      --exchange-to=<currency> Show income as if exchanged to currency
@@ -32,6 +31,7 @@ OPTIONS:
      --drift                  Show drift from balanced weight
      --by-position            Show drift from balanced position
      --by-currency            Show drift from balanced currency exposure (weight)
+     --ticker=<ticker>        Only include transactions matching ticker
      --tag=<tags>             Only include transactions tagged specifically
   -y --yearly                 Show income by year
   -q --quarterly              Show income by quarter
