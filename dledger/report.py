@@ -63,7 +63,14 @@ def print_simple_annual_report(
             if len(yearly_transactions) == 0:
                 continue
 
+            comparable_transactions = list(
+                yearly(matching_transactions, year=year - 1)
+            )
             total = income(yearly_transactions)
+            total_comparable = income(comparable_transactions)
+            pct_change = None
+            if total_comparable > 0:
+                pct_change = (total - total_comparable) / total_comparable * 100
             decimals = amount_decimals[commodity]
             if decimals is not None:
                 amount = format_amount(total, places=decimals)
@@ -79,8 +86,12 @@ def print_simple_annual_report(
                     line = f"~ {amount.rjust(18)}    {d.ljust(11)}"
             else:
                 line = f"{amount.rjust(20)}    {d.ljust(11)}"
-            payers = formatted_prominent_payers(yearly_transactions)
-            line = f"{line}{payers}"
+            if pct_change is not None and abs(pct_change) >= 0.01:
+                indicator = "+ " if pct_change > 0 else "- "
+                pct_change = f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+            else:
+                pct_change = ""
+            line = f"{line}{pct_change}"
             if year == today.year and not descending:
                 # pad to full width to make underline consistent across reports
                 line = f"{line: <79}"
@@ -134,7 +145,7 @@ def print_simple_monthly_report(
                 total_comparable = income(comparable_transactions)
                 pct_change = None
                 if total_comparable > 0:
-                    pct_change = (total - total_comparable) / total_comparable
+                    pct_change = (total - total_comparable) / total_comparable * 100
                 decimals = amount_decimals[commodity]
                 if decimals is not None:
                     amount = format_amount(total, places=decimals)
@@ -196,15 +207,22 @@ def print_simple_quarterly_report(
             for quarter in quarters:
                 starting_month, _, ending_month = months_in_quarter(quarter)
                 quarterly_transactions = []
+                comparable_transactions = []
                 for month in range(starting_month, ending_month + 1):
-                    monthly_transactions = monthly(
-                        matching_transactions, year=year, month=month
+                    quarterly_transactions.extend(
+                        monthly(matching_transactions, year=year, month=month)
                     )
-                    quarterly_transactions.extend(monthly_transactions)
+                    comparable_transactions.extend(
+                        monthly(matching_transactions, year=year - 1, month=month)
+                    )
                 if len(quarterly_transactions) == 0:
                     continue
 
                 total = income(quarterly_transactions)
+                total_comparable = income(comparable_transactions)
+                pct_change = None
+                if total_comparable > 0:
+                    pct_change = (total - total_comparable) / total_comparable * 100
                 decimals = amount_decimals[commodity]
                 if decimals is not None:
                     amount = format_amount(total, places=decimals)
@@ -216,8 +234,12 @@ def print_simple_quarterly_report(
                     line = f"~ {amount.rjust(18)}    {d.ljust(11)}"
                 else:
                     line = f"{amount.rjust(20)}    {d.ljust(11)}"
-                payers = formatted_prominent_payers(quarterly_transactions)
-                line = f"{line}{payers}"
+                if pct_change is not None and abs(pct_change) >= 0.01:
+                    indicator = "+ " if pct_change > 0 else "- "
+                    pct_change = f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+                else:
+                    pct_change = ""
+                line = f"{line}{pct_change}"
                 if (
                     year == today.year
                     and today.month in months_in_quarter(quarter)
@@ -549,6 +571,7 @@ def print_simple_rolling_report(
             continue
         latest_transaction = latest(matching_transactions)
         decimals = amount_decimals[commodity]
+        total_comparable = 0
         for year in years:
             months = range(1, 12 + 1)
             if descending:
@@ -567,7 +590,12 @@ def print_simple_rolling_report(
                 )
                 if len(rolling_transactions) == 0:
                     continue
+
                 total = income(rolling_transactions)
+                pct_change = None
+                if total_comparable > 0:
+                    pct_change = (total - total_comparable) / total_comparable * 100
+                total_comparable = total
                 if decimals is not None:
                     amount = format_amount(total, places=decimals)
                 else:
@@ -578,8 +606,12 @@ def print_simple_rolling_report(
                     line = f"~ {amount.rjust(18)}  < {d.ljust(11)}"
                 else:
                     line = f"{amount.rjust(20)}  < {d.ljust(11)}"
-                payers = formatted_prominent_payers(rolling_transactions)
-                line = f"{line}{payers}"
+                if pct_change is not None and abs(pct_change) >= 0.01:
+                    indicator = "+ " if pct_change > 0 else "- "
+                    pct_change = f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+                else:
+                    pct_change = ""
+                line = f"{line}{pct_change}"
                 print(line)
         if commodity != commodities[-1]:
             print()
