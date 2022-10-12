@@ -777,7 +777,12 @@ def comparable_transactions(
 
     return filter(
         lambda txn: is_comparable_date(txn.entry_date, transaction.entry_date)
-        and txn.kind is transaction.kind,
+        # determine comparability based on distribution type
+        and txn.kind is transaction.kind
+        # determine comparability between position-only records and transactions
+        and (txn.amount is None if
+             transaction.amount is None else
+             txn.amount is not None),
         records,
     )
 
