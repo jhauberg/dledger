@@ -365,7 +365,8 @@ def in_currency(
         assert rec.amount is not None
         assert rec.amount.symbol is not None
         try:
-            conversion_factor = rates[(rec.amount.symbol, symbol)]
+            rate = rates[(rec.amount.symbol, symbol)]
+            conversion_factor = rate[1]
         except KeyError:
             try:
                 rate = rates[(symbol, rec.amount.symbol)]
