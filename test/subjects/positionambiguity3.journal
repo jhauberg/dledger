@@ -1,0 +1,15 @@
+# this file serves as a test journal for dledger
+
+# this journal assumes a system locale using comma as decimal separator
+
+2022/11/16 ABC (= 177)
+  [2022/11/15] 278,64 kr
+@ [2022/11/07] $ 0,22
+
+2022/12/16 ABC
+  [2022/12/15] 272,40 kr
+@ [2022/12/07] $ 0,22
+
+2023/01/16 ABC
+  [2023/01/13] $ 39,83  # note that the payout is really 39,825, but rounded up in bank statement
+@ [2023/01/05] $ 0,225

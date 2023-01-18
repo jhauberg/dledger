@@ -986,6 +986,48 @@ def test_distribution_followed_by_buy_journal():
     )
 
 
+def test_position_inference_decimal_precision():
+    path = "subjects/positionambiguity3.journal"
+
+    with tempconv(DECIMAL_POINT_COMMA):
+        records = inferring_components(read(path, kind="journal"))
+
+    assert len(records) == 3
+
+    assert records[0] == Transaction(
+        date(2022, 11, 16),
+        "ABC",
+        177,
+        amount=Amount(278.64, places=2, symbol="kr", fmt="%s kr"),
+        dividend=Amount(0.22, places=2, symbol="$", fmt="$ %s"),
+        payout_date=date(2022, 11, 15),
+        ex_date=date(2022, 11, 7),
+        entry_attr=EntryAttributes(location=(path, 5), positioning=(177, POSITION_SET)),
+    )
+
+    assert records[1] == Transaction(
+        date(2022, 12, 16),
+        "ABC",
+        177,
+        amount=Amount(272.40, places=2, symbol="kr", fmt="%s kr"),
+        dividend=Amount(0.22, places=2, symbol="$", fmt="$ %s"),
+        payout_date=date(2022, 12, 15),
+        ex_date=date(2022, 12, 7),
+        entry_attr=EntryAttributes(location=(path, 9), positioning=(None, POSITION_SET)),
+    )
+
+    assert records[2] == Transaction(
+        date(2023, 1, 16),
+        "ABC",
+        177,
+        amount=Amount(39.83, places=2, symbol="$", fmt="$ %s"),
+        dividend=Amount(0.225, places=3, symbol="$", fmt="$ %s"),
+        payout_date=date(2023, 1, 13),
+        ex_date=date(2023, 1, 5),
+        entry_attr=EntryAttributes(location=(path, 13), positioning=(None, POSITION_SET)),
+    )
+
+
 def test_nativedividends_journal():
     path = "subjects/nativedividends.journal"
 
