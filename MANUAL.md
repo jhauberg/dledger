@@ -120,9 +120,9 @@ Here's an [example journal-file](example/simple.journal), for reference:
   $ 77
 ```
 
-*Note that the hashtag/pound-symbol here indicates a line that is a comment for the human reader; the program will just ignore it.*
+*The hashtag/pound-symbol here indicates a line that is a comment for the human reader; `dledger` will just ignore it.*
 
-The example journals might not report any forecasts if the latest record is more than a year old.
+Note that the example journals probably won't report any forecasts because the latest record is more than a year old.
 
 ## Keeping journals
 
@@ -164,7 +164,7 @@ include simple.journal
 
 The directive can exist anywhere in a journal, but it must be succeeded by whitespace and a valid journal path, and it must be on a single line.
 
-The included records will be ordered chronologically, no matter the location of the directive.
+The included records will be ordered chronologically, no matter the literal location of the directive.
 
 ## Transactions
 
@@ -667,7 +667,6 @@ $ dledger report example/simple.journal --trailing
                $ 227  < 2019/11
                $ 304  < 2019/12
                $ 304  < 2020/01
-~              $ 308    next 12m
 ```
 
 Here, each row corresponds to the total income over the trailing 12-month period prior to the listed month (a trailing period is exclusive of the month it is trailing).
@@ -789,11 +788,23 @@ You can set `--no-projection` to exclude forecasted transactions from a report e
 
 ### Future income
 
-The `--forecast` flag produces a report that provides an overview of your projected future income over the next full 12 months, per ticker. Optionally including an indication of drift from ideal weightings if `--drift` is also set.
+The `--forecast` flag produces a report that provides an overview of your projected future income over the next full 12 months, per ticker.
+
+```shell
+$ dledger report example/simple.journal --forecast
+```
+
+```console
+~              $ 308  / 4  100.00% AAPL                  (100)
+==============================================================
+~              $ 308       100.00%                           1
+```
+
+Optionally, this report can include an indication of drift from ideal weightings if `--drift` is also set.
 
 The "ideal" weight is considered to be the percentage split equally among every holding; i.e. if you have a portfolio of 100 different companies, then the ideal income weight for each ticker is 1%.
 
-This is a conservative approach that is grounded in the belief that you cannot predict winners vs. losers, and thus should spread your risk equally. This approach should only be viewed as a guideline; it is not advice, and it is subject to personal consideration based on own beliefs and convictions.
+This is a conservative approach that is grounded in the belief that you cannot predict winners vs. losers, and thus should spread your risk equally. This approach should only be viewed as a guideline; it is not advice, and it is subject to personal consideration based on ones own beliefs and convictions.
 
 By default, drift is indicated by the percentage difference/deviance from the ideal weight. Alternatively, you can show drift by position (shares), or currency (exposure), by setting either `--by-position`, or `--by-currency`, respectively.
 
@@ -809,9 +820,13 @@ The exchange rate is always based on the latest recorded transaction and is *not
 
 The `--exchange-to` flag can be used to report all income in a specific currency. This can be particularly useful when you track and receive income in currency other than your domestic currency, but want to consolidate all reports into a single one.
 
-This works by estimating how much the amount of cash received previously would be worth today, using the most recently known exchange rate; i.e. it does not determine what it was worth at the time of the transaction, but rather what it would be worth if exchanged today.
+Applying this flag estimates how much the amount of cash received previously would be worth today, using the most recently known exchange rate.
+
+*Do be aware that this function is unsuitable for tax purposes as the exchange rate on the day of transaction can be significant.*
 
 Income is not converted if an exchange rate is not available for a given currency pairing.
+
+Use the [`stats`](#stats) command to see information on known exchange rates.
 
 ## Common/useful reports
 
@@ -880,7 +895,7 @@ $ dledger report ~/.journal --period=tomorrow: | head -n 5
 Similarly, the tool `tail` can be used for the same purpose, but instead of reading from the top, it reads from the bottom. This can be used to list the 5 most recent payouts:
 
 ```shell
-dledger report ~/.journal --no-forecast | tail -n 5
+dledger report ~/.journal --no-projection | tail -n 5
 ```
 
 *Note the use of `--no-projection` to exclude any forecasted transactions.*
@@ -891,7 +906,7 @@ The `print` command can be used to easily condense an entire journal.
 
 This can reduce the journal's filesize and linecount drastically, but at the expense of being more difficult to read.
 
-*Warning: this will also __remove all comments__!*
+__Warning__: this will also __remove all comments__.
 
 ```shell
 $ dledger print old.journal --condense > archived.journal
