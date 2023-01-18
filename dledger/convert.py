@@ -97,13 +97,8 @@ def inferring_components(entries: Iterable[Transaction]) -> List[Transaction]:
             if record.amount.symbol == record.dividend.symbol:
                 inferred_p = record.amount.value / record.dividend.value
                 if position is not None:
-                    # determine whether literal position is close enough to the
-                    # inferred position; note that the precision here should match
-                    # the precision of any inferred dividend
-                    precision = 0.000001
-                    if record.dividend.places is not None:
-                        denominator = "1" + ("0" * (record.dividend.places - 1))
-                        precision = 1 / int(denominator)
+                    denominator = "1" + ("0" * (record.amount.places - 1))
+                    precision = 1 / int(denominator)
                     if not math.isclose(position, inferred_p, abs_tol=precision):
                         raise InferenceError(
                             f"ambiguous position ({position} or {inferred_p}?)",
