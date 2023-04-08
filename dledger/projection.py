@@ -330,7 +330,7 @@ def sample_ttm(
                     )
         # don't include special dividend transactions
         sample_records.extend(
-            r for r in recs_in_period if r.kind is not Distribution.SPECIAL
+            r for r in recs_in_period
         )
     return sample_records
 
@@ -557,9 +557,11 @@ def estimated_transactions(
             # don't project closed positions
             continue
 
-        # weed out position-only records
+        # weed out position-only records and special dividends
         transactions = list(
-            r for r in by_ticker(records, ticker) if r.amount is not None
+            r for r in by_ticker(records, ticker)
+            if r.amount is not None
+            and r.kind != Distribution.SPECIAL
         )
 
         latest_transaction = latest(transactions)
@@ -797,8 +799,12 @@ def future_transactions(
 
     future_records = []
 
-    # weed out position-only records
-    transactions = list(r for r in records if r.amount is not None)
+    # weed out position-only records and special dividends
+    transactions = list(
+        r for r in records
+        if r.amount is not None
+        and r.kind != Distribution.SPECIAL
+    )
 
     rates = rates if rates is not None else latest_exchange_rates(transactions)
 
