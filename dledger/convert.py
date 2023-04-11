@@ -5,6 +5,7 @@ from datetime import date
 from dledger.journal import (
     Transaction,
     Amount,
+    parse_amount,
     POSITION_ADD,
     POSITION_SUB,
     POSITION_SPLIT,
@@ -380,6 +381,9 @@ def in_currency(
                 estimate_format = t.dividend.fmt
             if estimate_format is not None:
                 break
+        if estimate_format is None:
+            # a format must be provided for reporting; use default format
+            estimate_format = parse_amount(symbol).fmt
         estimate_amount = GeneratedAmount(
             value=rec.amount.value * conversion_factor,
             symbol=symbol,
