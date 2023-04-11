@@ -97,6 +97,15 @@ class Transaction:
     def literal_location(self) -> Tuple[str, int]:
         return self.entry_attr.location if self.entry_attr is not None else ("", 0)
 
+    @property
+    def order(self) -> Tuple[date, bool, Tuple[str, int], str]:
+        return (
+            self.entry_date,
+            self.ispositional,
+            self.literal_location,
+            self.ticker,
+        )
+
     def __lt__(self, other: "Transaction"):  # type: ignore
         # sort by entry date and always put buy/sell transactions later if on same date
         # e.g.  2019/01/01 ABC (+10)
@@ -110,17 +119,7 @@ class Transaction:
         #       i.e. if a journal by convention places newer records at top
         #       of file rather than at bottom- then potentially ambiguous selections
         #       (like exchange rates) may be based on older records rather than later
-        return (
-            self.entry_date,
-            self.ispositional,
-            self.literal_location,
-            self.ticker,
-        ) < (
-            other.entry_date,
-            other.ispositional,
-            other.literal_location,
-            other.ticker,
-        )
+        return self.order < other.order
 
 
 class ParseError(Exception):
