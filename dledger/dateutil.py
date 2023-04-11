@@ -25,6 +25,7 @@ def closest_weekday(d: date) -> date:
         return d - timedelta(days=1)
     if weekday == 6:
         return d + timedelta(days=1)
+    assert False
 
 
 def next_weekday(d: date) -> date:

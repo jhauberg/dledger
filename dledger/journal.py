@@ -906,7 +906,9 @@ def write(records: List[Transaction], file: Any, *, condensed: bool = False) -> 
 
 def has_identical_location(record: Transaction, other_record: Transaction) -> bool:
     """Return `True` if both records have the same origin, `False` otherwise."""
+    assert record.entry_attr is not None
     journal, lineno = record.entry_attr.location
+    assert other_record.entry_attr is not None
     other_journal, other_lineno = other_record.entry_attr.location
     a = os.path.abspath(journal)
     b = os.path.abspath(other_journal)
