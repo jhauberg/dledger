@@ -332,6 +332,9 @@ def main() -> None:
     if args["--exchange-to"] is not None:
         # forcefully apply an exchange to given currency
         try:
+            # TODO: find a way to bring all records along here so we can search for a matching format
+            #       alternatively, run this before any filtering, but that comes at the cost of
+            #       unnecessary work as many transactions may then be filtered out later
             transactions = in_currency(
                 transactions, symbol=args["--exchange-to"], rates=exchange_rates
             )
