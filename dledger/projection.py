@@ -77,17 +77,24 @@ class GeneratedTransaction(Transaction):
     earliest_entry_date: Optional[date] = None
     latest_entry_date: Optional[date] = None
 
+    # in a case where only preliminary records exist, earliest/latest will not be set
+    # as no dates have been observed (i.e. there's no realized transactions to go by)
+
+    @property
+    def dates(self) -> tuple:
+        if self.earliest_entry_date is not None:
+            # assuming latest is always set if earliest is set
+            return self.earliest_entry_date, self.latest_entry_date
+        return ()
+
     def __lt__(self, other: Transaction):  # type: ignore
-        compare_observed_dates = isinstance(other, GeneratedTransaction)
         return (
             self.entry_date,
-            self.earliest_entry_date if compare_observed_dates else None,
-            self.latest_entry_date if compare_observed_dates else None,
+            self.dates,
             self.ticker,
         ) < (
             other.entry_date,
-            other.earliest_entry_date if compare_observed_dates else None,
-            other.latest_entry_date if compare_observed_dates else None,
+            other.dates if isinstance(other, GeneratedTransaction) else (),
             other.ticker,
         )
 
