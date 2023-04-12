@@ -378,7 +378,7 @@ def test_convert_to_currency():
 
     records = in_currency(records, symbol="$")
 
-    assert records[0].amount == GeneratedAmount(100, symbol="$")
+    assert records[0].amount == GeneratedAmount(100, symbol="$", fmt="%s $")
 
     records = [
         Transaction(
@@ -399,7 +399,7 @@ def test_convert_to_currency():
 
     records = in_currency(records, symbol="$")
 
-    assert records[0].amount == GeneratedAmount(100, symbol="$")
+    assert records[0].amount == GeneratedAmount(100, symbol="$", fmt="%s $")
     assert isinstance(records[1].amount, GeneratedAmount)
     import math
 
