@@ -280,7 +280,7 @@ def strip_tags(text: str) -> Tuple[str, List[str]]:
 def find_potential_lineno(
     component: str, lines: List[Tuple[int, str]]
 ) -> Optional[int]:
-    for (lineno, line) in lines:
+    for lineno, line in lines:
         if component in line:
             return lineno
     return None

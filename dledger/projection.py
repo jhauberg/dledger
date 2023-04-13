@@ -563,9 +563,9 @@ def estimated_transactions(
 
         # weed out position-only records and special dividends
         transactions = list(
-            r for r in by_ticker(records, ticker)
-            if r.amount is not None
-            and r.kind != Distribution.SPECIAL
+            r
+            for r in by_ticker(records, ticker)
+            if r.amount is not None and r.kind != Distribution.SPECIAL
         )
 
         latest_transaction = latest(transactions)
@@ -786,9 +786,9 @@ def comparable_transactions(
         # determine comparability based on distribution type
         and txn.kind is transaction.kind
         # determine comparability between position-only records and transactions
-        and (txn.amount is None if
-             transaction.amount is None else
-             txn.amount is not None),
+        and (
+            txn.amount is None if transaction.amount is None else txn.amount is not None
+        ),
         records,
     )
 
@@ -805,9 +805,7 @@ def future_transactions(
 
     # weed out position-only records and special dividends
     transactions = list(
-        r for r in records
-        if r.amount is not None
-        and r.kind != Distribution.SPECIAL
+        r for r in records if r.amount is not None and r.kind != Distribution.SPECIAL
     )
 
     rates = rates if rates is not None else latest_exchange_rates(transactions)

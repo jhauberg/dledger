@@ -160,7 +160,9 @@ def print_simple_monthly_report(
                     line = f"{amount.rjust(20)}    {d.ljust(11)}"
                 if pct_change is not None and abs(pct_change) >= 0.01:
                     indicator = "+ " if pct_change > 0 else "- "
-                    pct_change = f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+                    pct_change = (
+                        f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+                    )
                 else:
                     pct_change = ""
                 line = f"{line}{pct_change}"
@@ -236,7 +238,9 @@ def print_simple_quarterly_report(
                     line = f"{amount.rjust(20)}    {d.ljust(11)}"
                 if pct_change is not None and abs(pct_change) >= 0.01:
                     indicator = "+ " if pct_change > 0 else "- "
-                    pct_change = f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+                    pct_change = (
+                        f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+                    )
                 else:
                     pct_change = ""
                 line = f"{line}{pct_change}"
@@ -608,7 +612,9 @@ def print_simple_rolling_report(
                     line = f"{amount.rjust(20)}  < {d.ljust(11)}"
                 if pct_change is not None and abs(pct_change) >= 0.01:
                     indicator = "+ " if pct_change > 0 else "- "
-                    pct_change = f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+                    pct_change = (
+                        f"{indicator}{format_amount(abs(pct_change), places=2)}%"
+                    )
                 else:
                     pct_change = ""
                 line = f"{line}{pct_change}"
