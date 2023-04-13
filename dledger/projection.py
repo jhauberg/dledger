@@ -335,10 +335,7 @@ def sample_ttm(
                     raise ValueError(
                         f"ambiguous record entry: {other_record.entry_date} {ticker}"
                     )
-        # don't include special dividend transactions
-        sample_records.extend(
-            r for r in recs_in_period
-        )
+        sample_records.extend(recs_in_period)
     return sample_records
 
 
