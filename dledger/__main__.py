@@ -17,7 +17,7 @@ USAGE:
 
 OPTIONS:
      --type=<name>            Specify type of transaction data [default: journal]
-     --output=<journal>       Specify journal filename [default: dividends.journal]
+     --output=<journal>       Specify journal filename
   -p --period=<interval>      Specify reporting date interval
      --no-projection          Don't include forecasted transactions
      --no-adjustment          Don't adjust past transactions for splits
@@ -204,8 +204,11 @@ def main() -> None:
         write(records, file=sys.stdout, condensed=args["--condense"])
         sys.exit(0)
     if args["convert"]:
-        with open(args["--output"], "w", newline="") as file:
-            write(records, file=file, condensed=args["--condense"])
+        if args["--output"] is not None:
+            with open(args["--output"], "w", newline="") as file:
+                write(records, file=file, condensed=args["--condense"])
+        else:
+            write(records, file=sys.stdout, condensed=args["--condense"])
         sys.exit(0)
 
     interval = args["--period"]
