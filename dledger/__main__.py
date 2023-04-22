@@ -195,7 +195,7 @@ def main() -> None:
     descending_order = args["--reverse"]
 
     if (args["print"] or args["convert"]) and descending_order:
-        # note that other program functions except records in ascending order,
+        # note that other program functions expect records in ascending order,
         # so we only apply reversal for this specific case - additionally,
         # reporting commands typically have specific query mechanisms making
         # record order insignificant
