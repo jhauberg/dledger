@@ -585,7 +585,7 @@ def read_nordnet_transactions(path: str, encoding: str = "utf-8") -> List[Transa
         10: "Kurs",
         14: "Beløb",
         15: "Valuta",
-        21: "Transaktionstekst",
+        23: "Transaktionstekst",
     }
 
     with open(path, newline="", encoding=encoding) as file:
