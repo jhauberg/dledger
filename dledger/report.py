@@ -340,7 +340,17 @@ def print_simple_report(
             if not detailed:
                 if transaction.entry_date > today:
                     days_until = (transaction.entry_date - today).days
-                    days_until = f"in {days_until} days"
+                    lang: Optional[str]
+                    try:
+                        lc = locale.getlocale(locale.LC_ALL)
+                        lang = lc[0].split("_")[0]
+                    except (locale.Error, KeyError):
+                        lang = None
+                    if lang == "da":
+                        days_until = f"om {days_until} dage"
+                    else:
+                        # english default
+                        days_until = f"in {days_until} days"
                     line = f"{line} {days_until.rjust(18)}"
         else:
             if isinstance(transaction, GeneratedTransaction):
